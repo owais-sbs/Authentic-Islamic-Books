@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-paper text-ink-800 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-accent/20 text-ink-900;
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    @apply outline-2 outline-accent outline-offset-2;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-paper;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line-strong rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-accent/40;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8;
+  }
+
+  .link-underline {
+    @apply relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-current after:transition-all after:duration-300 hover:after:w-full;
+  }
+
+  /* Reader themes */
+  .reader-theme-light {
+    --reader-bg: #FDFCF8;
+    --reader-text: #0B1929;
+    --reader-muted: #3A5572;
+    --reader-border: #D8D3C8;
+    --reader-accent: #C9A84C;
+    --reader-card: #F5F4EF;
+  }
+  .reader-theme-sepia {
+    --reader-bg: #F4ECD8;
+    --reader-text: #3B2F1E;
+    --reader-muted: #7A6B52;
+    --reader-border: #D9CCAE;
+    --reader-accent: #A88836;
+    --reader-card: #EFE6CC;
+  }
+  .reader-theme-dark {
+    --reader-bg: #0B1929;
+    --reader-text: #C8D6E5;
+    --reader-muted: #6B829E;
+    --reader-border: #162A42;
+    --reader-accent: #C9A84C;
+    --reader-card: #0F1D2F;
+  }
+
+  .reader-surface {
+    background-color: var(--reader-bg);
+    color: var(--reader-text);
+  }
+  .reader-muted {
+    color: var(--reader-muted);
+  }
+  .reader-border {
+    border-color: var(--reader-border);
+  }
+  .reader-accent {
+    color: var(--reader-accent);
+  }
+  .reader-card {
+    background-color: var(--reader-card);
+  }
+
+  .reader-prose {
+    font-family: 'Source Serif 4', Georgia, serif;
+    line-height: 1.85;
+  }
+  .reader-prose p {
+    margin-bottom: 1.4em;
+  }
+  .reader-prose h2,
+  .reader-prose h3 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Smooth scrollbar for reader TOC */
+.toc-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.toc-scroll::-webkit-scrollbar-thumb {
+  @apply bg-line-strong rounded-full;
+}
