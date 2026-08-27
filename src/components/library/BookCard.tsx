@@ -16,6 +16,10 @@ interface BookCardProps {
 export function BookCard({ book, variant = 'grid' }: BookCardProps) {
   const scholar = getScholarById(book.authorId);
   const category = getCategoryById(book.categoryIds[0]);
+  // For imported books, authorId may be a placeholder — fall back to authorName
+  const authorDisplay = scholar
+    ? scholar.name
+    : (book as Book & { authorName?: string }).authorName ?? null;
 
   if (variant === 'list') {
     return (
@@ -39,10 +43,14 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
             </h3>
           </Link>
           {book.subtitle && <p className="text-sm text-ink-500 mt-0.5 line-clamp-1">{book.subtitle}</p>}
-          {scholar && (
-            <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
-              {scholar.name}
-            </Link>
+          {authorDisplay && (
+            scholar ? (
+              <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
+                {authorDisplay}
+              </Link>
+            ) : (
+              <p className="mt-1 text-sm text-ink-600">{authorDisplay}</p>
+            )
           )}
           <p className="mt-2 text-sm leading-relaxed text-ink-500 line-clamp-2">{book.description}</p>
           <div className="mt-auto pt-3">
@@ -77,10 +85,14 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
           {book.title}
         </h3>
       </Link>
-      {scholar && (
-        <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
-          {scholar.name}
-        </Link>
+      {authorDisplay && (
+        scholar ? (
+          <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
+            {authorDisplay}
+          </Link>
+        ) : (
+          <p className="mt-1 text-sm text-ink-600">{authorDisplay}</p>
+        )
       )}
       <p className="mt-2 text-sm leading-relaxed text-ink-500 line-clamp-2 flex-1">{book.description}</p>
       <div className="mt-4 pt-3 border-t border-line">

@@ -12,5 +12,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
+    // Include pdfjs-dist so Vite pre-bundles it correctly
+    include: ['pdfjs-dist'],
+  },
+  worker: {
+    format: 'es',
   },
 });

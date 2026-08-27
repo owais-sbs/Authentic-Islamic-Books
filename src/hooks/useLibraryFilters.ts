@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { books as allBooks } from '@/data/books';
+import { books as staticBooks } from '@/data/books';
 import { hijriPeriods } from '@/data/periods';
 import { categories } from '@/data/categories';
 import { scholars as allScholars } from '@/data/scholars';
+import { getAllImportedBooks } from '@/hooks/useBookStore';
 
 export type SortOption = 'newest' | 'oldest' | 'az' | 'za' | 'popular' | 'recent';
 
@@ -25,6 +26,24 @@ export function useLibraryFilters() {
   const sortParam = (searchParams.get('sort') as SortOption) || 'popular';
 
   const [sort, setSort] = useState<SortOption>(sortParam);
+
+  // Merge static + imported books, re-computing when store updates
+  const [importedBooks, setImportedBooks] = useState(getAllImportedBooks);
+  useEffect(() => {
+    // Re-read on any storage event (fired by import/review pages after writes)
+    const handler = () => setImportedBooks(getAllImportedBooks());
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
+  const allBooks = useMemo(
+    () => {
+      const ids = new Set(staticBooks.map((b) => b.id));
+      const fresh = importedBooks.filter((b) => !ids.has(b.id));
+      return [...staticBooks, ...fresh];
+    },
+    [importedBooks]
+  );
 
   const filters: FilterState = {
     periods: periodsParam,

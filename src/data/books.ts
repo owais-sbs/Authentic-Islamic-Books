@@ -1364,7 +1364,21 @@ export const books: Book[] = [
 ];
 
 export function getBookBySlug(slug: string): Book | undefined {
-  return books.find((b) => b.slug === slug);
+  // 1. Check static books first
+  const staticBook = books.find((b) => b.slug === slug);
+  if (staticBook) return staticBook;
+
+  // 2. Fall back to localStorage-imported books
+  try {
+    const raw = localStorage.getItem('idl_imported_books');
+    if (raw) {
+      const imported: Book[] = JSON.parse(raw);
+      return imported.find((b) => b.slug === slug);
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return undefined;
 }
 
 export function getBooksByAuthor(authorId: string): Book[] {
