@@ -27,6 +27,7 @@ A modern, polished digital library for exploring centuries of Islamic scholarshi
 
 ## Folder Structure
 
+
 ```
 src/
   components/
