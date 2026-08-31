@@ -42,9 +42,12 @@ Copy `.env.example` to `.env` locally. **Use the same Supabase project** on all 
 |----------|--------|----------|
 | `VITE_SUPABASE_URL` | `.env`, Netlify, Vercel | Yes |
 | `VITE_SUPABASE_ANON_KEY` | `.env`, Netlify, Vercel | Yes |
+| `VITE_SITE_URL` | `.env`, Netlify, Vercel | Yes (for share link preview image) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env` only (never in browser) | For `setup:admin` only |
 
 Vite **inlines** `VITE_*` at **build time** — change env vars → **redeploy**.
+
+**Share link preview:** Set `VITE_SITE_URL` to your live URL (e.g. `https://your-site.netlify.app`) so WhatsApp/Facebook/Twitter show the books OG image instead of the old Bolt default.
 
 ---
 
