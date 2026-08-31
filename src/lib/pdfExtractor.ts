@@ -1,7 +1,16 @@
 /**
  * pdfExtractor.ts
  * Browser-side PDF text extraction using pdfjs-dist.
- * Returns raw pages of text, then we run structure detection on top.
+ *
+ * Chapter detection strategy (in order of priority):
+ *  1. Explicit heading patterns  ("Chapter 1", "Part II", etc.)
+ *  2. Short ALL-CAPS lines that look like section titles
+ *  3. Numbered-heading lines     ("1. Title", "2. Title")
+ *  4. Adaptive page-based split  — one chapter per N pages so every page
+ *     of content ends up in a chapter regardless of PDF formatting
+ *
+ * The old hardcoded "3 chunks" fallback is replaced by option 4, which
+ * scales with the actual document length.
  */
 
 import type { ContentBlock, BookChapter, BookSection } from '@/types';
@@ -9,7 +18,6 @@ import type { ContentBlock, BookChapter, BookSection } from '@/types';
 // ─── PDF.js lazy import ───────────────────────────────────────────────────────
 async function getPdfjs() {
   const pdfjsLib = await import('pdfjs-dist');
-  // Use the bundled worker that ships with pdfjs-dist
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
     import.meta.url
@@ -17,12 +25,295 @@ async function getPdfjs() {
   return pdfjsLib;
 }
 
-// ─── Raw extraction ───────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RawPage {
   pageNum: number;
   text: string;
 }
+
+export interface DetectedMeta {
+  title: string;
+  author: string;
+  description: string;
+  hijriStart?: number;
+  hijriEnd?: number;
+}
+
+export interface DetectedSection {
+  number: string;
+  title: string;
+  rawText: string;
+}
+
+export interface DetectedChapter {
+  number: string;
+  title: string;
+  description: string;
+  rawText: string;
+  sections: DetectedSection[];
+}
+
+export interface ParsedBook {
+  meta: DetectedMeta;
+  introductionText: string;
+  chapters: DetectedChapter[];
+  pageCount: number;
+  wordCount: number;
+}
+
+// ─── Heading patterns ─────────────────────────────────────────────────────────
+
+/** Explicit chapter/part keywords */
+const EXPLICIT_CHAPTER = [
+  /^chapter\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
+  /^part\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
+  /^lesson\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
+  /^unit\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
+  /^book\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
+];
+
+/** Lines like "1. The Foundations" or "IV. Introduction" */
+const NUMBERED_HEADING = /^(\d{1,3}|[IVX]{1,6})[.)]\s+([A-Z\u0600-\u06FF][^\n]{2,70})$/;
+
+/** Numbered sub-sections like "1.1 Background" */
+const SECTION_PATTERNS = [
+  /^(\d+\.\d+)\s+([A-Z\u0600-\u06FF][^\n]{2,70})$/,
+  /^(\d+\.\d+)\s*[:\-–—]\s*(.{3,70})$/,
+];
+
+// Hijri year patterns
+const HIJRI_RANGE  = /(\d{3,4})\s*[–\-]\s*(\d{3,4})\s*AH/i;
+const HIJRI_SINGLE = /\b(\d{3,4})\s*AH\b/i;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function detectHijriYears(text: string): { start?: number; end?: number } {
+  const r = HIJRI_RANGE.exec(text);
+  if (r) return { start: +r[1], end: +r[2] };
+  const s = HIJRI_SINGLE.exec(text);
+  if (s) return { start: +s[1] };
+  return {};
+}
+
+function isExplicitChapterLine(line: string): { num: string; title: string } | null {
+  for (const pat of EXPLICIT_CHAPTER) {
+    const m = pat.exec(line);
+    if (m) return { num: m[1] || '', title: (m[2] || '').trim() };
+  }
+  return null;
+}
+
+function isNumberedHeadingLine(line: string): { num: string; title: string } | null {
+  const m = NUMBERED_HEADING.exec(line);
+  if (m) return { num: m[1], title: m[2].trim() };
+  return null;
+}
+
+/** True if a short line looks like an ALL-CAPS section title (≥3 words, ≤10 words) */
+function isAllCapsHeading(line: string): boolean {
+  const words = line.split(/\s+/);
+  return (
+    words.length >= 2 &&
+    words.length <= 10 &&
+    line === line.toUpperCase() &&
+    /^[A-Z]/.test(line) &&
+    !/^\d+$/.test(line)
+  );
+}
+
+// ─── Metadata detection ───────────────────────────────────────────────────────
+
+function detectMeta(fullText: string, fileName: string): DetectedMeta {
+  const lines = fullText.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  const fileTitle = fileName
+    .replace(/\.pdf$/i, '')
+    .replace(/[-_]/g, ' ')
+    .trim();
+
+  // Title: look in the first 20 lines for a short, capitalised line
+  const titleLine = lines.slice(0, 20).find(
+    (l) =>
+      l.length >= 4 &&
+      l.length <= 90 &&
+      l.split(/\s+/).length <= 14 &&
+      !/^\d+$/.test(l) &&
+      !isExplicitChapterLine(l) &&
+      !NUMBERED_HEADING.test(l)
+  );
+  const title = titleLine || fileTitle;
+
+  // Author: line starting with a known label
+  const authorLine = lines.slice(0, 40).find((l) =>
+    /^(by|author|written by|compiled by|translated by)\s+/i.test(l)
+  );
+  const author = authorLine
+    ? authorLine.replace(/^(by|author|written by|compiled by|translated by)\s*/i, '').trim()
+    : '';
+
+  // Description: first sentence-like line (30-250 chars, >5 words)
+  const descLine = lines.slice(0, 50).find(
+    (l) =>
+      l.length > 30 &&
+      l.length < 250 &&
+      l.split(/\s+/).length > 5 &&
+      !isExplicitChapterLine(l) &&
+      l !== title
+  );
+
+  const hijri = detectHijriYears(fullText.slice(0, 3000));
+
+  return {
+    title: title.trim(),
+    author,
+    description: descLine || '',
+    hijriStart: hijri.start,
+    hijriEnd: hijri.end,
+  };
+}
+
+// ─── Chapter splitting ────────────────────────────────────────────────────────
+
+function splitIntoChapters(pages: RawPage[]): DetectedChapter[] {
+  const fullText = pages.map((p) => p.text).join('\n');
+  const lines = fullText.split('\n');
+
+  const chapters: DetectedChapter[] = [];
+  let current: DetectedChapter | null = null;
+  let chapterCounter = 0;
+
+  function pushNew(num: string, title: string) {
+    if (current) chapters.push(current);
+    chapterCounter++;
+    current = {
+      number: num || String(chapterCounter),
+      title: title || `Chapter ${chapterCounter}`,
+      description: '',
+      rawText: '',
+      sections: [],
+    };
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Priority 1: explicit keywords
+    const exp = isExplicitChapterLine(line);
+    if (exp) { pushNew(exp.num, exp.title); continue; }
+
+    // Priority 2: numbered headings  "1. The Foundations"
+    const num = isNumberedHeadingLine(line);
+    if (num) { pushNew(num.num, num.title); continue; }
+
+    // Priority 3: ALL-CAPS short headings
+    if (isAllCapsHeading(line)) { pushNew('', line); continue; }
+
+    // Body text
+    if (current) current.rawText += line + '\n';
+  }
+  if (current) chapters.push(current);
+
+  // ── Fallback: no headings detected ──────────────────────────────────────────
+  // Split by pages so the number of chapters scales with the document.
+  if (chapters.length === 0) {
+    const PAGES_PER_CHAPTER = 5; // ~5 pages per chapter is a reasonable default
+    const totalPages = pages.length;
+    const numChapters = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHAPTER));
+
+    for (let ci = 0; ci < numChapters; ci++) {
+      const startPage = ci * PAGES_PER_CHAPTER;
+      const endPage   = Math.min(startPage + PAGES_PER_CHAPTER, totalPages);
+      const chunkText = pages
+        .slice(startPage, endPage)
+        .map((p) => p.text)
+        .join('\n');
+
+      if (chunkText.trim()) {
+        chapters.push({
+          number: String(ci + 1),
+          title: `Chapter ${ci + 1}`,
+          description: '',
+          rawText: chunkText,
+          sections: [],
+        });
+      }
+    }
+  }
+
+  // Split each chapter into sections
+  for (const chapter of chapters) {
+    chapter.sections = splitIntoSections(chapter.rawText, chapter.number);
+  }
+
+  return chapters;
+}
+
+// ─── Section splitting ────────────────────────────────────────────────────────
+
+function splitIntoSections(chapterText: string, chapterNum: string): DetectedSection[] {
+  if (!chapterText.trim()) return [];
+
+  const lines = chapterText.split('\n');
+  const sections: DetectedSection[] = [];
+  let current: DetectedSection | null = null;
+  let secCounter = 0;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    let matched = false;
+    for (const pat of SECTION_PATTERNS) {
+      const m = pat.exec(line);
+      if (m) {
+        if (current) sections.push(current);
+        secCounter++;
+        current = {
+          number: m[1] || `${chapterNum}.${secCounter}`,
+          title: (m[2] || `Section ${secCounter}`).trim(),
+          rawText: '',
+        };
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched && current) {
+      current.rawText += line + ' ';
+    }
+  }
+  if (current) sections.push(current);
+
+  // Fallback: no numbered sections → split by word count
+  // Scale section size to chapter size so large chapters get more sections
+  if (sections.length === 0 && chapterText.trim()) {
+    const words = chapterText.trim().split(/\s+/);
+    const totalWords = words.length;
+
+    // Target ~400 words per section, but at least 1 and at most 20 per chapter
+    const WORDS_PER_SECTION = 400;
+    const numSections = Math.min(20, Math.max(1, Math.round(totalWords / WORDS_PER_SECTION)));
+    const chunkSize = Math.ceil(totalWords / numSections);
+
+    for (let i = 0; i < numSections; i++) {
+      const chunk = words.slice(i * chunkSize, (i + 1) * chunkSize).join(' ');
+      if (chunk.trim()) {
+        const secNum = `${chapterNum}.${i + 1}`;
+        sections.push({
+          number: secNum,
+          title: `Section ${secNum}`,
+          rawText: chunk,
+        });
+      }
+    }
+  }
+
+  return sections;
+}
+
+// ─── Main parse function ──────────────────────────────────────────────────────
 
 export async function extractPagesFromFile(file: File): Promise<RawPage[]> {
   const pdfjsLib = await getPdfjs();
@@ -43,238 +334,6 @@ export async function extractPagesFromFile(file: File): Promise<RawPage[]> {
   return pages;
 }
 
-// ─── Structure detection ──────────────────────────────────────────────────────
-
-export interface DetectedMeta {
-  title: string;
-  author: string;
-  description: string;
-  hijriStart?: number;
-  hijriEnd?: number;
-}
-
-export interface DetectedChapter {
-  number: string;
-  title: string;
-  description: string;
-  rawText: string;
-  sections: DetectedSection[];
-}
-
-export interface DetectedSection {
-  number: string;
-  title: string;
-  rawText: string;
-}
-
-export interface ParsedBook {
-  meta: DetectedMeta;
-  introductionText: string;
-  chapters: DetectedChapter[];
-  pageCount: number;
-  wordCount: number;
-}
-
-// Patterns to detect chapter headings
-const CHAPTER_PATTERNS = [
-  /^chapter\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.*)$/i,
-  /^(\d+)\s*\.\s+([A-Z][^.]{3,60})$/,
-  /^Part\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.*)$/i,
-  /^Section\s+(\d+)\s*[:\-–—]\s*(.*)$/i,
-];
-
-// Patterns for section headings (numbered sub-sections)
-const SECTION_PATTERNS = [
-  /^(\d+\.\d+)\s+([A-Z][^.]{2,60})$/,
-  /^(\d+\.\d+)\s*[:\-–—]\s*(.{3,60})$/,
-];
-
-// Hijri year patterns like "701 AH" or "701–774 AH"
-const HIJRI_PATTERN = /(\d{3,4})\s*[–\-]\s*(\d{3,4})\s*AH/i;
-const HIJRI_SINGLE  = /\b(\d{3,4})\s*AH\b/i;
-
-function detectHijriYears(text: string): { start?: number; end?: number } {
-  const range = HIJRI_PATTERN.exec(text);
-  if (range) return { start: Number(range[1]), end: Number(range[2]) };
-  const single = HIJRI_SINGLE.exec(text);
-  if (single) return { start: Number(single[1]) };
-  return {};
-}
-
-function detectMeta(fullText: string, fileName: string): DetectedMeta {
-  const lines = fullText.split('\n').map((l) => l.trim()).filter(Boolean);
-
-  // Clean filename for fallback title
-  const fileTitle = fileName
-    .replace(/\.pdf$/i, '')
-    .replace(/[-_]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Title candidates: first 15 lines, 4-80 chars, not pure numbers, not all-lowercase
-  const titleCandidates = lines.slice(0, 15).filter(
-    (l) =>
-      l.length >= 4 &&
-      l.length <= 80 &&
-      !/^\d+$/.test(l) &&            // not just numbers
-      !/^[a-z]/.test(l) &&           // starts with capital or Arabic
-      !CHAPTER_PATTERNS.some((p) => p.test(l)) // not a chapter heading
-  );
-
-  // Pick the shortest plausible title (titles are usually short — not a whole paragraph)
-  const detectedTitle = titleCandidates
-    .filter((l) => l.split(' ').length <= 12) // max 12 words
-    .sort((a, b) => a.length - b.length)[0];  // shortest wins
-
-  const title = detectedTitle || fileTitle;
-
-  // Author: line containing "By", "Author:", "Written by"
-  const authorLine = lines.slice(0, 30).find((l) =>
-    /^(by|author|written by|compiled by)\s+/i.test(l)
-  );
-  const author = authorLine
-    ? authorLine.replace(/^(by|author|written by|compiled by)\s*/i, '').trim()
-    : '';
-
-  // Description: first line that looks like a sentence (30-250 chars)
-  const descLine = lines.slice(0, 40).find(
-    (l) =>
-      l.length > 30 &&
-      l.length < 250 &&
-      l.split(' ').length > 5 &&
-      !CHAPTER_PATTERNS.some((p) => p.test(l)) &&
-      l !== title
-  );
-  const description = descLine || '';
-
-  const hijri = detectHijriYears(fullText.slice(0, 2000));
-
-  return {
-    title: title.trim(),
-    author,
-    description,
-    hijriStart: hijri.start,
-    hijriEnd: hijri.end,
-  };
-}
-
-function splitIntoChapters(fullText: string): DetectedChapter[] {
-  const lines = fullText.split('\n');
-  const chapters: DetectedChapter[] = [];
-  let currentChapter: DetectedChapter | null = null;
-  let chapterCounter = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    let matched = false;
-    for (const pattern of CHAPTER_PATTERNS) {
-      const m = pattern.exec(line);
-      if (m) {
-        if (currentChapter) chapters.push(currentChapter);
-        chapterCounter++;
-        currentChapter = {
-          number: String(chapterCounter),
-          title: (m[2] || m[1] || `Chapter ${chapterCounter}`).trim(),
-          description: '',
-          rawText: '',
-          sections: [],
-        };
-        matched = true;
-        break;
-      }
-    }
-
-    if (!matched && currentChapter) {
-      currentChapter.rawText += line + '\n';
-    } else if (!matched && !currentChapter && chapterCounter === 0) {
-      // Text before first chapter → treat as possible intro content
-    }
-  }
-
-  if (currentChapter) chapters.push(currentChapter);
-
-  // If no chapters detected, treat whole text as one chapter
-  if (chapters.length === 0 && fullText.trim()) {
-    const words = fullText.trim().split(/\s+/);
-    const chunkSize = Math.ceil(words.length / 3);
-    for (let c = 0; c < 3; c++) {
-      const chunk = words.slice(c * chunkSize, (c + 1) * chunkSize).join(' ');
-      if (chunk.trim()) {
-        chapters.push({
-          number: String(c + 1),
-          title: c === 0 ? 'Introduction' : `Chapter ${c + 1}`,
-          description: '',
-          rawText: chunk,
-          sections: [],
-        });
-      }
-    }
-  }
-
-  // Split each chapter into sections
-  for (const chapter of chapters) {
-    chapter.sections = splitIntoSections(chapter.rawText, chapter.number);
-  }
-
-  return chapters;
-}
-
-function splitIntoSections(chapterText: string, chapterNum: string): DetectedSection[] {
-  const lines = chapterText.split('\n');
-  const sections: DetectedSection[] = [];
-  let current: DetectedSection | null = null;
-  let secCounter = 0;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    let matched = false;
-    for (const pattern of SECTION_PATTERNS) {
-      const m = pattern.exec(line);
-      if (m) {
-        if (current) sections.push(current);
-        secCounter++;
-        current = {
-          number: m[1] || `${chapterNum}.${secCounter}`,
-          title: (m[2] || `Section ${secCounter}`).trim(),
-          rawText: '',
-        };
-        matched = true;
-        break;
-      }
-    }
-
-    if (!matched && current) {
-      current.rawText += line + ' ';
-    }
-  }
-
-  if (current) sections.push(current);
-
-  // If no sections detected, split chapter text into reasonable chunks (~300 words each)
-  if (sections.length === 0 && chapterText.trim()) {
-    const words = chapterText.trim().split(/\s+/);
-    const chunkSize = 300;
-    let secIdx = 1;
-    for (let i = 0; i < words.length; i += chunkSize) {
-      const chunk = words.slice(i, i + chunkSize).join(' ');
-      if (chunk.trim()) {
-        sections.push({
-          number: `${chapterNum}.${secIdx}`,
-          title: `Section ${chapterNum}.${secIdx}`,
-          rawText: chunk,
-        });
-        secIdx++;
-      }
-    }
-  }
-
-  return sections;
-}
-
 export async function parsePdf(file: File): Promise<ParsedBook> {
   const pages = await extractPagesFromFile(file);
   const fullText = pages.map((p) => p.text).join('\n');
@@ -282,68 +341,68 @@ export async function parsePdf(file: File): Promise<ParsedBook> {
 
   const meta = detectMeta(fullText, file.name);
 
-  // Introduction: text before first chapter heading (~first 500 words)
-  const introWords = fullText.split(/\s+/).slice(0, 500).join(' ');
+  // Introduction: first 600 words (scales slightly better than 500 for longer books)
+  const introWords = fullText.split(/\s+/).slice(0, 600).join(' ');
 
-  const chapters = splitIntoChapters(fullText);
+  // Pass full pages array so the fallback can use page count
+  const chapters = splitIntoChapters(pages);
 
-  return {
-    meta,
-    introductionText: introWords,
-    chapters,
-    pageCount: pages.length,
-    wordCount,
-  };
+  return { meta, introductionText: introWords, chapters, pageCount: pages.length, wordCount };
 }
 
 // ─── Conversion to public Book format ─────────────────────────────────────────
 
 export function rawTextToContentBlocks(text: string): ContentBlock[] {
+  if (!text.trim()) return [];
+
+  // Split on sentence-ending punctuation; group ~50 words into a paragraph
   const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .filter((s) => s.trim().length > 20);
+    .split(/(?<=[.!?؟])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 10);
 
   const blocks: ContentBlock[] = [];
   let current = '';
 
   for (const sentence of sentences) {
     current += (current ? ' ' : '') + sentence;
-    if (current.split(' ').length >= 40) {
+    if (current.split(/\s+/).length >= 50) {
       blocks.push({ type: 'paragraph', text: current.trim() });
       current = '';
     }
   }
-  if (current.trim()) {
-    blocks.push({ type: 'paragraph', text: current.trim() });
-  }
+  if (current.trim()) blocks.push({ type: 'paragraph', text: current.trim() });
 
   return blocks.length > 0 ? blocks : [{ type: 'paragraph', text: text.trim() }];
 }
 
-// ─── Safe slug helper ──────────────────────────────────────────────────────────
+// ─── Safe slug ────────────────────────────────────────────────────────────────
+
 function safeSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 6)         // max 6 words
-    .join('-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60) ||     // max 60 chars
-    'imported-book';
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 6)
+      .join('-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60) || 'imported-book'
+  );
 }
+
+// ─── Build public Book object ──────────────────────────────────────────────────
 
 export function parsedBookToPublicFormat(
   parsed: ParsedBook,
   bookId: string,
-  slugHint: string,      // suggested slug from caller — we sanitise it here
+  slugHint: string,
   categoryIds: string[],
   authorId: string,
   coverColor: string
 ): import('@/types').Book {
-  // Always re-derive a clean slug from the detected title
   const cleanSlug = safeSlug(parsed.meta.title) || safeSlug(slugHint);
   const intro: ContentBlock[] = rawTextToContentBlocks(parsed.introductionText);
 
@@ -366,16 +425,20 @@ export function parsedBookToPublicFormat(
     title: parsed.meta.title,
     subtitle: undefined,
     authorId,
-    description: parsed.meta.description || `${parsed.meta.title} — an Islamic scholarly work.`,
+    description:
+      parsed.meta.description ||
+      `${parsed.meta.title} — an Islamic scholarly work.`,
     longDescription: undefined,
     coverColor,
     hijriStart: parsed.meta.hijriStart ?? 700,
-    hijriEnd: parsed.meta.hijriEnd ?? 800,
+    hijriEnd:   parsed.meta.hijriEnd   ?? 800,
     categoryIds,
     chapters,
     introduction: intro,
     featured: false,
-    publishedYear: parsed.meta.hijriStart ? `circa ${parsed.meta.hijriStart} AH` : undefined,
+    publishedYear: parsed.meta.hijriStart
+      ? `circa ${parsed.meta.hijriStart} AH`
+      : undefined,
     popularity: 50,
     addedDate: new Date().toISOString().slice(0, 10),
   };
