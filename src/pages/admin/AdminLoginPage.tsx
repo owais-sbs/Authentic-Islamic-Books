@@ -141,8 +141,8 @@ export function AdminLoginPage() {
 
           <p className="mt-6 text-center text-[12px] text-white/30">
             {isSupabaseConfigured()
-              ? 'Secured with Supabase Authentication'
-              : 'Configure Supabase in .env for cloud auth'}
+              ? 'Secured with Supabase Authentication — books sync for the whole team'
+              : 'Configure Supabase in .env for cloud auth and shared books'}
           </p>
 
           <p className="mt-3 text-center">

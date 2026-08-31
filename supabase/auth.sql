@@ -93,6 +93,10 @@ CREATE POLICY "books_select_published"
   ON books FOR SELECT
   USING (status = 'published' OR auth.role() = 'authenticated');
 
+-- NOTE: SELECT is intentionally NOT filtered by created_by / user_id.
+-- Authenticated team members share the full book collection.
+-- Public/anon visitors only see published books.
+
 CREATE POLICY "books_insert_auth"
   ON books FOR INSERT TO authenticated
   WITH CHECK (true);

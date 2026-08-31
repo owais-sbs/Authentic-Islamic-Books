@@ -34,6 +34,20 @@ If you see `Invalid API key`, regenerate keys in Supabase **Settings → API** a
 
 ---
 
+## Shared book visibility (team members)
+
+**Problem:** books were saved to each browser's `localStorage`, so Team A and Team B could not see each other's books.
+
+**Fix:**
+1. Redeploy this app build (import/save now writes to Supabase).
+2. Run `supabase/fix-shared-visibility.sql` in the Supabase SQL Editor.
+3. Ensure every team member signs in with a **Supabase Auth** user (not local-only mode).
+4. Create the admin user if missing: Authentication → Users → Add user (`admin@islamicdigitallibrary.com` / `Admin@12345`, auto-confirm).
+
+After that, any authenticated team member sees the full shared book list. Published books remain visible on the public site to everyone.
+
+---
+
 ## Environment variables (every laptop + deploy)
 
 Copy `.env.example` to `.env` locally. **Use the same Supabase project** on all machines.

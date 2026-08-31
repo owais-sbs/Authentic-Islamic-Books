@@ -46,16 +46,30 @@ export function useLibraryFilters() {
       }
     };
     window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
+    window.addEventListener('idl-books-changed', handler);
+    window.addEventListener('focus', handler);
+    return () => {
+      window.removeEventListener('storage', handler);
+      window.removeEventListener('idl-books-changed', handler);
+      window.removeEventListener('focus', handler);
+    };
   }, []);
 
   const allBooks = useMemo(
     () => {
-      const ids = new Set(staticBooks.map((b) => b.id));
-      const fromLocal = importedBooks.filter((b) => !ids.has(b.id));
-      fromLocal.forEach((b) => ids.add(b.id));
-      const fromSupabase = supabaseBooks.filter((b) => !ids.has(b.id));
-      return [...staticBooks, ...fromLocal, ...fromSupabase];
+      const byId = new Map(staticBooks.map((b) => [b.id, b]));
+
+      // Device cache (may include unpublished drafts only this browser created)
+      importedBooks.forEach((b) => {
+        byId.set(b.id, b);
+      });
+
+      // Shared published books from Supabase — override local copies with cloud data
+      supabaseBooks.forEach((b) => {
+        byId.set(b.id, b);
+      });
+
+      return Array.from(byId.values());
     },
     [importedBooks, supabaseBooks]
   );

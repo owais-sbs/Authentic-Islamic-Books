@@ -205,6 +205,16 @@ export async function fetchAllBooksFromSupabase(): Promise<
   if (!isSupabaseConfigured()) return [];
 
   const supabase = getSupabase();
+
+  // Without a Supabase Auth session, RLS only returns published rows.
+  // Drafts / needs_review created by teammates stay invisible — same "other user can't see" symptom.
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.warn(
+      '[Supabase] fetchAllBooks: no auth session — only published books are visible under RLS. Sign in with Supabase Auth for the full shared library.'
+    );
+  }
+
   const { data, error } = await supabase
     .from('books')
     .select('*')
@@ -212,7 +222,7 @@ export async function fetchAllBooksFromSupabase(): Promise<
 
   if (error) {
     console.warn('[Supabase] fetchAllBooks:', error.message);
-    return [];
+    throw new Error(error.message);
   }
 
   return (data as DbBookRow[]).map((row) => {
@@ -254,7 +264,15 @@ export async function upsertBookToSupabase(
   const categoryIds =
     book.categories.length > 0 ? book.categories.map(catNameToId) : ['cat-thought'];
 
-  const payload = {
+  // Ensure we have an authenticated session for shared RLS write access
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    throw new Error(
+      'Not signed in to Supabase. Log out and sign in again with a Supabase admin account so the book is saved to the shared team library.'
+    );
+  }
+
+  const payload: Record<string, unknown> = {
     id: book.id,
     slug,
     title: book.title || 'Untitled',
@@ -272,6 +290,7 @@ export async function upsertBookToSupabase(
     featured: book.featured ?? false,
     introduction: book.introduction ?? null,
     chapters: chaptersToDb(book),
+    created_by: sessionData.session.user.id,
   };
 
   const { data, error } = await supabase
@@ -280,7 +299,24 @@ export async function upsertBookToSupabase(
     .select('id, slug, cover_url')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // If created_by column does not exist yet, retry without it
+    if (error.message.toLowerCase().includes('created_by')) {
+      delete payload.created_by;
+      const retry = await supabase
+        .from('books')
+        .upsert(payload, { onConflict: 'id' })
+        .select('id, slug, cover_url')
+        .single();
+      if (retry.error) throw new Error(retry.error.message);
+      return {
+        id: retry.data.id,
+        slug: retry.data.slug,
+        coverUrl: retry.data.cover_url ?? undefined,
+      };
+    }
+    throw new Error(error.message);
+  }
 
   return {
     id: data.id,

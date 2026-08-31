@@ -145,10 +145,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           message.includes('invalid login credentials') ||
           message.includes('invalid email or password');
 
-        // Supabase configured but admin not provisioned yet — allow known admin creds locally
+        // Supabase configured but this user is not in Auth yet.
+        // Local UI access is allowed, but cloud book sync requires a real Supabase session.
         if (isInvalidCredentials && isAdminCredentials) {
           writeLocalSession(normalizedEmail);
           setUser({ email: normalizedEmail, mode: 'local' });
+          console.warn(
+            '[Auth] Signed in locally only. Create the admin user in Supabase (Authentication → Users) so books sync for the whole team.'
+          );
           return;
         }
 
