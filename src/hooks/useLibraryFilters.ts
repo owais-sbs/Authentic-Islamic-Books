@@ -5,6 +5,8 @@ import { hijriPeriods } from '@/data/periods';
 import { categories } from '@/data/categories';
 import { scholars as allScholars } from '@/data/scholars';
 import { getAllImportedBooks } from '@/hooks/useBookStore';
+import { getSupabasePublishedCache, refreshSupabasePublishedCache } from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export type SortOption = 'newest' | 'oldest' | 'az' | 'za' | 'popular' | 'recent';
 
@@ -29,9 +31,20 @@ export function useLibraryFilters() {
 
   // Merge static + imported books, re-computing when store updates
   const [importedBooks, setImportedBooks] = useState(getAllImportedBooks);
+  const [supabaseBooks, setSupabaseBooks] = useState(getSupabasePublishedCache);
+
   useEffect(() => {
-    // Re-read on any storage event (fired by import/review pages after writes)
-    const handler = () => setImportedBooks(getAllImportedBooks());
+    if (!isSupabaseConfigured()) return;
+    refreshSupabasePublishedCache().then(setSupabaseBooks).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      setImportedBooks(getAllImportedBooks());
+      if (isSupabaseConfigured()) {
+        refreshSupabasePublishedCache().then(setSupabaseBooks).catch(() => {});
+      }
+    };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
@@ -39,10 +52,12 @@ export function useLibraryFilters() {
   const allBooks = useMemo(
     () => {
       const ids = new Set(staticBooks.map((b) => b.id));
-      const fresh = importedBooks.filter((b) => !ids.has(b.id));
-      return [...staticBooks, ...fresh];
+      const fromLocal = importedBooks.filter((b) => !ids.has(b.id));
+      fromLocal.forEach((b) => ids.add(b.id));
+      const fromSupabase = supabaseBooks.filter((b) => !ids.has(b.id));
+      return [...staticBooks, ...fromLocal, ...fromSupabase];
     },
-    [importedBooks]
+    [importedBooks, supabaseBooks]
   );
 
   const filters: FilterState = {
@@ -163,7 +178,7 @@ export function useLibraryFilters() {
     }
 
     return result;
-  }, [filters]);
+  }, [filters, allBooks]);
 
   const hasActiveFilters =
     filters.periods.length > 0 ||

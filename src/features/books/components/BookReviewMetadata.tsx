@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { ImagePlus, X } from 'lucide-react';
 import type { BookWithStructure } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -6,12 +8,17 @@ const AVAILABLE_CATEGORIES = [
   'History', 'Ethics', 'Spirituality', 'Islamic Thought', 'Biography',
 ];
 
+const COVER_COLORS = [
+  '#18231F', '#3F4A5D', '#3A4A3F', '#5B4B3A', '#2D1215', '#0B1929', '#1C1C2E',
+];
+
 const inputCls =
   'w-full rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[13px] text-[#0B1B2B] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20';
 
 interface BookReviewMetadataProps {
   book: BookWithStructure;
   onChange: (patch: Partial<BookWithStructure>) => void;
+  isNewBook?: boolean;
 }
 
 function Field({ label, children, hint }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -24,7 +31,9 @@ function Field({ label, children, hint }: { label: string; hint?: string; childr
   );
 }
 
-export function BookReviewMetadata({ book, onChange }: BookReviewMetadataProps) {
+export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMetadataProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   function toggleCategory(cat: string) {
     const next = book.categories.includes(cat)
       ? book.categories.filter((c) => c !== cat)
@@ -32,13 +41,94 @@ export function BookReviewMetadata({ book, onChange }: BookReviewMetadataProps) 
     onChange({ categories: next });
   }
 
+  function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange({ coverUrl: reader.result as string });
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white overflow-hidden">
       <div className="border-b border-[#E5E1D8] px-5 py-3.5">
         <h3 className="text-[13px] font-semibold text-[#0B1B2B]">Book Metadata</h3>
-        <p className="text-[12px] text-[#94A3B8] mt-0.5">Automatically extracted — review and correct</p>
+        <p className="text-[12px] text-[#94A3B8] mt-0.5">
+          {isNewBook ? 'Fill in the book details below' : 'Review and correct book details'}
+        </p>
       </div>
       <div className="px-5 py-5 space-y-4">
+
+        {/* Cover image */}
+        <Field label="Cover Image" hint="Upload a cover image (JPG, PNG, WebP). Optional — a generated cover is used if none is provided.">
+          <div className="flex items-start gap-4">
+            <div
+              className="relative flex h-36 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E5E1D8] bg-[#F7F6F2]"
+              style={!book.coverUrl ? { backgroundColor: book.coverColor } : undefined}
+            >
+              {book.coverUrl ? (
+                <img
+                  src={book.coverUrl}
+                  alt="Book cover preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <ImagePlus size={24} className="text-white/60" />
+              )}
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleCoverUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#F7F6F2]"
+              >
+                <ImagePlus size={14} />
+                {book.coverUrl ? 'Change Cover' : 'Upload Cover'}
+              </button>
+              {book.coverUrl && (
+                <button
+                  type="button"
+                  onClick={() => onChange({ coverUrl: undefined })}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
+                >
+                  <X size={14} />
+                  Remove Cover
+                </button>
+              )}
+            </div>
+          </div>
+        </Field>
+
+        {/* Fallback cover color (when no image) */}
+        {!book.coverUrl && (
+          <Field label="Cover Color" hint="Used for the generated cover when no image is uploaded">
+            <div className="flex flex-wrap gap-2">
+              {COVER_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => onChange({ coverColor: color })}
+                  className={cn(
+                    'h-8 w-8 rounded-lg border-2 transition-all',
+                    book.coverColor === color
+                      ? 'border-[#C9A646] scale-110'
+                      : 'border-transparent hover:border-[#E5E1D8]'
+                  )}
+                  style={{ backgroundColor: color }}
+                  aria-label={`Select cover color ${color}`}
+                />
+              ))}
+            </div>
+          </Field>
+        )}
 
         <Field label="Title">
           <input

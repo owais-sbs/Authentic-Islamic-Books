@@ -67,6 +67,7 @@ export interface Book {
   description: string;
   longDescription?: string;
   coverColor: string;
+  coverUrl?: string;
   hijriStart: number;
   hijriEnd: number;
   categoryIds: string[];

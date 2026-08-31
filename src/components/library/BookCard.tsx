@@ -6,6 +6,7 @@ import { getScholarById } from '@/data/scholars';
 import { getCategoryById } from '@/data/categories';
 import { formatHijriRange } from '@/data/periods';
 import { BookCover } from '@/components/book/BookCover';
+import { BookBookmarkButton } from '@/components/book/BookBookmarkButton';
 import { Badge } from '@/components/ui/Badge';
 
 interface BookCardProps {
@@ -27,8 +28,17 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="group flex gap-5 border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-sm"
+        className="group flex gap-5 border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-sm relative"
       >
+        <div className="absolute top-3 right-3 z-10">
+          <BookBookmarkButton
+            slug={book.slug}
+            title={book.title}
+            coverColor={book.coverColor}
+            coverUrl={book.coverUrl}
+            size="sm"
+          />
+        </div>
         <Link to={`/books/${book.slug}`} className="shrink-0">
           <BookCover book={book} size="md" className="transition-transform group-hover:scale-[1.02]" />
         </Link>
@@ -71,8 +81,17 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="group flex flex-col border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-md"
+      className="group flex flex-col border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-md relative"
     >
+      <div className="absolute top-3 right-3 z-10">
+        <BookBookmarkButton
+          slug={book.slug}
+          title={book.title}
+          coverColor={book.coverColor}
+          coverUrl={book.coverUrl}
+          size="sm"
+        />
+      </div>
       <Link to={`/books/${book.slug}`} className="mb-4 flex justify-center">
         <BookCover book={book} size="md" className="transition-transform duration-300 group-hover:scale-[1.03] group-hover:-rotate-1" />
       </Link>

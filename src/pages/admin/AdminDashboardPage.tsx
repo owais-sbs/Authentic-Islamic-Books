@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle, Clock, Users, Upload, GraduationCap } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Users, PlusCircle, GraduationCap } from 'lucide-react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { DashboardStatCard } from '@/components/admin/DashboardStatCard';
@@ -51,10 +51,10 @@ const recentBooks: RecentBook[] = [
 
 const quickActions = [
   {
-    title: 'Import Book',
-    description: 'Upload a PDF and auto-build the book structure.',
-    href: '/admin/books/import',
-    icon: Upload,
+    title: 'Add New Book',
+    description: 'Create a book manually with metadata, chapters, and cover.',
+    href: '/admin/books/new',
+    icon: PlusCircle,
   },
   {
     title: 'Manage Books',

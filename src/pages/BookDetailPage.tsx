@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen, Clock, Layers, FileText, Bookmark,
+  BookOpen, Clock, Layers, FileText,
   ChevronDown, Plus, Minus,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { BookCover } from '@/components/book/BookCover';
+import { BookBookmarkButton } from '@/components/book/BookBookmarkButton';
 import { ContentRenderer } from '@/components/reader/ContentRenderer';
 import { getBookBySlug } from '@/data/books';
 import { getScholarById } from '@/data/scholars';
@@ -350,11 +351,14 @@ export function BookDetailPage() {
                 </Button>
               </button>
 
-              <Link to="/bookmarks">
-                <Button variant="ghost" size="lg">
-                  <Bookmark size={16} /> Bookmark
-                </Button>
-              </Link>
+              <BookBookmarkButton
+                slug={book.slug}
+                title={book.title}
+                coverColor={book.coverColor}
+                coverUrl={book.coverUrl}
+                size="lg"
+                showLabel
+              />
             </div>
           </div>
         </motion.div>

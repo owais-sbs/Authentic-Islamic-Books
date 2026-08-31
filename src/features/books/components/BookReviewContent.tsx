@@ -7,6 +7,7 @@ interface BookReviewContentProps {
   book: BookWithStructure;
   activeSectionId: string | null;
   onChange: (patch: Partial<BookWithStructure>) => void;
+  isNewBook?: boolean;
 }
 
 const inputCls =
@@ -24,7 +25,7 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
   );
 }
 
-export function BookReviewContent({ book, onChange }: BookReviewContentProps) {
+export function BookReviewContent({ book, onChange, isNewBook }: BookReviewContentProps) {
   function updateChapter(idx: number, patch: Partial<BookChapter>) {
     const updated = book.chapters.map((ch, i) => i === idx ? { ...ch, ...patch } : ch);
     onChange({ chapters: updated });
@@ -55,7 +56,7 @@ export function BookReviewContent({ book, onChange }: BookReviewContentProps) {
       {book.introduction && (
         <SectionCard
           title="Introduction"
-          subtitle="Automatically extracted — review and correct"
+          subtitle={isNewBook ? 'Write an introduction for the book' : 'Review and correct introduction content'}
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
@@ -110,9 +111,9 @@ export function BookReviewContent({ book, onChange }: BookReviewContentProps) {
 
         {book.chapters.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-[#E5E1D8] py-12 text-center">
-            <p className="text-[14px] font-medium text-[#94A3B8]">No chapters detected</p>
+            <p className="text-[14px] font-medium text-[#94A3B8]">No chapters yet</p>
             <p className="mt-1 text-[13px] text-[#CBD5E1]">
-              Add chapters manually or re-process the PDF.
+              Add chapters manually using the button below.
             </p>
           </div>
         ) : (

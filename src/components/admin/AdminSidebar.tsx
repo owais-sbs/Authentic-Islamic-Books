@@ -10,6 +10,7 @@ import {
   Settings,
   X,
   BookMarked,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ const navigation: NavGroup[] = [
     group: 'Library',
     items: [
       { label: 'Books', href: '/admin/books', icon: BookOpen },
+      { label: 'Archived', href: '/admin/books?view=archived', icon: Archive },
       { label: 'Authors', href: '/admin/authors', icon: Users },
       { label: 'Scholars', href: '/admin/scholars', icon: GraduationCap },
       { label: 'Categories', href: '/admin/categories', icon: Tag },

@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'framer-motion';
 import { BookTableRow } from './BookTableRow';
 import { BooksMobileList } from './BooksMobileList';
 import { BooksEmptyState } from './BooksEmptyState';
@@ -14,13 +15,14 @@ interface BooksTableProps {
   hasFilters: boolean;
   onPageChange: (page: number) => void;
   onClearFilters: () => void;
+  onActionComplete?: () => void;
 }
 
 const TH = 'px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] whitespace-nowrap';
 
 export function BooksTable({
   books, totalItems, currentPage, pageSize, isLoading = false,
-  hasFilters, onPageChange, onClearFilters,
+  hasFilters, onPageChange, onClearFilters, onActionComplete,
 }: BooksTableProps) {
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white shadow-sm overflow-hidden">
@@ -41,7 +43,11 @@ export function BooksTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E5E1D8]">
-            {!isLoading && books.map((book) => <BookTableRow key={book.id} book={book} />)}
+            <AnimatePresence mode="popLayout">
+              {!isLoading && books.map((book) => (
+                <BookTableRow key={book.id} book={book} onActionComplete={onActionComplete} />
+              ))}
+            </AnimatePresence>
           </tbody>
         </table>
         {isLoading && <BooksTableSkeleton />}

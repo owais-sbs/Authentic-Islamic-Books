@@ -345,15 +345,13 @@ export const HIJRI_PERIODS = [
   { label: '900–1000 AH', start: 900, end: 1000 },
 ];
 
-// Total simulated count (for pagination display)
-export const TOTAL_BOOKS_COUNT = 842;
 export const PAGE_SIZE = 20;
 
 // ─── Stats helper ─────────────────────────────────────────────────────────────
 
 export function getBooksStats(books: Book[]) {
   return {
-    total: TOTAL_BOOKS_COUNT,
+    total: books.length,
     published: books.filter((b) => b.status === 'published').length,
     drafts: books.filter((b) => b.status === 'draft').length,
     needsReview: books.filter((b) => b.status === 'needs_review').length,

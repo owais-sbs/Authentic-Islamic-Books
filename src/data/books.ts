@@ -1,4 +1,5 @@
 import type { Book } from '@/types';
+import { getSupabasePublishedCache } from '@/lib/bookApi';
 import { sampleBookChapters, sampleIntroduction } from './sampleContent';
 
 export const books: Book[] = [
@@ -1364,20 +1365,27 @@ export const books: Book[] = [
 ];
 
 export function getBookBySlug(slug: string): Book | undefined {
-  // 1. Check static books first
   const staticBook = books.find((b) => b.slug === slug);
   if (staticBook) return staticBook;
 
-  // 2. Fall back to localStorage-imported books
   try {
     const raw = localStorage.getItem('idl_imported_books');
     if (raw) {
       const imported: Book[] = JSON.parse(raw);
-      return imported.find((b) => b.slug === slug);
+      const found = imported.find((b) => b.slug === slug);
+      if (found) return found;
     }
   } catch {
     // ignore parse errors
   }
+
+  try {
+    const fromSupabase = getSupabasePublishedCache().find((b) => b.slug === slug);
+    if (fromSupabase) return fromSupabase;
+  } catch {
+    // ignore
+  }
+
   return undefined;
 }
 

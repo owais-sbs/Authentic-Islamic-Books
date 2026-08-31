@@ -43,6 +43,24 @@ export function BookCover({ book, size = 'md', className }: BookCoverProps) {
   const s = sizes[size];
   const p = getPalette(book.coverColor);
 
+  if (book.coverUrl) {
+    return (
+      <div
+        className={cn('relative overflow-hidden rounded-sm shadow-lg select-none', s.outer, className)}
+      >
+        <img
+          src={book.coverUrl}
+          alt={book.title}
+          className="h-full w-full object-cover"
+        />
+        <div
+          className="absolute left-0 top-0 bottom-0 w-[5px]"
+          style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.4), transparent)' }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn('relative overflow-hidden rounded-sm shadow-lg select-none', s.outer, className)}

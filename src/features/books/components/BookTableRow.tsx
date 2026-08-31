@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { BookStatusBadge } from './BookStatusBadge';
 import { BookCategoryBadges } from './BookCategoryBadges';
 import { BookActions } from './BookActions';
@@ -21,9 +22,10 @@ function CoverThumb({ book }: { book: Book }) {
 
 interface BookTableRowProps {
   book: Book;
+  onActionComplete?: () => void;
 }
 
-export function BookTableRow({ book }: BookTableRowProps) {
+export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
   const reviewHref = `/admin/books/${book.id}/review`;
   const structureLabel =
     book.chapterCount != null
@@ -31,7 +33,12 @@ export function BookTableRow({ book }: BookTableRowProps) {
       : '—';
 
   return (
-    <tr className="transition-colors hover:bg-[#FAFAF8]">
+    <motion.tr
+      layout
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, x: 48, transition: { duration: 0.45 } }}
+      className="transition-colors hover:bg-[#FAFAF8]"
+    >
       <td className="pl-5 pr-3 py-3.5"><CoverThumb book={book} /></td>
 
       <td className="px-3 py-3.5 max-w-[200px]">
@@ -76,8 +83,8 @@ export function BookTableRow({ book }: BookTableRowProps) {
       </td>
 
       <td className="pl-3 pr-5 py-3.5">
-        <BookActions book={book} />
+        <BookActions book={book} onActionComplete={onActionComplete} />
       </td>
-    </tr>
+    </motion.tr>
   );
 }
