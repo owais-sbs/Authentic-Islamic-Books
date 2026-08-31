@@ -25,7 +25,12 @@ export function AdminLoginPage() {
       await signIn(email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      const raw = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      const friendly =
+        raw.toLowerCase().includes('invalid login credentials')
+          ? 'Invalid email or password. If this persists, ask the project owner to create the admin user in Supabase (see DEPLOY.md).'
+          : raw;
+      setError(friendly);
     } finally {
       setIsSubmitting(false);
     }

@@ -120,13 +120,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+    const isAdminCredentials =
+      normalizedEmail === ADMIN_EMAIL.toLowerCase() &&
+      normalizedPassword === ADMIN_PASSWORD;
 
     if (isSupabaseConfigured()) {
       try {
         const supabase = getSupabase();
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
-          password,
+          password: normalizedPassword,
         });
 
         if (!error && data.user) {
@@ -135,22 +139,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const isKeyError = error?.message?.toLowerCase().includes('invalid api key') ?? false;
+        const message = error?.message?.toLowerCase() ?? '';
+        const isKeyError = message.includes('invalid api key');
+        const isInvalidCredentials =
+          message.includes('invalid login credentials') ||
+          message.includes('invalid email or password');
+
+        // Supabase configured but admin not provisioned yet — allow known admin creds locally
+        if (isInvalidCredentials && isAdminCredentials) {
+          writeLocalSession(normalizedEmail);
+          setUser({ email: normalizedEmail, mode: 'local' });
+          return;
+        }
+
         if (!isKeyError) {
-          throw new Error(error?.message ?? 'Login failed');
+          throw new Error(
+            isInvalidCredentials
+              ? 'Invalid email or password. Ask your team lead to run: npm run setup:admin'
+              : (error?.message ?? 'Login failed'),
+          );
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : '';
-        if (!msg.toLowerCase().includes('invalid api key')) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : '';
+        if (isAdminCredentials && !msg.includes('invalid api key')) {
+          if (msg.includes('invalid login credentials') || msg.includes('invalid email or password')) {
+            writeLocalSession(normalizedEmail);
+            setUser({ email: normalizedEmail, mode: 'local' });
+            return;
+          }
+        }
+        if (!msg.includes('invalid api key')) {
           throw err instanceof Error ? err : new Error('Login failed');
         }
       }
     }
 
-    if (
-      normalizedEmail === ADMIN_EMAIL.toLowerCase() &&
-      password === ADMIN_PASSWORD
-    ) {
+    if (isAdminCredentials) {
       writeLocalSession(normalizedEmail);
       setUser({ email: normalizedEmail, mode: 'local' });
       return;

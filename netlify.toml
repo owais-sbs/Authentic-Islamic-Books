@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+# Set in Netlify UI → Site settings → Environment variables (then trigger redeploy):
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+# After first deploy, run locally once: npm run setup:admin
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
