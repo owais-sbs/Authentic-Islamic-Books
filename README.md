@@ -21,6 +21,7 @@ A modern, polished digital library for exploring centuries of Islamic scholarshi
 
 ## Technology Stack
 
+
 - React 18 + TypeScript
 - Vite
 - Tailwind CSS
