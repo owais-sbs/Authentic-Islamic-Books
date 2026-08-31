@@ -46,6 +46,7 @@ export interface BookSection {
   id: string;
   number: string;
   title: string;
+  subtitle?: string;
   subsections?: BookSection[];
   content?: ContentBlock[];
 }

@@ -1,6 +1,7 @@
 import { parsePdf, parsedBookToPublicFormat, type ParsedBook } from '@/lib/pdfExtractor';
 import { publicBookToReviewBook } from '@/lib/bookTransform';
 import type { BookWithStructure } from '@/features/books/types';
+import type { PipelineProgressCallback } from '@/services/pdf/types';
 
 const COVER_COLORS = [
   '#18231F', '#3A4A3F', '#5B4B3A', '#2B2B2B', '#4A5D4F',
@@ -74,7 +75,10 @@ export function parsedPdfToReviewBook(parsed: ParsedBook, fileName: string): Boo
   };
 }
 
-export async function importPdfFile(file: File): Promise<BookWithStructure> {
-  const parsed = await parsePdf(file);
+export async function importPdfFile(
+  file: File,
+  onProgress?: PipelineProgressCallback,
+): Promise<BookWithStructure> {
+  const parsed = await parsePdf(file, onProgress);
   return parsedPdfToReviewBook(parsed, file.name);
 }

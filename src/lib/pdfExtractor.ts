@@ -14,6 +14,9 @@
  */
 
 import type { ContentBlock, BookChapter, BookSection } from '@/types';
+import { runPipeline } from '@/services/pdf/pipeline';
+import { textToContentBlocks } from '@/services/pdf/toContentBlocks';
+import type { PipelineProgressCallback } from '@/services/pdf/types';
 
 // ─── PDF.js lazy import ───────────────────────────────────────────────────────
 async function getPdfjs() {
@@ -180,13 +183,13 @@ function splitIntoChapters(pages: RawPage[]): DetectedChapter[] {
   const lines = fullText.split('\n');
 
   const chapters: DetectedChapter[] = [];
-  let current: DetectedChapter | null = null;
+  const state = { current: null as DetectedChapter | null };
   let chapterCounter = 0;
 
   function pushNew(num: string, title: string) {
-    if (current) chapters.push(current);
+    if (state.current) chapters.push(state.current);
     chapterCounter++;
-    current = {
+    state.current = {
       number: num || String(chapterCounter),
       title: title || `Chapter ${chapterCounter}`,
       description: '',
@@ -199,21 +202,17 @@ function splitIntoChapters(pages: RawPage[]): DetectedChapter[] {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // Priority 1: explicit keywords
     const exp = isExplicitChapterLine(line);
     if (exp) { pushNew(exp.num, exp.title); continue; }
 
-    // Priority 2: numbered headings  "1. The Foundations"
     const num = isNumberedHeadingLine(line);
     if (num) { pushNew(num.num, num.title); continue; }
 
-    // Priority 3: ALL-CAPS short headings
     if (isAllCapsHeading(line)) { pushNew('', line); continue; }
 
-    // Body text
-    if (current) current.rawText += line + '\n';
+    if (state.current) state.current.rawText += line + '\n';
   }
-  if (current) chapters.push(current);
+  if (state.current) chapters.push(state.current);
 
   // ── Fallback: no headings detected ──────────────────────────────────────────
   // Split by pages so the number of chapters scales with the document.
@@ -334,46 +333,20 @@ export async function extractPagesFromFile(file: File): Promise<RawPage[]> {
   return pages;
 }
 
-export async function parsePdf(file: File): Promise<ParsedBook> {
+export async function parsePdf(
+  file: File,
+  onProgress?: PipelineProgressCallback,
+): Promise<ParsedBook> {
+  onProgress?.('read', 'Reading PDF document…');
   const pages = await extractPagesFromFile(file);
-  const fullText = pages.map((p) => p.text).join('\n');
-  const wordCount = fullText.split(/\s+/).filter(Boolean).length;
-
-  const meta = detectMeta(fullText, file.name);
-
-  // Introduction: first 600 words (scales slightly better than 500 for longer books)
-  const introWords = fullText.split(/\s+/).slice(0, 600).join(' ');
-
-  // Pass full pages array so the fallback can use page count
-  const chapters = splitIntoChapters(pages);
-
-  return { meta, introductionText: introWords, chapters, pageCount: pages.length, wordCount };
+  onProgress?.('extract', 'Extracting text content…');
+  return runPipeline(pages, file.name, onProgress);
 }
 
 // ─── Conversion to public Book format ─────────────────────────────────────────
 
 export function rawTextToContentBlocks(text: string): ContentBlock[] {
-  if (!text.trim()) return [];
-
-  // Split on sentence-ending punctuation; group ~50 words into a paragraph
-  const sentences = text
-    .split(/(?<=[.!?؟])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 10);
-
-  const blocks: ContentBlock[] = [];
-  let current = '';
-
-  for (const sentence of sentences) {
-    current += (current ? ' ' : '') + sentence;
-    if (current.split(/\s+/).length >= 50) {
-      blocks.push({ type: 'paragraph', text: current.trim() });
-      current = '';
-    }
-  }
-  if (current.trim()) blocks.push({ type: 'paragraph', text: current.trim() });
-
-  return blocks.length > 0 ? blocks : [{ type: 'paragraph', text: text.trim() }];
+  return textToContentBlocks(text);
 }
 
 // ─── Safe slug ────────────────────────────────────────────────────────────────

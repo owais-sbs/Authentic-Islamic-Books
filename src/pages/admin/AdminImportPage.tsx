@@ -31,13 +31,15 @@ function slugify(text: string): string {
 
 // ─── Pipeline step definitions ────────────────────────────────────────────────
 const STEPS = [
-  { id: 'read',     label: 'Reading PDF document' },
-  { id: 'extract',  label: 'Extracting text content' },
-  { id: 'meta',     label: 'Detecting title & author' },
-  { id: 'chapters', label: 'Detecting chapters' },
-  { id: 'sections', label: 'Detecting sections' },
-  { id: 'build',    label: 'Building book structure' },
-  { id: 'save',     label: 'Saving to library' },
+  { id: 'read',      label: 'Reading PDF document' },
+  { id: 'extract',   label: 'Extracting text content' },
+  { id: 'normalize', label: 'Cleaning extracted text' },
+  { id: 'meta',      label: 'Detecting title & author' },
+  { id: 'chapters',  label: 'Detecting chapters' },
+  { id: 'sections',  label: 'Detecting sections' },
+  { id: 'numbering', label: 'Generating numbering' },
+  { id: 'build',     label: 'Building book structure' },
+  { id: 'save',      label: 'Saving to library' },
 ];
 
 type StepStatus = 'pending' | 'active' | 'done' | 'error';
@@ -103,6 +105,7 @@ export function AdminImportPage() {
     sections: number;
     words: number;
     pages: number;
+    outline: { chapter: string; sections: string[] }[];
   } | null>(null);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -155,32 +158,27 @@ export function AdminImportPage() {
     initSteps();
 
     try {
-      // Step 1 – read
+      const stageToStep: Record<string, string> = {
+        read: 'read',
+        extract: 'extract',
+        normalize: 'normalize',
+        meta: 'meta',
+        chapters: 'chapters',
+        sections: 'sections',
+        numbering: 'numbering',
+        build: 'build',
+      };
+
       advanceStep('read');
-      await new Promise((r) => setTimeout(r, 200));
-      setStep('read', 'done');
+      const parsed = await parsePdf(file, (stage) => {
+        const stepId = stageToStep[stage];
+        if (stepId) advanceStep(stepId);
+      });
 
-      // Step 2 – extract text (real PDF.js work)
-      advanceStep('extract');
-      const parsed = await parsePdf(file);
-      setStep('extract', 'done');
+      for (const step of ['read', 'extract', 'normalize', 'meta', 'chapters', 'sections', 'numbering']) {
+        setStep(step, 'done');
+      }
 
-      // Step 3 – metadata
-      advanceStep('meta');
-      await new Promise((r) => setTimeout(r, 150));
-      setStep('meta', 'done');
-
-      // Step 4 – chapters
-      advanceStep('chapters');
-      await new Promise((r) => setTimeout(r, 150));
-      setStep('chapters', 'done');
-
-      // Step 5 – sections
-      advanceStep('sections');
-      await new Promise((r) => setTimeout(r, 150));
-      setStep('sections', 'done');
-
-      // Step 6 – build public Book object
       advanceStep('build');
       const title = parsed.meta.title || file.name.replace(/\.pdf$/i, '');
       const bookId = `imported-${slugify(title)}-${Date.now()}`;
@@ -214,6 +212,10 @@ export function AdminImportPage() {
         sections: parsed.chapters.reduce((n, ch) => n + ch.sections.length, 0),
         words: parsed.wordCount,
         pages: parsed.pageCount,
+        outline: parsed.chapters.map((ch) => ({
+          chapter: `Chapter ${ch.number} — ${ch.title}`,
+          sections: ch.sections.map((s) => `${s.number} ${s.title}`),
+        })),
       });
       setPhase('done');
     } catch (err) {
@@ -390,6 +392,32 @@ export function AdminImportPage() {
                 </li>
               ))}
             </ul>
+
+            {result.outline.length > 0 && (
+              <div className="mb-5 max-h-56 overflow-y-auto rounded-lg border border-emerald-200/80 bg-white/70 p-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
+                  Structure preview
+                </p>
+                <ul className="space-y-3 text-[12px] text-emerald-900">
+                  {result.outline.slice(0, 8).map((ch) => (
+                    <li key={ch.chapter}>
+                      <p className="font-semibold">{ch.chapter}</p>
+                      <ul className="mt-1 space-y-0.5 pl-3">
+                        {ch.sections.slice(0, 6).map((sec) => (
+                          <li key={sec} className="text-emerald-800/90">{sec}</li>
+                        ))}
+                        {ch.sections.length > 6 && (
+                          <li className="text-emerald-700/70">+{ch.sections.length - 6} more sections</li>
+                        )}
+                      </ul>
+                    </li>
+                  ))}
+                  {result.outline.length > 8 && (
+                    <li className="text-emerald-700/70">+{result.outline.length - 8} more chapters</li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
