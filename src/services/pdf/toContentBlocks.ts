@@ -1,4 +1,5 @@
 import type { ContentBlock } from '@/types';
+import { enrichContentBlocks, normalizeReaderText } from '@/lib/readerContent';
 
 const LIST_ITEM = /^(\d+[.)]|\u2022|\*|-)\s+(.+)$/;
 
@@ -58,5 +59,6 @@ export function textToContentBlocks(text: string): ContentBlock[] {
   flushList();
   flushParagraph();
 
-  return blocks.length > 0 ? blocks : [{ type: 'paragraph', text: text.trim() }];
+  const result = blocks.length > 0 ? blocks : [{ type: 'paragraph', text: normalizeReaderText(text.trim()) }];
+  return enrichContentBlocks(result);
 }

@@ -1,4 +1,5 @@
 import type { ContentBlock } from '@/types';
+import { enrichContentBlocks } from '@/lib/readerContent';
 import { cn } from '@/lib/utils';
 
 interface ContentRendererProps {
@@ -7,6 +8,8 @@ interface ContentRendererProps {
   lineHeight: number;
   highlightQuery?: string;
 }
+
+const NARRATION_RE = /^(It is narrated|Narrated by|On the authority of|According to)/i;
 
 function highlightText(text: string, query?: string): React.ReactNode {
   if (!query || !query.trim()) return text;
@@ -39,27 +42,38 @@ function highlightText(text: string, query?: string): React.ReactNode {
 }
 
 export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }: ContentRendererProps) {
+  const enriched = enrichContentBlocks(blocks);
+  const firstParagraphIndex = enriched.findIndex((b) => b.type === 'paragraph');
+
   return (
     <div
       className="reader-prose"
       style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight }}
     >
-      {blocks.map((block, i) => {
+      {enriched.map((block, i) => {
         switch (block.type) {
           case 'paragraph':
             return (
-              <p key={i} className="reader-muted">
+              <p
+                key={i}
+                className={cn(
+                  'reader-muted',
+                  i === firstParagraphIndex && 'reader-lead',
+                  NARRATION_RE.test(block.text) && 'reader-narration'
+                )}
+              >
                 {highlightText(block.text, highlightQuery)}
               </p>
             );
 
           case 'heading': {
+            const isHadith = /hadith/i.test(block.text);
             const HeadingTag = (block.level && block.level <= 3 ? `h${block.level + 2}` : 'h3') as 'h3' | 'h4' | 'h5';
             return (
               <HeadingTag
                 key={i}
-                className="mt-8 mb-3 first:mt-0"
-                style={{ fontSize: block.level && block.level <= 2 ? `${fontSize + 3}px` : `${fontSize + 1}px` }}
+                className={cn('reader-heading', isHadith && 'reader-hadith-heading')}
+                style={{ fontSize: block.level && block.level <= 2 ? `${fontSize + 4}px` : `${fontSize + 2}px` }}
               >
                 {block.text}
               </HeadingTag>
@@ -70,12 +84,14 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             return (
               <blockquote
                 key={i}
-                className="my-6 border-l-2 reader-accent pl-5 italic"
-                style={{ fontSize: `${fontSize}px` }}
+                className="reader-hadith-quote my-6 border-l-[3px] reader-accent pl-5"
+                style={{ fontSize: `${fontSize + 1}px` }}
               >
-                <p className="reader-muted">“{block.text}”</p>
+                <p className="reader-muted leading-relaxed">
+                  &ldquo;{highlightText(block.text, highlightQuery)}&rdquo;
+                </p>
                 {block.attribution && (
-                  <footer className="mt-2 text-sm reader-muted not-italic">— {block.attribution}</footer>
+                  <footer className="mt-3 text-sm reader-muted not-italic">— {block.attribution}</footer>
                 )}
               </blockquote>
             );
@@ -107,10 +123,8 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             return (
               <div
                 key={i}
-                className={cn(
-                  'my-4 border-l-2 pl-4 text-sm reader-muted italic'
-                )}
-                style={{ fontSize: `${Math.max(fontSize - 3, 13)}px` }}
+                className="reader-narration my-4 rounded-lg border border-accent/15 bg-accent/5 px-4 py-3 text-[0.95em] reader-muted"
+                style={{ fontSize: `${Math.max(fontSize - 1, 14)}px` }}
               >
                 {highlightText(block.text, highlightQuery)}
                 {block.source && <div className="mt-1 not-italic reader-accent">{block.source}</div>}

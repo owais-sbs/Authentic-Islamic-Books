@@ -1,12 +1,14 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { confirmCreateNewBook } from '@/lib/swal';
 
 interface QuickActionCardProps {
   title: string;
   description: string;
   href: string;
   icon: LucideIcon;
+  confirmBeforeNavigate?: boolean;
 }
 
 export function QuickActionCard({
@@ -14,10 +16,21 @@ export function QuickActionCard({
   description,
   href,
   icon: Icon,
+  confirmBeforeNavigate = false,
 }: QuickActionCardProps) {
+  const navigate = useNavigate();
+
+  async function handleClick(event: React.MouseEvent) {
+    if (!confirmBeforeNavigate) return;
+    event.preventDefault();
+    const ok = await confirmCreateNewBook();
+    if (ok) navigate(href);
+  }
+
   return (
     <Link
       to={href}
+      onClick={(event) => void handleClick(event)}
       className="group flex flex-col gap-3 rounded-xl border border-[#E5E1D8] bg-white px-5 py-5 shadow-sm transition-all duration-150 hover:border-[#C9A646]/40 hover:shadow-md"
     >
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#C9A646]/10 transition-colors group-hover:bg-[#C9A646]/15">

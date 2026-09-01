@@ -131,6 +131,7 @@ export function AdminDashboardPage() {
                   description={action.description}
                   href={action.href}
                   icon={action.icon}
+                  confirmBeforeNavigate={action.href === '/admin/books/new'}
                 />
               ))}
             </div>

@@ -111,6 +111,24 @@ function showConfirm(options: {
 
 // ─── Public API (matches original sweetalert2 signatures) ────────────────────
 
+export async function confirmCreateNewBook(): Promise<boolean> {
+  return showConfirm({
+    title: 'Create a new book?',
+    body: 'You will add the title, chapters, and content. Save as draft anytime, or publish when the book is ready for readers.',
+    confirmLabel: 'Start new book',
+    cancelLabel: 'Cancel',
+  });
+}
+
+export async function showNewBookWelcome(): Promise<void> {
+  await showConfirm({
+    title: 'New book started',
+    body: 'Add the book details below. You can import a PDF, write chapters manually, then save as draft or publish to the library.',
+    confirmLabel: 'Got it',
+    cancelLabel: 'Close',
+  });
+}
+
 export async function showBookSavedSuccess(
   title: string,
   mode: 'draft' | 'published'
@@ -144,8 +162,15 @@ export async function confirmArchiveBook(title: string): Promise<boolean> {
   });
 }
 
-export async function showDeleteSuccess(title: string): Promise<void> {
-  showToast(`"${title}" has been removed.`, 'success');
+export async function showDeleteSuccess(title: string): Promise<'list' | 'stay'> {
+  const goList = await showConfirm({
+    title: 'Book deleted',
+    body: `"${escapeHtml(title)}" has been permanently removed from your library.`,
+    confirmLabel: 'Back to books list',
+    cancelLabel: 'Stay here',
+    confirmDanger: true,
+  });
+  return goList ? 'list' : 'stay';
 }
 
 export async function showArchiveSuccess(title: string): Promise<void> {

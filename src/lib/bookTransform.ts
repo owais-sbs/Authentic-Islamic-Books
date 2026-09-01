@@ -1,5 +1,6 @@
 import type { BookWithStructure, BookStatus } from '@/features/books/types';
 import type { Book, BookChapter, BookSection, ContentBlock } from '@/types';
+import { enrichContentBlocks } from '@/lib/readerContent';
 import { rawTextToContentBlocks } from '@/lib/pdfExtractor';
 
 // ─── Category maps ────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ export function htmlToContentBlocks(html: string): ContentBlock[] {
     }
   });
 
-  return blocks.length > 0 ? blocks : rawTextToContentBlocks(div.textContent ?? html);
+  return blocks.length > 0 ? enrichContentBlocks(blocks) : enrichContentBlocks(rawTextToContentBlocks(div.textContent ?? html));
 }
 
 export function reviewBookToPublicBook(book: BookWithStructure): Book {

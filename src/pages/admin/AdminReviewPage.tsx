@@ -20,7 +20,7 @@ import {
   upsertBookToSupabase,
 } from '@/lib/bookApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { showBookSavedSuccess } from '@/lib/swal';
+import { showBookSavedSuccess, showNewBookWelcome } from '@/lib/swal';
 import { notifyBooksChanged } from '@/hooks/useAdminBooks';
 import type { BookWithStructure } from '@/features/books/types';
 import type { Book } from '@/types';
@@ -70,6 +70,14 @@ export function AdminReviewPage() {
       setPdfImported(false);
     }
   }, [isNewBook, resetKey]);
+
+  useEffect(() => {
+    if (!isNewBook) return;
+    const key = 'idl-new-book-welcome';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void showNewBookWelcome();
+  }, [isNewBook]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;

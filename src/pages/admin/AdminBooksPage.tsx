@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PlusCircle, BookOpen, CheckCircle, Clock, AlertCircle, Archive } from 'lucide-react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
@@ -8,6 +8,7 @@ import { BooksTable } from '@/features/books/components/BooksTable';
 import { PAGE_SIZE, useAdminBooks } from '@/hooks/useAdminBooks';
 import type { BooksFilters, BooksSortKey } from '@/features/books/types';
 import { cn } from '@/lib/utils';
+import { confirmCreateNewBook } from '@/lib/swal';
 
 const DEFAULT_FILTERS: BooksFilters = {
   search: '',
@@ -40,6 +41,7 @@ function StatCard({ label, value, icon: Icon, iconCls, bgCls }: StatProps) {
 }
 
 export function AdminBooksPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewArchived = searchParams.get('view') === 'archived';
 
@@ -92,6 +94,11 @@ export function AdminBooksPage() {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, safePage]);
 
+  async function handleAddNewBook(): Promise<void> {
+    const ok = await confirmCreateNewBook();
+    if (ok) navigate('/admin/books/new');
+  }
+
   return (
     <AdminShell pageTitle="Books">
       <div className="max-w-6xl space-y-6">
@@ -103,13 +110,14 @@ export function AdminBooksPage() {
               : 'Manage and review your Islamic Digital Library collection.'
           }
           actions={
-            <Link
-              to="/admin/books/new"
+            <button
+              type="button"
+              onClick={() => void handleAddNewBook()}
               className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
             >
               <PlusCircle size={14} />
               Add New Book
-            </Link>
+            </button>
           }
         />
 

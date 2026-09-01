@@ -52,8 +52,9 @@ export function BookActions({ book, onActionComplete }: BookActionsProps) {
     setExiting(true);
     await new Promise((r) => setTimeout(r, 600));
     await deleteAdminBook(book.id);
-    await showDeleteSuccess(book.title);
+    const next = await showDeleteSuccess(book.title);
     onActionComplete?.();
+    if (next === 'list') navigate('/admin/books');
   }
 
   async function handleArchive() {
