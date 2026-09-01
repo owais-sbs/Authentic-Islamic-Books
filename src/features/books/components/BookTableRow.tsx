@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Pencil } from 'lucide-react';
 import { BookStatusBadge } from './BookStatusBadge';
 import { BookCategoryBadges } from './BookCategoryBadges';
 import { BookActions } from './BookActions';
@@ -37,7 +38,7 @@ export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
       layout
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, x: 48, transition: { duration: 0.45 } }}
-      className="transition-colors hover:bg-[#FAFAF8]"
+      className="group transition-colors hover:bg-[#FAFAF8]"
     >
       <td className="pl-5 pr-3 py-3.5"><CoverThumb book={book} /></td>
 
@@ -82,8 +83,19 @@ export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
         {formatDate(book.updatedAt)}
       </td>
 
-      <td className="pl-3 pr-5 py-3.5">
-        <BookActions book={book} onActionComplete={onActionComplete} />
+      {/* Actions — visible Edit button + ⋮ menu */}
+      <td className="pl-3 pr-4 py-3.5">
+        <div className="flex items-center gap-1.5">
+          <Link
+            to={reviewHref}
+            className="flex items-center gap-1 rounded-md border border-[#E5E1D8] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#0B1B2B] opacity-0 transition-all group-hover:opacity-100 hover:border-[#C9A646]/40 hover:text-[#C9A646]"
+            title="Edit book"
+          >
+            <Pencil size={12} />
+            Edit
+          </Link>
+          <BookActions book={book} onActionComplete={onActionComplete} />
+        </div>
       </td>
     </motion.tr>
   );

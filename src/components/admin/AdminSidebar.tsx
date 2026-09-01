@@ -3,14 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   BookOpen,
-  Users,
   GraduationCap,
   Tag,
   Upload,
   Settings,
   X,
   BookMarked,
-  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,17 +34,15 @@ const navigation: NavGroup[] = [
   {
     group: 'Library',
     items: [
-      { label: 'Books', href: '/admin/books', icon: BookOpen },
-      { label: 'Archived', href: '/admin/books?view=archived', icon: Archive },
-      { label: 'Authors', href: '/admin/authors', icon: Users },
-      { label: 'Scholars', href: '/admin/scholars', icon: GraduationCap },
+      { label: 'Books',      href: '/admin/books',    icon: BookOpen },
+      { label: 'Scholars',   href: '/admin/scholars', icon: GraduationCap },
       { label: 'Categories', href: '/admin/categories', icon: Tag },
     ],
   },
   {
     group: 'Content',
     items: [
-      { label: 'Bulk Import', href: '/admin/imports', icon: Upload },
+      { label: 'Import Book', href: '/admin/books/import', icon: Upload },
     ],
   },
   {
@@ -124,7 +120,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
         {navigation.map((group) => (
           <div key={group.group} className="mb-5">
             <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">

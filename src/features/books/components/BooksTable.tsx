@@ -60,7 +60,7 @@ export function BooksTable({
       <div className="md:hidden">
         {isLoading ? <BooksTableSkeleton /> :
           books.length === 0 ? <BooksEmptyState hasFilters={hasFilters} onClearFilters={onClearFilters} /> :
-          <BooksMobileList books={books} />}
+          <BooksMobileList books={books} onActionComplete={onActionComplete} />}
       </div>
 
       {!isLoading && books.length > 0 && (

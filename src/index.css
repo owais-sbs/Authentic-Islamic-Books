@@ -226,3 +226,13 @@
 .toc-scroll::-webkit-scrollbar-thumb {
   @apply bg-line-strong rounded-full;
 }
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

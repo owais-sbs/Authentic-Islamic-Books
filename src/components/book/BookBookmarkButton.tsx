@@ -47,13 +47,13 @@ export function BookBookmarkButton({
   }
 
   return (
-    <div className={cn('relative inline-flex', className)}>
+    <div className={cn('relative inline-flex w-full sm:w-auto', className)}>
       <button
         type="button"
         onClick={handleClick}
         aria-label={saved ? 'Remove from saved books' : 'Save book'}
         className={cn(
-          'relative inline-flex items-center gap-2 rounded-lg transition-all',
+          'relative inline-flex w-full items-center justify-center gap-2 rounded-lg transition-all',
           showLabel ? 'px-4 py-2.5 text-sm font-medium' : 'p-2',
           saved
             ? 'bg-accent/15 text-accent-dark hover:bg-accent/25'
