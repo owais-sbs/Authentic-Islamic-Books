@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Layers, FileText, ChevronDown, Plus, Minus } from 'lucide-react';
@@ -13,6 +13,8 @@ import { getScholarById } from '@/data/scholars';
 import { getCategoryById } from '@/data/categories';
 import { countAllSections, estimateReadingTime } from '@/data/books';
 import { formatHijriRange } from '@/data/periods';
+import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache } from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { NotFoundPage } from './NotFoundPage';
 import { cn } from '@/lib/utils';
 import type { BookSection, BookChapter, Book, ContentBlock } from '@/types';
@@ -222,8 +224,54 @@ function IntroAccordion({ book }: { book: Book }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function BookDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const book = slug ? getBookBySlug(slug) : undefined;
-  if (!book) return <NotFoundPage />;
+
+  // 1. Try sync lookup first (static + localStorage + existing Supabase cache)
+  const [book, setBook] = useState<Book | undefined>(() =>
+    slug ? getBookBySlug(slug) : undefined
+  );
+  const [loading, setLoading] = useState(!book && isSupabaseConfigured());
+  const [notFound, setNotFound] = useState(false);
+
+  // 2. If not found synchronously AND Supabase is configured, fetch async
+  useEffect(() => {
+    if (book || !slug) return;
+    if (!isSupabaseConfigured()) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetchPublishedBooksFromSupabase()
+      .then((remoteBooks) => {
+        // Populate the cache so future sync lookups work
+        setSupabasePublishedCache(remoteBooks);
+        const found = remoteBooks.find((b) => b.slug === slug);
+        if (found) {
+          setBook(found);
+        } else {
+          setNotFound(true);
+        }
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug, book]);
+
+  // Loading state — spinner while fetching from Supabase
+  if (loading) {
+    return (
+      <PageContainer>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-accent" />
+            <p className="text-sm text-ink-400">Loading book…</p>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (notFound || !book) return <NotFoundPage />;
 
   const scholar   = getScholarById(book.authorId);
   const authorName =

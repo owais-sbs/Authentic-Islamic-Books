@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { getBookBySlug } from '@/data/books';
+import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache } from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { NotFoundPage } from './NotFoundPage';
 import { Navbar } from '@/components/layout/Navbar';
 import { ReaderSidebar } from '@/components/reader/ReaderSidebar';
@@ -15,11 +17,32 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import { getReaderUnits, findUnitIndex } from '@/lib/readerSections';
 import { cn } from '@/lib/utils';
+import type { Book } from '@/types';
 
 export function ReaderPage() {
   const { slug } = useParams<{ slug: string }>();
-  const book = slug ? getBookBySlug(slug) : undefined;
   const location = useLocation();
+
+  const [book, setBook] = useState<Book | undefined>(() =>
+    slug ? getBookBySlug(slug) : undefined
+  );
+  const [loading, setLoading] = useState(!book && isSupabaseConfigured());
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (book || !slug) return;
+    if (!isSupabaseConfigured()) { setNotFound(true); setLoading(false); return; }
+    setLoading(true);
+    fetchPublishedBooksFromSupabase()
+      .then((remoteBooks) => {
+        setSupabasePublishedCache(remoteBooks);
+        const found = remoteBooks.find((b) => b.slug === slug);
+        if (found) setBook(found);
+        else setNotFound(true);
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug, book]);
 
   const {
     settings,
@@ -93,7 +116,18 @@ export function ReaderPage() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [currentIndex, goToIndex, searchOpen, setSearchOpen]);
 
-  if (!book || units.length === 0 || !currentUnit) return <NotFoundPage />;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-accent" />
+          <p className="text-sm text-ink-400">Loading book…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !book || units.length === 0 || !currentUnit) return <NotFoundPage />;
 
   const isDark = settings.theme === 'dark';
   const bookmarked = isBookmarked(slug || '', currentUnit.id);
