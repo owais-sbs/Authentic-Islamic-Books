@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Clock, Layers, FileText, ChevronDown, Plus, Minus } from 'lucide-react';
+import { Clock, Layers, FileText, ChevronDown, Plus, Minus } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { BookCover } from '@/components/book/BookCover';
 import { BookBookmarkButton } from '@/components/book/BookBookmarkButton';
 import { ContentRenderer } from '@/components/reader/ContentRenderer';
@@ -17,15 +16,6 @@ import { formatHijriRange } from '@/data/periods';
 import { NotFoundPage } from './NotFoundPage';
 import { cn } from '@/lib/utils';
 import type { BookSection, BookChapter, Book, ContentBlock } from '@/types';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function scrollToContents() {
-  const el = document.getElementById('contents');
-  if (el) {
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
-  }
-}
 
 // ─── Section accordion ────────────────────────────────────────────────────────
 // Shown inside a chapter — e.g. "1.1 Background"
@@ -310,27 +300,8 @@ export function BookDetailPage() {
               ))}
             </div>
 
-            {/* CTAs — full width on mobile, inline on desktop */}
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-              {/* Start Reading */}
-              <button
-                type="button"
-                onClick={scrollToContents}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink-900 px-6 py-3 text-base font-medium text-cream transition-all hover:bg-ink-800 sm:w-auto"
-              >
-                <BookOpen size={18} /> Start Reading
-              </button>
-
-              {/* View Contents */}
-              <button
-                type="button"
-                onClick={scrollToContents}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-line-strong bg-transparent px-6 py-3 text-base font-medium text-ink-900 transition-all hover:border-ink-900 hover:bg-paper sm:w-auto"
-              >
-                View Contents
-              </button>
-
-              {/* Save Book */}
+            {/* CTA — Save Book only */}
+            <div className="mt-6">
               <BookBookmarkButton
                 slug={book.slug}
                 title={book.title}
