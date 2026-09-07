@@ -3,10 +3,13 @@ import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
-import { categories } from '@/data/categories';
-import { books as allBooks } from '@/data/books';
+import { useCategories } from '@/hooks/useCategories';
+import { useLibraryFilters } from '@/hooks/useLibraryFilters';
 
 export function CategoriesPage() {
+  const { categories } = useCategories();
+  const { filteredBooks: allBooks } = useLibraryFilters();
+
   return (
     <PageContainer>
       <div className="container-page py-8">

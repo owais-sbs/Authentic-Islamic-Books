@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { GraduationCap, Plus, Pencil, X, Check } from 'lucide-react';
+import { GraduationCap, Plus, Pencil, X, Check, Trash2, RefreshCw } from 'lucide-react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
-import { scholars as staticScholars } from '@/data/scholars';
+import { useScholars, notifyScholarsChanged } from '@/hooks/useScholars';
+import { upsertScholarToSupabase, deleteScholarFromSupabase } from '@/lib/scholarApi';
 import type { Scholar } from '@/types';
 
 // ─── Inline edit row ──────────────────────────────────────────────────────────
 function ScholarRow({
   scholar,
   onSave,
+  onDelete,
 }: {
   scholar: Scholar;
-  onSave: (patch: Partial<Scholar>) => void;
+  onSave: (patch: Partial<Scholar>) => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState(scholar.name);
   const [fullName, setFullName] = useState(scholar.fullName);
   const [bornHijri, setBornHijri] = useState(String(scholar.bornHijri));
@@ -21,16 +25,36 @@ function ScholarRow({
   const [bornPlace, setBornPlace] = useState(scholar.bornPlace);
   const [shortBio, setShortBio] = useState(scholar.shortBio);
 
-  function handleSave() {
-    onSave({
-      name: name.trim(),
-      fullName: fullName.trim(),
-      bornHijri: Number(bornHijri) || scholar.bornHijri,
-      diedHijri: Number(diedHijri) || scholar.diedHijri,
-      bornPlace: bornPlace.trim(),
-      shortBio: shortBio.trim(),
-    });
-    setEditing(false);
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        fullName: fullName.trim(),
+        bornHijri: Number(bornHijri) || scholar.bornHijri,
+        diedHijri: Number(diedHijri) || scholar.diedHijri,
+        bornPlace: bornPlace.trim(),
+        shortBio: shortBio.trim(),
+      });
+      setEditing(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save scholar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Are you sure you want to delete scholar "${scholar.name}"?`)) return;
+    setSaving(true);
+    try {
+      await onDelete();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete scholar');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleCancel() {
@@ -79,11 +103,11 @@ function ScholarRow({
           </div>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <button onClick={handleSave}
-            className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]">
-            <Check size={13} /> Save Changes
+          <button onClick={() => void handleSave()} disabled={saving || !name.trim()}
+            className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-50">
+            <Check size={13} /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
-          <button onClick={handleCancel}
+          <button onClick={handleCancel} disabled={saving}
             className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-4 py-2 text-[13px] font-medium text-[#64748B] transition-colors hover:bg-[#F7F6F2]">
             <X size={13} /> Cancel
           </button>
@@ -101,7 +125,7 @@ function ScholarRow({
         <p className="text-[14px] font-semibold text-[#0B1B2B] truncate">{scholar.name}</p>
         <p className="text-[12px] text-[#64748B] truncate">{scholar.fullName}</p>
         <p className="text-[11px] text-[#94A3B8] mt-0.5">
-          {scholar.bornHijri}–{scholar.diedHijri} AH · {scholar.bornPlace}
+          {scholar.bornHijri}–{scholar.diedHijri} AH · {scholar.bornPlace || 'Unknown'}
         </p>
       </div>
       <div className="hidden sm:flex flex-wrap gap-1 max-w-[200px]">
@@ -111,29 +135,39 @@ function ScholarRow({
           </span>
         ))}
       </div>
-      <button
-        onClick={() => setEditing(true)}
-        className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#C9A646]/40 hover:text-[#C9A646]"
-      >
-        <Pencil size={12} /> Edit
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setEditing(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#C9A646]/40 hover:text-[#C9A646]"
+        >
+          <Pencil size={12} /> Edit
+        </button>
+        <button
+          onClick={() => void handleDelete()}
+          title="Delete Scholar"
+          className="flex items-center justify-center p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:text-red-600"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     </li>
   );
 }
 
 // ─── Add scholar form ─────────────────────────────────────────────────────────
-function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => void; onCancel: () => void }) {
+function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => Promise<void>; onCancel: () => void }) {
   const [name, setName] = useState('');
   const [fullName, setFullName] = useState('');
   const [bornHijri, setBornHijri] = useState('');
   const [diedHijri, setDiedHijri] = useState('');
   const [bornPlace, setBornPlace] = useState('');
   const [shortBio, setShortBio] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!name.trim()) return;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    onAdd({
+    const newScholar: Scholar = {
       id: `scholar-${slug}-${Date.now()}`,
       slug,
       name: name.trim(),
@@ -146,7 +180,15 @@ function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => void; onCa
       categories: [],
       imageUrl: '',
       timelineEvents: [],
-    });
+    };
+    setSaving(true);
+    try {
+      await onAdd(newScholar);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add scholar');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -174,11 +216,11 @@ function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => void; onCa
         ))}
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={handleAdd} disabled={!name.trim()}
+        <button onClick={() => void handleAdd()} disabled={saving || !name.trim()}
           className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-40">
-          <Check size={13} /> Add Scholar
+          <Check size={13} /> {saving ? 'Adding…' : 'Add Scholar'}
         </button>
-        <button onClick={onCancel}
+        <button onClick={onCancel} disabled={saving}
           className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-4 py-2 text-[13px] font-medium text-[#64748B] transition-colors hover:bg-[#F7F6F2]">
           <X size={13} /> Cancel
         </button>
@@ -189,16 +231,26 @@ function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => void; onCa
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function AdminScholarsPage() {
-  const [scholars, setScholars] = useState<Scholar[]>(staticScholars);
+  const { scholars, loading, refreshScholars } = useScholars();
   const [adding, setAdding] = useState(false);
 
-  function handleSave(id: string, patch: Partial<Scholar>) {
-    setScholars(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  async function handleSave(id: string, patch: Partial<Scholar>) {
+    const existing = scholars.find((s) => s.id === id);
+    if (!existing) return;
+    const updated = { ...existing, ...patch };
+    await upsertScholarToSupabase(updated);
+    notifyScholarsChanged();
   }
 
-  function handleAdd(scholar: Scholar) {
-    setScholars(prev => [...prev, scholar]);
+  async function handleAdd(scholar: Scholar) {
+    await upsertScholarToSupabase(scholar);
+    notifyScholarsChanged();
     setAdding(false);
+  }
+
+  async function handleDelete(id: string) {
+    await deleteScholarFromSupabase(id);
+    notifyScholarsChanged();
   }
 
   return (
@@ -206,16 +258,27 @@ export function AdminScholarsPage() {
       <div className="space-y-6">
         <AdminPageHeader
           title="Scholars"
-          description="Manage scholar profiles linked to books in the library."
+          description="Manage scholar profiles synced directly with your Supabase database."
           actions={
-            !adding ? (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+                type="button"
+                onClick={() => void refreshScholars()}
+                className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] font-medium text-[#64748B] transition-colors hover:bg-[#F7F6F2]"
               >
-                <Plus size={14} /> Add Scholar
+                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                Refresh
               </button>
-            ) : null
+              {!adding && (
+                <button
+                  type="button"
+                  onClick={() => setAdding(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+                >
+                  <Plus size={14} /> Add Scholar
+                </button>
+              )}
+            </div>
           }
         />
 
@@ -232,6 +295,7 @@ export function AdminScholarsPage() {
                 key={scholar.id}
                 scholar={scholar}
                 onSave={patch => handleSave(scholar.id, patch)}
+                onDelete={() => handleDelete(scholar.id)}
               />
             ))}
           </ul>

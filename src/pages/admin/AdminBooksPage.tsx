@@ -52,7 +52,7 @@ export function AdminBooksPage() {
   const [sort, setSort] = useState<BooksSortKey>('updatedAt_desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { filtered, stats, refresh, remoteError, isCloudSynced } = useAdminBooks(filters, sort);
+  const { filtered, stats, refresh, remoteError } = useAdminBooks(filters, sort);
 
   useEffect(() => {
     setFilters((f) => ({ ...f, status: viewArchived ? 'archived' : f.status === 'archived' ? '' : f.status }));
@@ -121,14 +121,9 @@ export function AdminBooksPage() {
           }
         />
 
-        {isCloudSynced && (
-          <p className="text-[12px] text-[#64748B]">
-            Showing the shared Supabase library — books created by any team member appear here.
-          </p>
-        )}
         {remoteError && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
-            Could not load shared books: {remoteError}. Sign in with Supabase Auth so drafts and reviews sync across the team.
+            {remoteError}
           </div>
         )}
 

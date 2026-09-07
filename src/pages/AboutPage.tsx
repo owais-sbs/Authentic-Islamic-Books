@@ -177,7 +177,7 @@ export function AboutPage() {
                   transition={{ duration: 0.35, delay: i * 0.07 }}
                 >
                   <Link
-                    to={`/scholars/${scholar.slug}`}
+                    to={`/scholars/${scholar.slug || scholar.id}`}
                     className="group flex flex-col overflow-hidden rounded-xl border border-line bg-cream transition-all hover:border-accent/60 hover:shadow-lg"
                   >
                     <div className="relative aspect-[3/2] overflow-hidden bg-ink-100">

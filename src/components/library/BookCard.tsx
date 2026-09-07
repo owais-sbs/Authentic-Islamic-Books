@@ -55,7 +55,7 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
           {book.subtitle && <p className="text-sm text-ink-500 mt-0.5 line-clamp-1">{book.subtitle}</p>}
           {authorDisplay && (
             scholar ? (
-              <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
+              <Link to={`/scholars/${scholar.slug || scholar.id}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
                 {authorDisplay}
               </Link>
             ) : (
@@ -106,7 +106,7 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
       </Link>
       {authorDisplay && (
         scholar ? (
-          <Link to={`/scholars/${scholar.slug}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
+          <Link to={`/scholars/${scholar.slug || scholar.id}`} className="mt-1 text-sm text-ink-600 transition-colors hover:text-accent-dark">
             {authorDisplay}
           </Link>
         ) : (

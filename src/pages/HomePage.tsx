@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { books as allBooks } from '@/data/books';
 import { scholars as allScholars } from '@/data/scholars';
 import { categories } from '@/data/categories';
 import { BookGrid } from '@/components/library/BookGrid';
@@ -71,6 +70,7 @@ export function HomePage() {
   const {
     filters,
     filteredBooks,
+    totalBooks,
     togglePeriod,
     toggleCategory,
     toggleScholar,
@@ -83,9 +83,9 @@ export function HomePage() {
   const [libView, setLibView] = useState<'grid' | 'list'>('grid');
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
-  // ── Stats data ────────────────────────────────────────────────────────────
+  // ── Stats — use live totalBooks count from Supabase/local source ──────────
   const stats = [
-    { icon: BookOpen, value: `${allBooks.length}+`,    label: 'Books' },
+    { icon: BookOpen, value: `${totalBooks}+`, label: 'Books' },
     { icon: Users,    value: `${allScholars.length}+`, label: 'Scholars' },
     { icon: Clock,    value: '14',                     label: 'Centuries' },
     { icon: Compass,  value: `${categories.length}+`,  label: 'Subjects' },

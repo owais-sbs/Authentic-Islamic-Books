@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { books as staticBooks } from '@/data/books';
 import { hijriPeriods } from '@/data/periods';
 import { categories } from '@/data/categories';
 import { scholars as allScholars } from '@/data/scholars';
@@ -57,19 +56,13 @@ export function useLibraryFilters() {
 
   const allBooks = useMemo(
     () => {
-      const byId = new Map(staticBooks.map((b) => [b.id, b]));
-
-      // Device cache (may include unpublished drafts only this browser created)
-      importedBooks.forEach((b) => {
-        byId.set(b.id, b);
-      });
-
-      // Shared published books from Supabase — override local copies with cloud data
-      supabaseBooks.forEach((b) => {
-        byId.set(b.id, b);
-      });
-
-      return Array.from(byId.values());
+      if (isSupabaseConfigured()) {
+        // Supabase connected → show ONLY Supabase published books (no local storage books)
+        return [...supabaseBooks];
+      } else {
+        // No Supabase → show device-imported books from local storage
+        return [...importedBooks];
+      }
     },
     [importedBooks, supabaseBooks]
   );
@@ -203,6 +196,7 @@ export function useLibraryFilters() {
   return {
     filters,
     filteredBooks,
+    totalBooks: allBooks.length,   // total before any filter applied
     togglePeriod,
     toggleCategory,
     toggleScholar,

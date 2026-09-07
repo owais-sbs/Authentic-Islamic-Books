@@ -93,18 +93,18 @@ function rowToReviewBook(row: DbBookRow): BookWithStructure {
     authorName: row.author_name ?? undefined,
     authorId: row.author_id ?? undefined,
     description: row.description ?? undefined,
-    coverColor: row.cover_color,
+    coverColor: row.cover_color || '#18231F',
     coverUrl: row.cover_url ?? undefined,
-    categories: row.category_ids.map((id) => catMap[id] ?? 'Islamic Thought'),
+    categories: (row.category_ids ?? []).map((id) => catMap[id] ?? 'Islamic Thought'),
     hijriStartYear: row.hijri_start ?? undefined,
     hijriEndYear: row.hijri_end ?? undefined,
-    language: row.language,
-    status: row.status,
-    featured: row.featured,
+    language: row.language || 'English',
+    status: row.status || 'published',
+    featured: row.featured ?? false,
     chapterCount: chapters.length,
     sectionCount: chapters.reduce((n, c) => n + c.sections.length, 0),
-    createdAt: row.created_at.slice(0, 10),
-    updatedAt: row.updated_at.slice(0, 10),
+    createdAt: (row.created_at || new Date().toISOString()).slice(0, 10),
+    updatedAt: (row.updated_at || new Date().toISOString()).slice(0, 10),
     introduction: row.introduction ?? undefined,
     chapters,
   };
@@ -340,4 +340,65 @@ export async function refreshSupabasePublishedCache(): Promise<Book[]> {
   const books = await fetchPublishedBooksFromSupabase();
   setSupabasePublishedCache(books);
   return books;
+}
+
+// ─── Dashboard stats ──────────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  total: number;
+  published: number;
+  drafts: number;
+  needsReview: number;
+  processing: number;
+  archived: number;
+}
+
+export interface DashboardRecentBook {
+  id: string;
+  title: string;
+  authorName: string;
+  status: BookStatus;
+  updatedAt: string;
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  if (!isSupabaseConfigured()) return { total: 0, published: 0, drafts: 0, needsReview: 0, processing: 0, archived: 0 };
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('books')
+    .select('status');
+
+  if (error || !data) return { total: 0, published: 0, drafts: 0, needsReview: 0, processing: 0, archived: 0 };
+
+  const rows = data as { status: BookStatus }[];
+  return {
+    total:      rows.length,
+    published:  rows.filter((r) => r.status === 'published').length,
+    drafts:     rows.filter((r) => r.status === 'draft').length,
+    needsReview: rows.filter((r) => r.status === 'needs_review').length,
+    processing: rows.filter((r) => r.status === 'processing').length,
+    archived:   rows.filter((r) => r.status === 'archived').length,
+  };
+}
+
+export async function fetchRecentBooks(limit = 8): Promise<DashboardRecentBook[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('books')
+    .select('id, title, author_name, status, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return (data as { id: string; title: string; author_name: string | null; status: BookStatus; updated_at: string }[]).map((row) => ({
+    id: row.id,
+    title: row.title,
+    authorName: row.author_name ?? '—',
+    status: row.status,
+    updatedAt: row.updated_at.slice(0, 10),
+  }));
 }

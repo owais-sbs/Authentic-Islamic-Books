@@ -323,7 +323,7 @@ export function BookDetailPage() {
 
             {authorName && (
               scholar
-                ? <Link to={`/scholars/${scholar.slug}`} className="mt-3 inline-block text-sm font-medium text-ink-700 transition-colors hover:text-accent-dark">by {authorName}</Link>
+                ? <Link to={`/scholars/${scholar.slug || scholar.id}`} className="mt-3 inline-block text-sm font-medium text-ink-700 transition-colors hover:text-accent-dark">by {authorName}</Link>
                 : <p className="mt-3 text-sm text-ink-600">by {authorName}</p>
             )}
 

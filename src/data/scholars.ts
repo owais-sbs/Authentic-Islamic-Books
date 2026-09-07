@@ -129,10 +129,26 @@ export const scholars: Scholar[] = [
   },
 ];
 
+import { getScholarCache } from '@/lib/scholarApi';
+
 export function getScholarBySlug(slug: string): Scholar | undefined {
-  return scholars.find((s) => s.slug === slug);
+  const cache = getScholarCache();
+  const normalized = slug ? decodeURIComponent(slug).toLowerCase().trim() : '';
+  const match = (s: Scholar) => {
+    const sSlug = (s.slug || '').toLowerCase().trim();
+    const sId = (s.id || '').toLowerCase().trim();
+    const sNameSlug = (s.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return (
+      sSlug === normalized ||
+      sId === normalized ||
+      sNameSlug === normalized ||
+      (sId && sId.includes(normalized)) ||
+      (normalized && normalized.includes(sSlug) && sSlug.length > 3)
+    );
+  };
+  return cache.find(match) || scholars.find(match);
 }
 
 export function getScholarById(id: string): Scholar | undefined {
-  return scholars.find((s) => s.id === id);
+  return getScholarBySlug(id);
 }

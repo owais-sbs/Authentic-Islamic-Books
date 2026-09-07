@@ -5,17 +5,25 @@ import { fetchAllBooksFromSupabase } from '@/lib/bookApi';
 import { isSupabaseConfigured, getSupabase } from '@/lib/supabase';
 import { applyAdminMeta } from '@/lib/adminBookMeta';
 import {
-  mockBooks,
   applyFiltersAndSort,
-  getBooksStats,
   PAGE_SIZE,
 } from '@/features/books/data/mockBooks';
-import type { BooksFilters, BooksSortKey } from '@/features/books/types';
+import type { BooksFilters, BooksSortKey, Book } from '@/features/books/types';
 
-export { PAGE_SIZE, applyFiltersAndSort, getBooksStats };
+export { PAGE_SIZE, applyFiltersAndSort };
 
-/** Fired after any successful shared save so open admin lists refetch. */
 export const BOOKS_CHANGED_EVENT = 'idl-books-changed';
+
+// ─── Stats helper (operates on whatever books array is passed in) ─────────────
+export function getBooksStats(books: Book[]) {
+  return {
+    total:       books.length,
+    published:   books.filter((b) => b.status === 'published').length,
+    drafts:      books.filter((b) => b.status === 'draft').length,
+    needsReview: books.filter((b) => b.status === 'needs_review').length,
+    processing:  books.filter((b) => b.status === 'processing').length,
+  };
+}
 
 export function notifyBooksChanged(): void {
   window.dispatchEvent(new Event(BOOKS_CHANGED_EVENT));
@@ -52,7 +60,7 @@ export function useAdminBooks(filters: BooksFilters, sort: BooksSortKey) {
 
       if (!authed) {
         setRemoteError(
-          'Signed in locally only — you can only see published books from the shared library. Sign out and sign in with Supabase Auth to see all team drafts and imports.'
+          'Sign in with your Supabase account to see all books including drafts and needs-review items.'
         );
       }
     } catch (err) {
@@ -85,18 +93,14 @@ export function useAdminBooks(filters: BooksFilters, sort: BooksSortKey) {
   const allBooks = useMemo(() => {
     const byId = new Map<string, ReturnType<typeof publicBookToAdminBook>>();
 
-    // When cloud is configured and we have a session, prefer remote only
-    // (plus mock seeds). Avoid leaking another device's private local-only drafts
-    // as if they were shared — and avoid hiding shared books behind local cache.
-    if (isSupabaseConfigured() && hasAuthSession && remoteBooks.length >= 0 && !remoteLoading) {
-      mockBooks.forEach((b) => byId.set(b.id, b));
+    if (isSupabaseConfigured()) {
+      // Supabase ONLY — no local storage books mixed in
       remoteBooks.forEach((b) => byId.set(b.id, b));
     } else {
-      mockBooks.forEach((b) => byId.set(b.id, b));
+      // No Supabase — only device-imported books from local storage
       getAllImportedBooks().forEach((pb) => {
-        byId.set(pb.id, publicBookToAdminBook(pb));
+        byId.set(pb.id, publicBookToAdminBook(pb, (pb as { status?: import('@/features/books/types').BookStatus }).status || 'published'));
       });
-      remoteBooks.forEach((b) => byId.set(b.id, b));
     }
 
     return applyAdminMeta(Array.from(byId.values())).sort(
@@ -115,10 +119,13 @@ export function useAdminBooks(filters: BooksFilters, sort: BooksSortKey) {
   }, [allBooks, filters, sort]);
 
   const stats = useMemo(() => {
-    const base = getBooksStats(allBooks);
     return {
-      ...base,
-      archived: allBooks.filter((b) => b.status === 'archived').length,
+      total:       allBooks.length,
+      published:   allBooks.filter((b) => b.status === 'published').length,
+      drafts:      allBooks.filter((b) => b.status === 'draft').length,
+      needsReview: allBooks.filter((b) => b.status === 'needs_review').length,
+      processing:  allBooks.filter((b) => b.status === 'processing').length,
+      archived:    allBooks.filter((b) => b.status === 'archived').length,
     };
   }, [allBooks]);
 

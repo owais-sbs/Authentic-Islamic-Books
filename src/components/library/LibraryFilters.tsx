@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { hijriPeriods } from '@/data/periods';
-import { categories } from '@/data/categories';
-import { scholars as allScholars } from '@/data/scholars';
-import { books as allBooks } from '@/data/books';
+import { useCategories } from '@/hooks/useCategories';
+import { useScholars } from '@/hooks/useScholars';
+import { useLibraryFilters, type FilterState } from '@/hooks/useLibraryFilters';
 import { Checkbox } from '@/components/ui/Checkbox';
-import type { FilterState } from '@/hooks/useLibraryFilters';
 
 interface LibraryFiltersProps {
   filters: FilterState;
@@ -24,6 +23,9 @@ export function LibraryFilters({
   onClearAll,
   hasActiveFilters,
 }: LibraryFiltersProps) {
+  const { categories } = useCategories();
+  const { scholars: allScholars } = useScholars();
+  const { filteredBooks: allBooks } = useLibraryFilters();
   const [scholarSearch, setScholarSearch] = useState('');
 
   const bookCountsByPeriod = useMemo(() => {
@@ -34,13 +36,13 @@ export function LibraryFilters({
       ).length;
     }
     return counts;
-  }, []);
+  }, [allBooks]);
 
   const filteredScholars = useMemo(() => {
     if (!scholarSearch.trim()) return allScholars;
     const q = scholarSearch.toLowerCase();
     return allScholars.filter((s) => s.name.toLowerCase().includes(q));
-  }, [scholarSearch]);
+  }, [scholarSearch, allScholars]);
 
   return (
     <div className="space-y-7">
@@ -81,7 +83,7 @@ export function LibraryFilters({
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-900">
           Category
         </h3>
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 max-h-64 overflow-y-auto pr-1">
           {categories.map((cat) => (
             <Checkbox
               key={cat.id}
@@ -115,7 +117,7 @@ export function LibraryFilters({
               checked={filters.scholars.includes(scholar.slug)}
               onChange={() => onToggleScholar(scholar.slug)}
               label={scholar.name}
-              count={allBooks.filter((b) => b.authorId === scholar.id).length}
+              count={allBooks.filter((b) => b.authorId === scholar.id || b.authorId === scholar.slug).length}
             />
           ))}
           {filteredScholars.length === 0 && (

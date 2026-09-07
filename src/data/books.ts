@@ -1,5 +1,6 @@
 import type { Book } from '@/types';
 import { getSupabasePublishedCache } from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { sampleBookChapters, sampleIntroduction } from './sampleContent';
 
 export const books: Book[] = [
@@ -1365,9 +1366,15 @@ export const books: Book[] = [
 ];
 
 export function getBookBySlug(slug: string): Book | undefined {
-  const staticBook = books.find((b) => b.slug === slug);
-  if (staticBook) return staticBook;
+  if (isSupabaseConfigured()) {
+    try {
+      const fromSupabase = getSupabasePublishedCache().find((b) => b.slug === slug);
+      if (fromSupabase) return fromSupabase;
+    } catch { /* ignore */ }
+    return undefined;
+  }
 
+  // Check localStorage-imported books ONLY when Supabase is not configured
   try {
     const raw = localStorage.getItem('idl_imported_books');
     if (raw) {
@@ -1375,22 +1382,15 @@ export function getBookBySlug(slug: string): Book | undefined {
       const found = imported.find((b) => b.slug === slug);
       if (found) return found;
     }
-  } catch {
-    // ignore parse errors
-  }
+  } catch { /* ignore */ }
 
-  try {
-    const fromSupabase = getSupabasePublishedCache().find((b) => b.slug === slug);
-    if (fromSupabase) return fromSupabase;
-  } catch {
-    // ignore
-  }
-
-  return undefined;
+  return books.find((b) => b.slug === slug);
 }
 
 export function getBooksByAuthor(authorId: string): Book[] {
-  return books.filter((b) => b.authorId === authorId);
+  const supabaseBooks = getSupabasePublishedCache();
+  const all = supabaseBooks.length > 0 ? supabaseBooks : books;
+  return all.filter((b) => b.authorId === authorId || (b as { authorName?: string }).authorName === authorId);
 }
 
 export function getFeaturedBooks(): Book[] {

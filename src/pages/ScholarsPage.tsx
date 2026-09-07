@@ -4,12 +4,13 @@ import { Search, X } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ScholarCard } from '@/components/scholar/ScholarCard';
-import { scholars as allScholars } from '@/data/scholars';
+import { useScholars } from '@/hooks/useScholars';
 import { hijriPeriods } from '@/data/periods';
 
 type SortOption = 'az' | 'za' | 'oldest' | 'newest';
 
 export function ScholarsPage() {
+  const { scholars: allScholars } = useScholars();
   const [search, setSearch] = useState('');
   const [periodFilter, setPeriodFilter] = useState('');
   const [sort, setSort] = useState<SortOption>('az');
@@ -49,7 +50,7 @@ export function ScholarsPage() {
     }
 
     return result;
-  }, [search, periodFilter, sort]);
+  }, [allScholars, search, periodFilter, sort]);
 
   return (
     <PageContainer>

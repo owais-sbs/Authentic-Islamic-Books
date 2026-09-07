@@ -22,6 +22,7 @@ export function LibraryPage() {
   const {
     filters,
     filteredBooks,
+    totalBooks,
     togglePeriod,
     toggleCategory,
     toggleScholar,
@@ -45,7 +46,7 @@ export function LibraryPage() {
         <div className="mb-6">
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-ink-900">Islamic Library</h1>
           <p className="mt-2 text-ink-500 max-w-2xl">
-            Browse {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'} from across centuries of Islamic scholarship. Filter by Hijri period, scholar, or subject.
+            Browse {totalBooks} {totalBooks === 1 ? 'book' : 'books'} from across centuries of Islamic scholarship. Filter by Hijri period, scholar, or subject.
           </p>
         </div>
 
