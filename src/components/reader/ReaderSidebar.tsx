@@ -43,11 +43,11 @@ export function ReaderSidebar({
     >
       <div className="flex-1 overflow-y-auto px-5 py-6">
         <Link
-          to="/library"
+          to={`/books/${book.slug}`}
           className="mb-6 inline-flex items-center gap-2 text-[13px] font-medium text-ink-500 transition-colors hover:text-accent"
         >
           <ArrowLeft size={15} />
-          Back to Library
+          Back to Book
         </Link>
 
         <div className="mb-6 flex gap-3">
@@ -86,7 +86,7 @@ export function ReaderSidebar({
                     : 'text-ink-600 hover:bg-cream hover:text-ink-800'
                 )}
               >
-                <span className={cn('text-[12px] tabular-nums font-semibold shrink-0 w-5', active ? 'text-accent' : 'text-ink-400')}>
+                <span className={cn('text-[12px] tabular-nums font-semibold shrink-0 min-w-[1.5rem] text-right', active ? 'text-accent' : 'text-ink-400')}>
                   {unit.displayNumber}.
                 </span>
                 <span className={cn('flex-1 text-[13px] leading-snug', active && 'font-semibold')}>

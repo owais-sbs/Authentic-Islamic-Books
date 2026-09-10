@@ -54,7 +54,7 @@ export function BookReviewStructure({
                     : 'text-[#0B1B2B] font-semibold hover:bg-[#F7F6F2]'
                 )}
               >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#C9A646]/15 text-[9px] font-bold text-[#C9A646]">
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#C9A646]/15 px-1 text-[10px] font-bold tabular-nums text-[#C9A646]">
                   {ch.number}
                 </span>
                 <span className="flex-1 truncate text-[13px]">

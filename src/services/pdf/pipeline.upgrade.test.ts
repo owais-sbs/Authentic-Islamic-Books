@@ -134,10 +134,64 @@ describe('markdown IR', () => {
       ],
     });
     expect(md).toContain('# BOOK: Book of Knowledge');
-    expect(md).toContain('## CHAPTER 1: Foundations');
+    expect(md).toContain('## CHAPTER 1 — Foundations');
     const parsed = markdownToStructure(md);
     expect(parsed.meta.title).toBe('Book of Knowledge');
     expect(parsed.chapters[0].title).toBe('Foundations');
     expect(parsed.chapters[0].sections[0].rawText).toContain('Seek knowledge');
+  });
+
+  it('preserves double-digit chapter numbers (10, 11, 12) in markup', () => {
+    const chapters = Array.from({ length: 12 }, (_, i) => ({
+      number: String(i + 1),
+      title: `Title ${i + 1}`,
+      description: '',
+      rawText: '',
+      sections: [{ number: `${i + 1}.1`, title: 'Sec', rawText: `body ${i + 1}` }],
+    }));
+    const md = structureToMarkdown({
+      meta: { title: 'Long Book', author: '', description: '' },
+      languages: ['en'],
+      introductionText: '',
+      chapters,
+    });
+    expect(md).toContain('## CHAPTER 10 — Title 10');
+    expect(md).toContain('## CHAPTER 11 — Title 11');
+    expect(md).toContain('## CHAPTER 12 — Title 12');
+    const parsed = markdownToStructure(md);
+    expect(parsed.chapters.map((c) => c.number)).toEqual(
+      Array.from({ length: 12 }, (_, i) => String(i + 1)),
+    );
+  });
+
+  it('still parses legacy CHAPTER N: Title markup', () => {
+    const parsed = markdownToStructure(`# BOOK: Legacy
+## CHAPTER 11: Legacy Title
+### SECTION 11.1: Body
+Text here.
+`);
+    expect(parsed.chapters[0].number).toBe('11');
+    expect(parsed.chapters[0].title).toBe('Legacy Title');
+  });
+});
+
+describe('automatic numbering', () => {
+  it('forces sequential numbers even when OCR collapses 11 → 1', async () => {
+    const { applyAutomaticNumbering } = await import('./numbering');
+    const chapters = Array.from({ length: 12 }, (_, i) => ({
+      // Simulate OCR losing the tens digit after chapter 10
+      number: i < 10 ? String(i + 1) : '1',
+      title: i < 10 ? `Title ${i + 1}` : `Chapter 1 — Title ${i + 1}`,
+      description: '',
+      rawText: '',
+      sections: [{ number: '1', title: 'Content', rawText: 'body' }],
+    }));
+    const numbered = applyAutomaticNumbering(chapters);
+    expect(numbered.map((c) => c.number)).toEqual(
+      Array.from({ length: 12 }, (_, i) => String(i + 1)),
+    );
+    expect(numbered[10].number).toBe('11');
+    expect(numbered[10].title).toBe('Title 11');
+    expect(numbered[11].number).toBe('12');
   });
 });

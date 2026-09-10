@@ -520,7 +520,7 @@ export function AboutPage() {
                 ))}
               </ul>
               <Link
-                to="/books/foundations-of-knowledge/read"
+                to="/books/foundations-of-knowledge"
                 className="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-ink-900 transition-all hover:bg-accent-light shadow-lg shadow-accent/20"
               >
                 <BookOpen size={15} /> Explore the Reader

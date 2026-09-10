@@ -23,6 +23,8 @@ interface ReaderChapterPanelProps {
 }
 
 function ChapterOrnament({ number }: { number: string }) {
+  const label = number.padStart(2, '0');
+  const fontSize = label.length >= 3 ? 14 : 18;
   return (
     <div className="reader-chapter-ornament" aria-hidden>
       <svg viewBox="0 0 80 80" className="h-16 w-16 text-accent">
@@ -40,10 +42,10 @@ function ChapterOrnament({ number }: { number: string }) {
           x="40"
           y="46"
           textAnchor="middle"
-          className="fill-accent text-[18px] font-bold"
-          style={{ fontFamily: 'Source Serif 4, Georgia, serif' }}
+          className="fill-accent font-bold"
+          style={{ fontFamily: 'Source Serif 4, Georgia, serif', fontSize }}
         >
-          {number.padStart(2, '0')}
+          {label}
         </text>
       </svg>
     </div>

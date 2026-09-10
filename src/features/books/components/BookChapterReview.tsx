@@ -48,7 +48,7 @@ export function BookChapterReview({ chapter, onChange }: BookChapterReviewProps)
       >
         <span
           className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors',
+            'flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums transition-colors',
             expanded ? 'bg-[#C9A646] text-white' : 'bg-[#C9A646]/10 text-[#C9A646]'
           )}
         >

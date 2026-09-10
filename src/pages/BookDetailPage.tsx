@@ -359,7 +359,13 @@ export function BookDetailPage() {
             </div>
 
             {/* CTA — Save Book only */}
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                to={`/books/${book.slug}/read`}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-800 sm:w-auto"
+              >
+                Start Reading
+              </Link>
               <BookBookmarkButton
                 slug={book.slug}
                 title={book.title}

@@ -12,7 +12,7 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 
 export function BookmarksPage() {
   usePageMeta({
-    title: 'Bookmarks — Islamic Digital Library',
+    title: 'Bookmarks  Islamic Digital Library',
     description: 'Your saved books and reading bookmarks in the Islamic Digital Library.',
     path: '/bookmarks',
   });
@@ -97,7 +97,7 @@ export function BookmarksPage() {
                             {saved.title}
                           </Link>
                           <Link
-                            to={`/books/${saved.slug}/read`}
+                            to={`/books/${saved.slug}`}
                             className="mt-1 inline-flex items-center gap-1 text-xs text-ink-500 hover:text-accent-dark"
                           >
                             Read <ArrowRight size={10} />

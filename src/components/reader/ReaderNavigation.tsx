@@ -1,13 +1,11 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, List } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface ReaderNavigationProps {
   prevLabel?: string | null;
   nextLabel?: string | null;
   onPrev?: () => void;
   onNext?: () => void;
-  bookSlug: string;
   isLast?: boolean;
 }
 
@@ -16,7 +14,6 @@ export function ReaderNavigation({
   nextLabel,
   onPrev,
   onNext,
-  bookSlug,
   isLast,
 }: ReaderNavigationProps) {
   return (
@@ -61,11 +58,11 @@ export function ReaderNavigation({
             End of Book
           </p>
           <Link
-            to={`/books/${bookSlug}`}
+            to="/library"
             className="inline-flex items-center gap-2 rounded-lg border reader-border px-5 py-2.5 text-sm font-medium transition-all hover:reader-accent"
             style={{ color: 'var(--reader-text)' }}
           >
-            <List size={16} /> Back to Table of Contents
+            <List size={16} /> Back to Library
           </Link>
         </div>
       )}

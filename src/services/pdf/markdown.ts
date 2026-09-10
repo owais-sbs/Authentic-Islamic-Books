@@ -1,6 +1,9 @@
 /**
  * Controlled Markdown intermediate representation for PDF imports.
  * Deterministic serialize/parse — not a general Markdown engine.
+ *
+ * Chapter/section numbers are always written as decimal digits so
+ * double-digit chapters (10, 11, 12…) round-trip correctly.
  */
 
 import type { DetectedChapter, DetectedMeta, DetectedSection } from '@/lib/pdfExtractor';
@@ -43,18 +46,20 @@ export function structureToMarkdown(draft: MarkdownBookDraft): string {
   }
 
   for (const ch of draft.chapters) {
-    const num = ch.number ? ` ${ch.number}` : '';
-    const title = ch.title ? `: ${ch.title}` : '';
-    lines.push(`## CHAPTER${num}${title}`.replace(/:\s*$/, ''));
+    // Format: ## CHAPTER <digits> — <title>
+    // Em-dash separator keeps multi-digit numbers unambiguous vs title text.
+    const num = (ch.number || '').trim() || '?';
+    const title = escapeOneLine(ch.title || '');
+    lines.push(title ? `## CHAPTER ${num} — ${title}` : `## CHAPTER ${num}`);
     lines.push('');
     if (ch.rawText.trim() && ch.sections.length === 0) {
       lines.push(ch.rawText.trim());
       lines.push('');
     }
     for (const sec of ch.sections) {
-      const sNum = sec.number ? ` ${sec.number}` : '';
-      const sTitle = sec.title ? `: ${sec.title}` : '';
-      lines.push(`### SECTION${sNum}${sTitle}`.replace(/:\s*$/, ''));
+      const sNum = (sec.number || '').trim() || '?';
+      const sTitle = escapeOneLine(sec.title || '');
+      lines.push(sTitle ? `### SECTION ${sNum} — ${sTitle}` : `### SECTION ${sNum}`);
       lines.push('');
       if (sec.rawText.trim()) {
         lines.push(sec.rawText.trim());
@@ -70,20 +75,35 @@ function parseHeadingMeta(line: string): { kind: 'chapter' | 'section' | 'intro'
   if (/^##\s+INTRODUCTION\s*$/i.test(line)) {
     return { kind: 'intro', num: '', title: 'Introduction' };
   }
-  const ch = /^##\s+CHAPTER(?:\s+([^:]+))?(?:\s*:\s*(.*))?$/i.exec(line);
+
+  // Preferred: ## CHAPTER 11 — Title  (also accepts : - –)
+  // Number group is digits only so "11" never truncates to "1".
+  const ch =
+    /^##\s+CHAPTER\s+(\d+(?:\.\d+)*)\s*[—–:\-]\s*(.+)$/i.exec(line) ||
+    /^##\s+CHAPTER\s+(\d+(?:\.\d+)*)\s*$/i.exec(line) ||
+    // Legacy colon / bare formats from older imports
+    /^##\s+CHAPTER(?:\s+(\d+(?:\.\d+)*))?(?:\s*:\s*(.*))?$/i.exec(line);
   if (ch) {
+    const num = (ch[1] || '').trim();
+    const title = (ch[2] || '').trim();
     return {
       kind: 'chapter',
-      num: (ch[1] || '').trim(),
-      title: (ch[2] || ch[1] || '').trim() || 'Chapter',
+      num,
+      title: title || (num ? `Chapter ${num}` : 'Chapter'),
     };
   }
-  const sec = /^###\s+SECTION(?:\s+([^:]+))?(?:\s*:\s*(.*))?$/i.exec(line);
+
+  const sec =
+    /^###\s+SECTION\s+(\d+(?:\.\d+)*)\s*[—–:\-]\s*(.+)$/i.exec(line) ||
+    /^###\s+SECTION\s+(\d+(?:\.\d+)*)\s*$/i.exec(line) ||
+    /^###\s+SECTION(?:\s+(\d+(?:\.\d+)*))?(?:\s*:\s*(.*))?$/i.exec(line);
   if (sec) {
+    const num = (sec[1] || '').trim();
+    const title = (sec[2] || '').trim();
     return {
       kind: 'section',
-      num: (sec[1] || '').trim(),
-      title: (sec[2] || sec[1] || '').trim() || 'Content',
+      num,
+      title: title || 'Content',
     };
   }
   return null;

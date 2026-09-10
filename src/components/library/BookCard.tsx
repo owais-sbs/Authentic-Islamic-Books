@@ -116,7 +116,7 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
       <p className="mt-2 text-sm leading-relaxed text-ink-500 line-clamp-2 flex-1">{book.description}</p>
       <div className="mt-4 pt-3 border-t border-line">
         <Link
-          to={`/books/${book.slug}/read`}
+          to={`/books/${book.slug}`}
           className="inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 text-sm font-medium text-ink-900 transition-colors hover:text-accent-dark -mx-1"
         >
           <BookOpen size={14} /> Read
