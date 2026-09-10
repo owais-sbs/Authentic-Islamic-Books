@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Search, BookOpen } from 'lucide-react';
+import { Menu, Search, BookOpen, Bookmark, X } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 
 const navLinks = [
+  { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   { label: 'Scholars', href: '/scholars' },
   { label: 'Categories', href: '/categories' },
@@ -28,7 +29,6 @@ export function Navbar() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
-    // on homepage, check immediately in case page loads scrolled
     onScroll();
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
@@ -43,8 +43,7 @@ export function Navbar() {
     }
   };
 
-  // On homepage: transparent when at top, solid when scrolled
-  // On all other pages: always solid
+  // Transparent only on home at top; always solid + high-contrast elsewhere
   const isTransparent = isHome && !scrolled && !searchOpen;
 
   return (
@@ -53,72 +52,76 @@ export function Navbar() {
         className={`sticky top-0 z-40 transition-all duration-300 ${
           isTransparent
             ? 'border-b border-transparent bg-transparent'
-            : scrolled
-            ? 'border-b border-white/10 bg-ink-900/95 backdrop-blur-md'
-            : 'border-b border-transparent bg-ink-900'
+            : 'border-b border-white/10 bg-ink-900/95 shadow-lg shadow-black/20 backdrop-blur-md'
         }`}
       >
-        <div className="container-page flex h-16 items-center justify-between gap-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-ink-900">
+        <div className="container-page flex h-16 items-center justify-between gap-3 sm:gap-4">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-ink-900 shadow-sm transition-transform duration-200 group-hover:scale-[1.04]">
               <BookOpen size={18} strokeWidth={1.5} />
             </div>
-            <div className="hidden sm:block">
-              <span className="text-sm font-semibold tracking-tight text-white">Islamic Digital Library</span>
-            </div>
+            <span className="hidden sm:block font-cinzel text-[13px] font-semibold tracking-wide text-white">
+              Islamic Digital Library
+            </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => {
               const active = location.pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className={`px-3.5 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`relative px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
                     active
-                      ? 'text-accent bg-white/10'
+                      ? 'text-accent'
                       : isTransparent
-                      ? 'text-white/80 hover:text-white hover:bg-white/10'
-                      : 'text-ink-300 hover:text-white hover:bg-white/5'
+                        ? 'text-white/90 hover:text-white'
+                        : 'text-white/75 hover:text-white'
                   }`}
                 >
                   {link.label}
+                  {active && (
+                    <motion.span
+                      layoutId="nav-underline"
+                      className="absolute inset-x-3.5 -bottom-0.5 h-0.5 rounded-full bg-accent"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Right side */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className={`rounded-md p-2 transition-colors ${
-                isTransparent
-                  ? 'text-white/70 hover:text-accent hover:bg-white/10'
-                  : 'text-ink-300 hover:bg-white/10 hover:text-accent'
-              }`}
+              className="rounded-full p-2.5 text-white/90 transition-colors hover:bg-white/10 hover:text-accent"
               aria-label="Search"
             >
-              <Search size={18} />
+              {searchOpen ? <X size={18} /> : <Search size={18} />}
             </button>
+
+            {/* Solid gold CTA — always visible on dark header */}
             <Link
               to="/bookmarks"
-              className={`hidden sm:block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isTransparent
-                  ? 'text-white/70 hover:text-white hover:bg-white/10'
-                  : 'text-ink-300 hover:bg-white/10 hover:text-white'
-              }`}
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-ink-900 shadow-sm transition-all duration-200 hover:bg-accent-light hover:shadow-md"
             >
+              <Bookmark size={14} strokeWidth={2.25} />
               Bookmarks
             </Link>
+
+            <Link
+              to="/bookmarks"
+              className="sm:hidden inline-flex h-10 w-10 items-center justify-center rounded-full bg-accent text-ink-900"
+              aria-label="Bookmarks"
+            >
+              <Bookmark size={16} strokeWidth={2.25} />
+            </Link>
+
             <button
               onClick={() => setMobileOpen(true)}
-              className={`lg:hidden rounded-md p-2.5 transition-colors ${
-                isTransparent ? 'text-white/70 hover:bg-white/10' : 'text-ink-300 hover:bg-white/10'
-              }`}
+              className="lg:hidden rounded-full p-2.5 text-white transition-colors hover:bg-white/10"
               aria-label="Open menu"
             >
               <Menu size={20} />
@@ -126,14 +129,13 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Inline search dropdown */}
         <AnimatePresence>
           {searchOpen && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.22 }}
               className="overflow-hidden border-t border-white/10 bg-ink-800"
             >
               <div className="container-page py-4">
@@ -145,7 +147,7 @@ export function Navbar() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search books, scholars, topics..."
-                    className="w-full rounded-lg border border-white/10 bg-white/5 py-3 pl-12 pr-4 text-sm text-white placeholder:text-ink-400 focus:border-accent focus:outline-none"
+                    className="w-full rounded-xl border border-white/15 bg-white/5 py-3 pl-12 pr-4 text-sm text-white placeholder:text-ink-400 focus:border-accent focus:outline-none"
                   />
                 </form>
               </div>
@@ -154,25 +156,16 @@ export function Navbar() {
         </AnimatePresence>
       </header>
 
-      {/* Mobile drawer */}
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} title="Menu">
         <nav className="flex flex-col gap-1">
-          <Link
-            to="/"
-            className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-              location.pathname === '/' ? 'bg-paper text-ink-900' : 'text-ink-600 hover:bg-paper/60'
-            }`}
-          >
-            Home
-          </Link>
           {navLinks.map((link) => {
             const active = location.pathname === link.href;
             return (
               <Link
                 key={link.href}
                 to={link.href}
-                className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                  active ? 'bg-paper text-ink-900' : 'text-ink-600 hover:bg-paper/60'
+                className={`rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                  active ? 'bg-accent/15 text-ink-900' : 'text-ink-600 hover:bg-paper/60'
                 }`}
               >
                 {link.label}
@@ -181,8 +174,9 @@ export function Navbar() {
           })}
           <Link
             to="/bookmarks"
-            className="rounded-lg px-3 py-2.5 text-sm font-medium text-ink-600 transition-colors hover:bg-paper/60"
+            className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-ink-900"
           >
+            <Bookmark size={16} />
             Bookmarks
           </Link>
         </nav>

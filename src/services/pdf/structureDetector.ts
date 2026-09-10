@@ -1,50 +1,250 @@
+/**
+ * Language-aware, contextual structure detection for Islamic books.
+ * NEVER invents fake chapters (e.g. every 5 pages) or fake word-count sections.
+ */
+
 import type { DetectedChapter, DetectedMeta, DetectedSection } from '@/lib/pdfExtractor';
+import { detectLanguage } from './language';
 import type { NormalizedBlock, NormalizedPage, StructureNode } from './types';
 
-const EXPLICIT_CHAPTER = [
-  /^chapter\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,100})$/i,
-  /^part\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,100})$/i,
-  /^book\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,100})$/i,
-  /^lesson\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,100})$/i,
+// ─── English ──────────────────────────────────────────────────────────────────
+
+const EN_CHAPTER = [
+  /^(chapter|part|lesson|unit|book)\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.*)$/i,
+  /^(\d{1,3})\s*[:\-–—.]\s+([A-Z][\w\s,'’\-–—]{2,80})$/,
+  /^([IVXLC]{1,8})\s*[:\-–—.]\s+([A-Z].{2,80})$/,
 ];
 
-const NUMBERED_CHAPTER = /^(\d{1,3})\s*[:\-–—.]\s+([A-Z\u0600-\u06FF].{2,90})$/;
-const SECTION_LINE = /^(\d+\.\d+(?:\.\d+)?)\s*[:\-–—.]?\s*(.{2,90})$/;
-const ROMAN = /^([IVXLC]+)\s*[:\-–—.]?\s*(.{2,90})$/i;
+const EN_SECTION = [
+  /^(\d+\.\d+(?:\.\d+)?)\s*[:\-–—.]?\s*(.{2,90})$/,
+];
 
-const INTRO_KEYWORDS = /^(introduction|preface|foreword|prologue)\b/i;
+const EN_INTRO =
+  /^(introduction|preface|foreword|prologue|author'?s?\s+introduction|translator'?s?\s+introduction)\b/i;
 
-function matchChapter(line: string): { num: string; title: string; confidence: StructureNode['confidence'] } | null {
-  for (const pat of EXPLICIT_CHAPTER) {
-    const m = pat.exec(line);
-    if (m) return { num: m[1] || '', title: (m[2] || '').trim(), confidence: 'high' };
+// ─── Arabic ───────────────────────────────────────────────────────────────────
+
+const AR_CHAPTER = [
+  /^(الكتاب|الباب|الفصل|الجزء|القسم|الدرس)\s+(.+)$/,
+  /^(باب|فصل|جزء|قسم|درس)\s+(.+)$/,
+];
+
+const AR_SECTION = [
+  /^(المبحث|المطلب|المسألة|الفرع)\s+(.+)$/,
+];
+
+const AR_INTRO = /^(مقدمة|المقدمة|تمهيد|تمهيدات)\b/;
+
+// ─── Urdu ─────────────────────────────────────────────────────────────────────
+
+const UR_CHAPTER = [
+  /^(کتاب|باب|فصل|حصہ|جزو|سبق)\s+(.+)$/,
+];
+
+const UR_SECTION = [
+  /^(مبحث|مطلب|مسئلہ)\s+(.+)$/,
+];
+
+const UR_INTRO = /^(مقدمہ|تمہید|پیش\s*لفظ)\b/;
+
+export type HeadingConfidence = 'high' | 'medium' | 'low';
+
+export interface DetectedHeading {
+  kind: 'introduction' | 'chapter' | 'section' | 'subsection';
+  number: string;
+  title: string;
+  confidence: HeadingConfidence;
+  language: 'en' | 'ar' | 'ur';
+  raw: string;
+}
+
+function trimTitle(t: string): string {
+  return t.replace(/^[:\-–—.\s]+/, '').replace(/[:\-–—.\s]+$/, '').trim();
+}
+
+export function matchHeadingLine(line: string): DetectedHeading | null {
+  const text = line.trim();
+  if (!text || text.length > 120) return null;
+  const lang = detectLanguage(text);
+
+  // Introduction (genuine only)
+  if (EN_INTRO.test(text) && text.length < 80) {
+    return { kind: 'introduction', number: '', title: text, confidence: 'high', language: 'en', raw: text };
   }
-  const num = NUMBERED_CHAPTER.exec(line);
-  if (num) return { num: num[1], title: num[2].trim(), confidence: 'high' };
-  const roman = ROMAN.exec(line);
-  if (roman && line.length < 90) return { num: roman[1], title: roman[2].trim(), confidence: 'medium' };
-  if (line.length <= 70 && line === line.toUpperCase() && line.split(/\s+/).length >= 2 && line.split(/\s+/).length <= 10) {
-    return { num: '', title: line, confidence: 'medium' };
+  if (AR_INTRO.test(text) && text.length < 80) {
+    return { kind: 'introduction', number: '', title: text, confidence: 'high', language: 'ar', raw: text };
   }
+  if (UR_INTRO.test(text) && text.length < 80) {
+    return { kind: 'introduction', number: '', title: text, confidence: 'high', language: 'ur', raw: text };
+  }
+
+  // Arabic chapter / section
+  if (lang === 'ar' || /[\u0600-\u06FF]/.test(text)) {
+    for (const pat of AR_SECTION) {
+      const m = pat.exec(text);
+      if (m) {
+        return {
+          kind: 'section',
+          number: '',
+          title: trimTitle(text),
+          confidence: 'high',
+          language: 'ar',
+          raw: text,
+        };
+      }
+    }
+    for (const pat of AR_CHAPTER) {
+      const m = pat.exec(text);
+      if (m) {
+        return {
+          kind: 'chapter',
+          number: '',
+          title: trimTitle(text),
+          confidence: 'high',
+          language: 'ar',
+          raw: text,
+        };
+      }
+    }
+  }
+
+  // Urdu
+  if (lang === 'ur') {
+    for (const pat of UR_SECTION) {
+      const m = pat.exec(text);
+      if (m) {
+        return {
+          kind: 'section',
+          number: '',
+          title: trimTitle(text),
+          confidence: 'high',
+          language: 'ur',
+          raw: text,
+        };
+      }
+    }
+    for (const pat of UR_CHAPTER) {
+      const m = pat.exec(text);
+      if (m) {
+        return {
+          kind: 'chapter',
+          number: '',
+          title: trimTitle(text),
+          confidence: 'high',
+          language: 'ur',
+          raw: text,
+        };
+      }
+    }
+  }
+
+  // English numbered section (1.1, 1.1.1)
+  for (const pat of EN_SECTION) {
+    const m = pat.exec(text);
+    if (m) {
+      const dots = (m[1].match(/\./g) || []).length;
+      return {
+        kind: dots >= 2 ? 'subsection' : 'section',
+        number: m[1],
+        title: trimTitle(m[2] || ''),
+        confidence: 'high',
+        language: 'en',
+        raw: text,
+      };
+    }
+  }
+
+  // English chapter
+  for (const pat of EN_CHAPTER) {
+    const m = pat.exec(text);
+    if (m) {
+      if (pat.source.startsWith('^(chapter')) {
+        return {
+          kind: 'chapter',
+          number: m[2] || '',
+          title: trimTitle(m[3] || ''),
+          confidence: 'high',
+          language: 'en',
+          raw: text,
+        };
+      }
+      return {
+        kind: 'chapter',
+        number: m[1] || '',
+        title: trimTitle(m[2] || ''),
+        confidence: 'medium',
+        language: 'en',
+        raw: text,
+      };
+    }
+  }
+
+  // Short ALL-CAPS — low confidence unless reinforced later
+  if (
+    text.length <= 70 &&
+    text === text.toUpperCase() &&
+    /^[A-Z]/.test(text) &&
+    text.split(/\s+/).length >= 2 &&
+    text.split(/\s+/).length <= 10 &&
+    !/[.!?]$/.test(text)
+  ) {
+    return {
+      kind: 'chapter',
+      number: '',
+      title: text,
+      confidence: 'low',
+      language: 'en',
+      raw: text,
+    };
+  }
+
   return null;
 }
 
-function matchSection(line: string, chapterNum: string): { num: string; title: string; confidence: StructureNode['confidence'] } | null {
-  const m = SECTION_LINE.exec(line);
-  if (m) return { num: m[1], title: m[2].trim(), confidence: 'high' };
-  if (INTRO_KEYWORDS.test(line) && line.length < 60) {
-    return { num: `${chapterNum}.0`, title: line.replace(/[.:]+$/, ''), confidence: 'high' };
+/** Boost confidence when the same heading pattern repeats across the document. */
+function reinforceConfidence(nodes: StructureNode[]): StructureNode[] {
+  const chapterTitles = nodes.filter((n) => n.kind === 'chapter').map((n) => n.title || '');
+  const explicitCount = chapterTitles.filter((t) =>
+    /^(chapter|part|lesson|unit|book|الباب|الفصل|باب|فصل)\b/i.test(t || ''),
+  ).length;
+
+  if (explicitCount >= 2) {
+    return nodes.map((n) =>
+      n.kind === 'chapter' && n.confidence === 'low'
+        ? { ...n, confidence: 'medium' as const }
+        : n,
+    );
   }
-  if (line.length <= 55 && /^[A-Z]/.test(line) && line.split(/\s+/).length <= 8 && !line.endsWith('.')) {
-    return { num: '', title: line, confidence: 'low' };
+
+  // Drop isolated low-confidence "chapters" that look like body sentences
+  if (explicitCount === 0) {
+    const filtered: StructureNode[] = [];
+    for (const n of nodes) {
+      if (n.kind === 'chapter' && n.confidence === 'low') {
+        // Convert to paragraph — do not invent structure
+        filtered.push({
+          kind: 'paragraph',
+          content: n.title || n.content,
+          confidence: 'low',
+        });
+        for (const child of n.children ?? []) filtered.push(child);
+      } else {
+        filtered.push(n);
+      }
+    }
+    return filtered;
   }
-  return null;
+
+  return nodes;
 }
 
 export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode[] {
   const nodes: StructureNode[] = [];
   let currentChapter: StructureNode | null = null;
   let currentSection: StructureNode | null = null;
+  let currentSubsection: StructureNode | null = null;
+  let inIntroduction = false;
+  let introNode: StructureNode | null = null;
 
   const pushParagraph = (text: string, type: NormalizedBlock['type'] = 'text') => {
     if (!text.trim()) return;
@@ -52,8 +252,18 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
       kind: type === 'quote' ? 'quote' : type === 'list' ? 'list' : 'paragraph',
       content: text.trim(),
       confidence: 'high',
+      language: detectLanguage(text),
     };
-    if (currentSection) {
+
+    if (inIntroduction && introNode) {
+      introNode.children = introNode.children ?? [];
+      introNode.children.push(node);
+      return;
+    }
+    if (currentSubsection) {
+      currentSubsection.children = currentSubsection.children ?? [];
+      currentSubsection.children.push(node);
+    } else if (currentSection) {
       currentSection.children = currentSection.children ?? [];
       currentSection.children.push(node);
     } else if (currentChapter) {
@@ -64,11 +274,29 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
     }
   };
 
-  const startChapter = (num: string, title: string, confidence: StructureNode['confidence']) => {
+  const startIntro = (title: string, confidence: HeadingConfidence) => {
+    inIntroduction = true;
+    currentChapter = null;
     currentSection = null;
+    currentSubsection = null;
+    introNode = {
+      kind: 'introduction',
+      title,
+      content: '',
+      confidence,
+      children: [],
+    };
+    nodes.push(introNode);
+  };
+
+  const startChapter = (num: string, title: string, confidence: HeadingConfidence) => {
+    inIntroduction = false;
+    introNode = null;
+    currentSection = null;
+    currentSubsection = null;
     currentChapter = {
       kind: 'chapter',
-      title: title || `Chapter ${num || nodes.filter((n) => n.kind === 'chapter').length + 1}`,
+      title: title || (num ? `Chapter ${num}` : 'Chapter'),
       content: num,
       confidence,
       children: [],
@@ -76,10 +304,18 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
     nodes.push(currentChapter);
   };
 
-  const startSection = (num: string, title: string, confidence: StructureNode['confidence']) => {
+  const startSection = (num: string, title: string, confidence: HeadingConfidence) => {
     if (!currentChapter) {
-      startChapter('1', 'Chapter 1', 'low');
+      // Section without chapter — open a container chapter from first real heading only
+      // Do NOT invent "Chapter 1"; use a neutral container only when a section pattern is high-confidence
+      if (confidence === 'high') {
+        startChapter('', 'Contents', 'medium');
+      } else {
+        pushParagraph(title);
+        return;
+      }
     }
+    currentSubsection = null;
     const chapter = currentChapter as StructureNode;
     currentSection = {
       kind: 'section',
@@ -92,9 +328,20 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
     chapter.children.push(currentSection);
   };
 
-  const activeChapterNum = (): string => {
-    if (currentChapter?.kind === 'chapter') return currentChapter.content || '1';
-    return String(nodes.filter((n) => n.kind === 'chapter').length || 1);
+  const startSubsection = (num: string, title: string, confidence: HeadingConfidence) => {
+    if (!currentSection) {
+      startSection(num.split('.').slice(0, 2).join('.'), title, confidence);
+    }
+    if (!currentSection) return;
+    currentSubsection = {
+      kind: 'subsection',
+      title,
+      content: num,
+      confidence,
+      children: [],
+    };
+    currentSection.children = currentSection.children ?? [];
+    currentSection.children.push(currentSubsection);
   };
 
   for (const page of pages) {
@@ -102,29 +349,33 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
       const line = block.text.trim();
       if (!line) continue;
 
-      if (block.type === 'possible-heading') {
-        const ch = matchChapter(line);
-        if (ch) {
-          startChapter(ch.num, ch.title || line, ch.confidence);
+      const preferHeading =
+        block.type === 'possible-heading' ||
+        block.confidence === 'high' ||
+        block.confidence === 'medium';
+
+      const heading = matchHeadingLine(line);
+      if (heading && (preferHeading || heading.confidence === 'high')) {
+        // Skip low-confidence mid-paragraph noise unless marked as heading
+        if (heading.confidence === 'low' && block.type !== 'possible-heading') {
+          pushParagraph(line, block.type);
           continue;
         }
-        const sec = matchSection(line, activeChapterNum());
-        if (sec && sec.confidence !== 'low') {
-          startSection(sec.num, sec.title, sec.confidence);
+
+        if (heading.kind === 'introduction') {
+          startIntro(heading.title, heading.confidence);
           continue;
         }
-      }
-
-      const ch = matchChapter(line);
-      if (ch) {
-        startChapter(ch.num, ch.title || line, ch.confidence);
-        continue;
-      }
-
-      if (currentChapter) {
-        const sec = matchSection(line, activeChapterNum());
-        if (sec && (sec.confidence === 'high' || (sec.confidence === 'medium' && line.length < 45))) {
-          startSection(sec.num, sec.title, sec.confidence);
+        if (heading.kind === 'chapter') {
+          startChapter(heading.number, heading.title || heading.raw, heading.confidence);
+          continue;
+        }
+        if (heading.kind === 'section') {
+          startSection(heading.number, heading.title || heading.raw, heading.confidence);
+          continue;
+        }
+        if (heading.kind === 'subsection') {
+          startSubsection(heading.number, heading.title || heading.raw, heading.confidence);
           continue;
         }
       }
@@ -133,96 +384,168 @@ export function detectStructureFromPages(pages: NormalizedPage[]): StructureNode
     }
   }
 
-  return nodes;
+  return reinforceConfidence(nodes);
 }
 
-export function structureToDetectedChapters(nodes: StructureNode[], pages: NormalizedPage[]): DetectedChapter[] {
+function collectText(nodes: StructureNode[]): string {
+  const parts: string[] = [];
+  for (const n of nodes) {
+    if (n.content && (n.kind === 'paragraph' || n.kind === 'quote' || n.kind === 'list')) {
+      parts.push(n.content);
+    }
+    if (n.children?.length) parts.push(collectText(n.children));
+  }
+  return parts.filter(Boolean).join('\n\n');
+}
+
+/**
+ * Convert structure nodes to DetectedChapter[].
+ * If no genuine chapters: one "Unstructured Content" chapter — NEVER fake page-based chapters.
+ * If a chapter has no real sections: one "Content" section holding body text — NEVER word-count sections.
+ */
+export function structureToDetectedChapters(
+  nodes: StructureNode[],
+  _pages: NormalizedPage[],
+): DetectedChapter[] {
   const chapterNodes = nodes.filter((n) => n.kind === 'chapter');
-  if (chapterNodes.length > 0) {
-    return chapterNodes.map((ch, ci) => {
-      const sections = (ch.children ?? [])
-        .filter((c) => c.kind === 'section')
-        .map((sec, si) => ({
-          number: sec.content || `${ci + 1}.${si + 1}`,
-          title: sec.title || `Section ${si + 1}`,
-          rawText: collectText(sec.children ?? []),
-        }));
 
-      const bodyParagraphs = (ch.children ?? []).filter((c) => c.kind === 'paragraph' || c.kind === 'quote' || c.kind === 'list');
-      const chapterBody = collectText(bodyParagraphs);
-      const sectionList = sections.length > 0
-        ? sections
-        : splitByWordCount(chapterBody || collectText(ch.children ?? []), String(ci + 1));
+  if (chapterNodes.length === 0) {
+    const body = collectText(nodes.filter((n) => n.kind !== 'introduction'));
+    if (!body.trim()) return [];
+    return [
+      {
+        number: '',
+        title: 'Unstructured Content',
+        description: '',
+        rawText: '',
+        sections: [
+          {
+            number: '',
+            title: 'Content',
+            rawText: body,
+          },
+        ],
+      },
+    ];
+  }
 
+  return chapterNodes.map((ch, ci) => {
+    const sectionNodes = (ch.children ?? []).filter((c) => c.kind === 'section');
+    const bodyParagraphs = (ch.children ?? []).filter(
+      (c) => c.kind === 'paragraph' || c.kind === 'quote' || c.kind === 'list',
+    );
+    const chapterBody = collectText(bodyParagraphs);
+
+    const sections: DetectedSection[] = sectionNodes.map((sec, si) => {
+      const subText = collectText(
+        (sec.children ?? []).filter((c) => c.kind === 'subsection'),
+      );
+      const own = collectText(
+        (sec.children ?? []).filter((c) => c.kind !== 'subsection'),
+      );
+      const raw = [own, subText].filter(Boolean).join('\n\n');
+      // Flatten subsections into section content with markdown-like markers preserved in text
+      const subBlocks = (sec.children ?? []).filter((c) => c.kind === 'subsection');
+      let combined = own;
+      for (const sub of subBlocks) {
+        const subBody = collectText(sub.children ?? []);
+        combined += `\n\n${sub.title || sub.content}\n\n${subBody}`;
+      }
+      return {
+        number: sec.content || '',
+        title: sec.title || `Section ${si + 1}`,
+        rawText: combined.trim() || raw,
+      };
+    });
+
+    if (sections.length === 0) {
       return {
         number: ch.content || String(ci + 1),
         title: ch.title || `Chapter ${ci + 1}`,
         description: '',
-        rawText: chapterBody,
-        sections: sectionList,
+        rawText: '',
+        sections: [
+          {
+            number: ch.content || String(ci + 1),
+            title: 'Content',
+            rawText: chapterBody || collectText(ch.children ?? []),
+          },
+        ],
       };
-    });
-  }
-
-  const PAGES_PER_CHAPTER = 5;
-  const numChapters = Math.max(1, Math.ceil(pages.length / PAGES_PER_CHAPTER));
-  const chapters: DetectedChapter[] = [];
-
-  for (let ci = 0; ci < numChapters; ci++) {
-    const chunkPages = pages.slice(ci * PAGES_PER_CHAPTER, (ci + 1) * PAGES_PER_CHAPTER);
-    const rawText = chunkPages.flatMap((p) => p.blocks.map((b) => b.text)).join('\n');
-    if (!rawText.trim()) continue;
-    chapters.push({
-      number: String(ci + 1),
-      title: `Chapter ${ci + 1}`,
-      description: '',
-      rawText,
-      sections: splitByWordCount(rawText, String(ci + 1)),
-    });
-  }
-
-  return chapters;
-}
-
-function collectText(nodes: StructureNode[]): string {
-  return nodes.map((n) => n.content).join('\n\n');
-}
-
-function splitByWordCount(text: string, chapterNum: string): DetectedSection[] {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-  const WORDS_PER_SECTION = 400;
-  const numSections = Math.min(20, Math.max(1, Math.round(words.length / WORDS_PER_SECTION)));
-  const chunkSize = Math.ceil(words.length / numSections);
-  const sections: DetectedSection[] = [];
-
-  for (let i = 0; i < numSections; i++) {
-    const chunk = words.slice(i * chunkSize, (i + 1) * chunkSize).join(' ');
-    if (chunk.trim()) {
-      sections.push({
-        number: `${chapterNum}.${i + 1}`,
-        title: `Section ${chapterNum}.${i + 1}`,
-        rawText: chunk,
-      });
     }
-  }
-  return sections;
+
+    // Prepend orphan chapter paragraphs before first section
+    if (chapterBody.trim()) {
+      sections[0] = {
+        ...sections[0],
+        rawText: `${chapterBody.trim()}\n\n${sections[0].rawText}`.trim(),
+      };
+    }
+
+    return {
+      number: ch.content || String(ci + 1),
+      title: ch.title || `Chapter ${ci + 1}`,
+      description: '',
+      rawText: '',
+      sections,
+    };
+  });
+}
+
+export function countLowConfidenceHeadings(nodes: StructureNode[]): number {
+  let n = 0;
+  const walk = (list: StructureNode[]) => {
+    for (const node of list) {
+      if (
+        (node.kind === 'chapter' || node.kind === 'section' || node.kind === 'subsection') &&
+        node.confidence === 'low'
+      ) {
+        n += 1;
+      }
+      if (node.children) walk(node.children);
+    }
+  };
+  walk(nodes);
+  return n;
+}
+
+export function extractIntroductionText(nodes: StructureNode[]): string {
+  const intro = nodes.find((n) => n.kind === 'introduction');
+  if (intro) return collectText(intro.children ?? []);
+  // Genuine intro heading may have been stored as first chapter titled Introduction
+  const maybe = nodes.find(
+    (n) =>
+      n.kind === 'chapter' &&
+      n.title &&
+      /^(introduction|preface|foreword|prologue|مقدمة|المقدمة|تمهيد|مقدمہ|تمہید)/i.test(n.title),
+  );
+  if (maybe) return collectText(maybe.children ?? []);
+  return '';
 }
 
 export function detectMetaFromText(fullText: string, fileName: string): DetectedMeta {
   const lines = fullText.split('\n').map((l) => l.trim()).filter(Boolean);
   const fileTitle = fileName.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim();
 
-  const titleLine = lines.slice(0, 20).find(
-    (l) => l.length >= 4 && l.length <= 90 && l.split(/\s+/).length <= 14 && !/^\d+$/.test(l),
+  const titleLine = lines.slice(0, 25).find(
+    (l) =>
+      l.length >= 4 &&
+      l.length <= 100 &&
+      l.split(/\s+/).length <= 16 &&
+      !/^\d+$/.test(l) &&
+      !matchHeadingLine(l),
   );
 
-  const authorLine = lines.slice(0, 40).find((l) => /^(by|author|written by|compiled by|translated by)\s+/i.test(l));
+  const authorLine = lines.slice(0, 50).find((l) =>
+    /^(by|author|written by|compiled by|translated by|المؤلف|تصنیف|مولف)\s*/i.test(l),
+  );
   const author = authorLine
-    ? authorLine.replace(/^(by|author|written by|compiled by|translated by)\s*/i, '').trim()
+    ? authorLine
+        .replace(/^(by|author|written by|compiled by|translated by|المؤلف|تصنیف|مولف)\s*[:：]?\s*/i, '')
+        .trim()
     : '';
 
-  const descLine = lines.slice(0, 50).find(
+  const descLine = lines.slice(0, 60).find(
     (l) => l.length > 30 && l.length < 250 && l.split(/\s+/).length > 5 && l !== titleLine,
   );
 

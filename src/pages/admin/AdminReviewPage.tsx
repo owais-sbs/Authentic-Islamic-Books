@@ -5,6 +5,7 @@ import { BookReviewHeader } from '@/features/books/components/BookReviewHeader';
 import { BookReviewMetadata } from '@/features/books/components/BookReviewMetadata';
 import { BookReviewContent } from '@/features/books/components/BookReviewContent';
 import { BookReviewStructure } from '@/features/books/components/BookReviewStructure';
+import { BookReviewExtraction } from '@/features/books/components/BookReviewExtraction';
 import { BookDocumentUpload } from '@/features/books/components/BookDocumentUpload';
 import { mockBookWithStructure, mockBooks } from '@/features/books/data/mockBooks';
 import { useBookStore } from '@/hooks/useBookStore';
@@ -22,8 +23,19 @@ import {
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { showBookSavedSuccess, showNewBookWelcome } from '@/lib/swal';
 import { notifyBooksChanged } from '@/hooks/useAdminBooks';
-import type { BookWithStructure } from '@/features/books/types';
+import type { BookExtractionInfo, BookWithStructure } from '@/features/books/types';
 import type { Book } from '@/types';
+
+function loadExtractionInfo(bookId: string | undefined): BookExtractionInfo | undefined {
+  if (!bookId) return undefined;
+  try {
+    const raw = sessionStorage.getItem(`idl-extract-${bookId}`);
+    if (!raw) return undefined;
+    return JSON.parse(raw) as BookExtractionInfo;
+  } catch {
+    return undefined;
+  }
+}
 
 function loadInitialBook(
   bookId: string | undefined,
@@ -51,9 +63,11 @@ export function AdminReviewPage() {
   const resetKey = (location.state as { reset?: number } | null)?.reset;
   const { getById, addBook } = useBookStore();
 
-  const [book, setBook] = useState<BookWithStructure>(() =>
-    loadInitialBook(bookId, getById, isNewBook)
-  );
+  const [book, setBook] = useState<BookWithStructure>(() => {
+    const initial = loadInitialBook(bookId, getById, isNewBook);
+    const extract = loadExtractionInfo(bookId) ?? initial.extractionInfo;
+    return extract ? { ...initial, extractionInfo: extract } : initial;
+  });
   const [isDirty, setIsDirty] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -97,7 +111,8 @@ export function AdminReviewPage() {
       .then((remote) => {
         if (cancelled) return;
         if (remote) {
-          setBook(remote);
+          const extract = loadExtractionInfo(bookId) ?? remote.extractionInfo;
+          setBook(extract ? { ...remote, extractionInfo: extract } : remote);
           setIsDirty(false);
         }
       })
@@ -122,6 +137,16 @@ export function AdminReviewPage() {
   }, []);
 
   function handlePdfImported(imported: BookWithStructure) {
+    if (imported.extractionInfo && imported.id) {
+      try {
+        sessionStorage.setItem(
+          `idl-extract-${imported.id}`,
+          JSON.stringify(imported.extractionInfo),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
     setBook(imported);
     setIsDirty(true);
     setPdfImported(true);
@@ -255,6 +280,7 @@ export function AdminReviewPage() {
           <div id="review-metadata">
             <BookReviewMetadata book={book} onChange={patch} isNewBook={isNewBook} />
           </div>
+          <BookReviewExtraction book={book} />
           <div id="review-introduction">
             <BookReviewContent
               book={book}

@@ -1,4 +1,5 @@
 import type { ContentBlock } from '@/types';
+import { normalizeDisplayText } from '@/services/content/normalizeText';
 
 const HADITH_HEADER_RE =
   /^(The\s+(?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth|\d+(?:st|nd|rd|th)?)\s+Hadith)\b[:\s-]*/i;
@@ -24,6 +25,8 @@ const JUNK_PATTERNS = [
   /(?:\b[A-Z]\s+){5,}[A-Z]\b/,
 ];
 
+const SEMANTIC_TYPES = new Set(['arabic', 'quran', 'hadith', 'footnote']);
+
 function collapseSpacedCaps(text: string): string {
   const spaced = text.match(/(?:\b[A-Z]\s+){4,}[A-Z]\b/);
   if (spaced) return text.replace(spaced[0], '').trim();
@@ -33,19 +36,16 @@ function collapseSpacedCaps(text: string): string {
 /** Drop PDF cover-page noise and developer-doc fragments. */
 export function isJunkReaderText(text: string): boolean {
   const normalized = text.trim();
-  if (!normalized || normalized.length < 12) return true;
+  if (!normalized) return true;
+  // Do not reject short legitimate lines (headings, Arabic phrases, sources)
   return JUNK_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
-/** Clean PDF/import spacing artifacts for comfortable reading. */
+/** Clean PDF/import spacing artifacts for comfortable reading (single-line safe). */
 export function normalizeReaderText(text: string): string {
   return collapseSpacedCaps(
-    text
-      .replace(/\r\n/g, '\n')
-      .replace(/\u00a0/g, ' ')
+    normalizeDisplayText(text)
       .replace(/\s+/g, ' ')
-      .replace(/\s+([,.;:!?])/g, '$1')
-      .replace(/\bAL\s*-\s*/gi, 'Al-')
       .replace(/\bMuslim\s+s\b/gi, 'Muslims')
       .replace(/\s+'/g, "'")
       .replace(/'\s+/g, "'")
@@ -148,11 +148,48 @@ function expandParagraphBlock(text: string): ContentBlock[] {
   return pieces.flatMap((piece) => chunkToBlocks(piece));
 }
 
-/** Improve dense imported content into headings, quotes, and shorter paragraphs. */
+/**
+ * Light post-pass for reader polish. Preserves semantic blocks from the
+ * content parser (arabic / quran / hadith / footnote).
+ */
 export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
   const expanded: ContentBlock[] = [];
 
   for (const block of blocks) {
+    if (SEMANTIC_TYPES.has(block.type)) {
+      if (block.type === 'arabic') {
+        const text = normalizeDisplayText(block.text);
+        if (text) expanded.push({ ...block, text });
+        continue;
+      }
+      if (block.type === 'quran') {
+        expanded.push({
+          ...block,
+          arabic: block.arabic ? normalizeDisplayText(block.arabic) : block.arabic,
+          translation: block.translation ? normalizeReaderText(block.translation) : block.translation,
+          reference: block.reference ? normalizeDisplayText(block.reference) : block.reference,
+        });
+        continue;
+      }
+      if (block.type === 'hadith') {
+        const text = normalizeReaderText(block.text);
+        if (!isJunkReaderText(text)) {
+          expanded.push({
+            ...block,
+            text,
+            narrator: block.narrator ? normalizeReaderText(block.narrator) : block.narrator,
+            reference: block.reference ? normalizeDisplayText(block.reference) : block.reference,
+          });
+        }
+        continue;
+      }
+      if (block.type === 'footnote') {
+        const text = normalizeReaderText(block.text);
+        if (text) expanded.push({ ...block, text });
+        continue;
+      }
+    }
+
     if (block.type === 'paragraph' && block.text.length > 120) {
       expanded.push(...expandParagraphBlock(block.text));
       continue;
@@ -177,8 +214,20 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
     if (block.type === 'quote') {
       const text = normalizeReaderText(block.text);
       if (!isJunkReaderText(text)) {
-        expanded.push({ ...block, text });
+        expanded.push({
+          ...block,
+          text,
+          attribution: block.attribution ? normalizeReaderText(block.attribution) : block.attribution,
+          author: block.author ? normalizeReaderText(block.author) : block.author,
+          source: block.source ? normalizeDisplayText(block.source) : block.source,
+        });
       }
+      continue;
+    }
+
+    if (block.type === 'reference') {
+      const text = normalizeDisplayText(block.text);
+      if (text) expanded.push({ ...block, text });
       continue;
     }
 
@@ -186,8 +235,12 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
   }
 
   return expanded.filter((block) => {
+    if (block.type === 'quran') {
+      return Boolean(block.arabic || block.translation || block.reference);
+    }
+    if (block.type === 'list') return block.items.length > 0;
     if ('text' in block && typeof block.text === 'string') {
-      return !isJunkReaderText(block.text);
+      return block.type === 'arabic' ? block.text.trim().length > 0 : !isJunkReaderText(block.text);
     }
     return true;
   });

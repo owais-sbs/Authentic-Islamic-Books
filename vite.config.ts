@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
 function ogImagePlugin(siteUrl: string) {
-  const ogImage = siteUrl ? `${siteUrl.replace(/\/$/, '')}/og-image.png` : '/og-image.png';
+  const ogImage = siteUrl ? `${siteUrl.replace(/\/$/, '')}/og-image.jpg` : '/og-image.jpg';
 
   return {
     name: 'og-image-meta',
@@ -31,6 +31,10 @@ export default defineConfig(({ mode }) => {
     },
     worker: {
       format: 'es',
+    },
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
     },
   };
 });

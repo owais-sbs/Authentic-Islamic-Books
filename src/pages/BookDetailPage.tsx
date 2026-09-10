@@ -17,6 +17,7 @@ import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache } from '@/li
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { NotFoundPage } from './NotFoundPage';
 import { cn } from '@/lib/utils';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import type { BookSection, BookChapter, Book, ContentBlock } from '@/types';
 
 // ─── Section accordion ────────────────────────────────────────────────────────
@@ -231,6 +232,15 @@ export function BookDetailPage() {
   );
   const [loading, setLoading] = useState(!book && isSupabaseConfigured());
   const [notFound, setNotFound] = useState(false);
+
+  usePageMeta({
+    title: book
+      ? `${book.title} — Islamic Digital Library`
+      : 'Book — Islamic Digital Library',
+    description: book?.description?.slice(0, 160) ||
+      'Read authentic Islamic scholarship in a structured English reading experience.',
+    path: slug ? `/books/${slug}` : undefined,
+  });
 
   // 2. If not found synchronously AND Supabase is configured, fetch async
   useEffect(() => {

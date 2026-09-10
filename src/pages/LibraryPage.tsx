@@ -1,13 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, LayoutGrid, List, SlidersHorizontal, X, BookOpen } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHero } from '@/components/layout/PageHero';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { LibraryFilters } from '@/components/library/LibraryFilters';
 import { BookGrid } from '@/components/library/BookGrid';
 import { Drawer } from '@/components/ui/Drawer';
 import { useLibraryFilters, type SortOption } from '@/hooks/useLibraryFilters';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: 'popular', label: 'Most Popular' },
@@ -18,7 +20,16 @@ const sortOptions: { value: SortOption; label: string }[] = [
   { value: 'za', label: 'Z–A' },
 ];
 
+const HERO_IMG =
+  'https://images.pexels.com/photos/1370295/pexels-photo-1370295.jpeg?auto=compress&cs=tinysrgb&w=1600&h=700&fit=crop';
+
 export function LibraryPage() {
+  usePageMeta({
+    title: 'Library — Islamic Digital Library',
+    description: 'Browse and filter authentic Islamic books by scholar, subject, and Hijri period.',
+    path: '/library',
+  });
+
   const {
     filters,
     filteredBooks,
@@ -36,29 +47,27 @@ export function LibraryPage() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
-  const sortLabel = sortOptions.find((s) => s.value === filters.sort)?.label || 'Most Popular';
-
   return (
     <PageContainer>
-      <div className="container-page py-8">
+      <PageHero
+        eyebrow="The Collection"
+        title="Islamic Library"
+        description={`Browse ${totalBooks} ${totalBooks === 1 ? 'book' : 'books'} from across centuries of Islamic scholarship.`}
+        imageUrl={HERO_IMG}
+        compact
+      />
+
+      <div className="container-page py-8 sm:py-10">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Library' }]} />
 
-        <div className="mb-6">
-          <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-ink-900">Islamic Library</h1>
-          <p className="mt-2 text-ink-500 max-w-2xl">
-            Browse {totalBooks} {totalBooks === 1 ? 'book' : 'books'} from across centuries of Islamic scholarship. Filter by Hijri period, scholar, or subject.
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-6 max-w-2xl">
+        <div className="relative mb-6 mt-4 max-w-2xl">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
           <input
             type="text"
             value={filters.query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title or description..."
-            className="w-full rounded-lg border border-line bg-cream py-3 pl-12 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
+            className="w-full rounded-xl border border-line bg-cream py-3 pl-12 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
           />
           {filters.query && (
             <button
@@ -71,11 +80,10 @@ export function LibraryPage() {
           )}
         </div>
 
-        {/* Mobile filter button */}
         <div className="mb-4 flex items-center justify-between lg:hidden">
           <button
             onClick={() => setFilterDrawerOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-line bg-cream px-4 py-2.5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-cream px-4 py-2.5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
           >
             <SlidersHorizontal size={16} /> Filters
           </button>
@@ -83,7 +91,6 @@ export function LibraryPage() {
         </div>
 
         <div className="flex gap-8">
-          {/* Desktop sidebar */}
           <aside className="hidden lg:block w-64 shrink-0">
             <div className="sticky top-24">
               <LibraryFilters
@@ -97,20 +104,17 @@ export function LibraryPage() {
             </div>
           </aside>
 
-          {/* Results */}
           <div className="flex-1 min-w-0">
-            {/* Toolbar */}
-            <div className="mb-5 flex items-center justify-between border-b border-line pb-4">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+              <span className="text-sm font-medium text-ink-900">
+                {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}
+              </span>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-ink-900">{filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Sort */}
                 <div className="relative">
                   <select
                     value={filters.sort}
                     onChange={(e) => setSort(e.target.value as SortOption)}
-                    className="appearance-none rounded-lg border border-line bg-cream py-2 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+                    className="appearance-none rounded-xl border border-line bg-cream py-2 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
                   >
                     {sortOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -118,13 +122,14 @@ export function LibraryPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 text-xs">▾</span>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 text-xs">
+                    ▾
+                  </span>
                 </div>
-                {/* View toggle */}
-                <div className="flex rounded-lg border border-line bg-cream">
+                <div className="flex rounded-xl border border-line bg-cream">
                   <button
                     onClick={() => setView('grid')}
-                    className={`flex h-9 w-9 items-center justify-center rounded-l-lg transition-colors ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-l-xl transition-colors ${
                       view === 'grid' ? 'bg-ink-900 text-cream' : 'text-ink-500 hover:text-ink-900'
                     }`}
                     aria-label="Grid view"
@@ -134,7 +139,7 @@ export function LibraryPage() {
                   </button>
                   <button
                     onClick={() => setView('list')}
-                    className={`flex h-9 w-9 items-center justify-center rounded-r-lg transition-colors ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-r-xl transition-colors ${
                       view === 'list' ? 'bg-ink-900 text-cream' : 'text-ink-500 hover:text-ink-900'
                     }`}
                     aria-label="List view"
@@ -146,7 +151,6 @@ export function LibraryPage() {
               </div>
             </div>
 
-            {/* Results */}
             {filteredBooks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <BookOpen size={40} className="text-ink-300" />
@@ -159,7 +163,7 @@ export function LibraryPage() {
                 {hasActiveFilters && (
                   <button
                     onClick={clearAll}
-                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-ink-800"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-ink-800"
                   >
                     <X size={14} /> Clear Filters
                   </button>
@@ -169,10 +173,10 @@ export function LibraryPage() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`${view}-${filteredBooks.length}-${searchParams.toString()}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <BookGrid books={filteredBooks} variant={view} />
                 </motion.div>
@@ -182,7 +186,6 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {/* Mobile filter drawer */}
       <Drawer
         open={filterDrawerOpen}
         onClose={() => setFilterDrawerOpen(false)}

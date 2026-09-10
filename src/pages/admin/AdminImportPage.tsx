@@ -8,17 +8,19 @@ import { reviewBookToPublicBook } from '@/lib/bookTransform';
 import { useBookStore } from '@/hooks/useBookStore';
 import { notifyBooksChanged } from '@/hooks/useAdminBooks';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { formatMaxBookPdfSize, validateBookPdfFile } from '@/lib/uploadLimits';
 import { cn } from '@/lib/utils';
 
 const STEPS = [
-  { id: 'read', label: 'Reading PDF document' },
-  { id: 'extract', label: 'Extracting text content' },
-  { id: 'normalize', label: 'Cleaning extracted text' },
+  { id: 'read', label: 'Reading PDF' },
+  { id: 'extract', label: 'Extracting text' },
+  { id: 'ocr', label: 'OCR for scanned pages' },
+  { id: 'normalize', label: 'Normalizing content' },
+  { id: 'languages', label: 'Detecting languages' },
   { id: 'meta', label: 'Detecting title & author' },
-  { id: 'chapters', label: 'Detecting chapters' },
-  { id: 'sections', label: 'Detecting sections' },
-  { id: 'numbering', label: 'Generating numbering' },
-  { id: 'build', label: 'Building book structure' },
+  { id: 'chapters', label: 'Detecting chapters and sections' },
+  { id: 'markdown', label: 'Building book structure' },
+  { id: 'build', label: 'Ready for review' },
   { id: 'save', label: 'Saving to shared library' },
 ];
 
@@ -41,6 +43,8 @@ export function AdminImportPage() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [steps, setSteps] = useState<StepState[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [progressDetail, setProgressDetail] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
   const [result, setResult] = useState<{
     bookId: string;
     title: string;
@@ -74,8 +78,9 @@ export function AdminImportPage() {
   }
 
   function handleFileSelect(f: File) {
-    if (f.type !== 'application/pdf') {
-      setErrorMsg('Please select a valid PDF file.');
+    const validation = validateBookPdfFile(f);
+    if (!validation.ok) {
+      setErrorMsg(validation.message);
       return;
     }
     setFile(f);
@@ -101,23 +106,43 @@ export function AdminImportPage() {
       const stageToStep: Record<string, string> = {
         read: 'read',
         extract: 'extract',
+        ocr: 'ocr',
         normalize: 'normalize',
+        languages: 'languages',
         meta: 'meta',
         chapters: 'chapters',
-        sections: 'sections',
-        numbering: 'numbering',
+        sections: 'chapters',
+        numbering: 'chapters',
+        markdown: 'markdown',
         build: 'build',
       };
 
       advanceStep('read');
-      const reviewBook = await importPdfFile(file, (stage) => {
+      const reviewBook = await importPdfFile(file, (stage, message, detail) => {
         const stepId = stageToStep[stage];
         if (stepId) advanceStep(stepId);
+        if (message) setProgressDetail(message);
+        if (detail?.percent != null) setProgressPercent(detail.percent);
+        else if (detail?.page != null && detail?.totalPages) {
+          setProgressPercent(Math.round((detail.page / detail.totalPages) * 55));
+        }
       });
 
-      for (const step of ['read', 'extract', 'normalize', 'meta', 'chapters', 'sections', 'numbering', 'build']) {
+      for (const step of [
+        'read',
+        'extract',
+        'ocr',
+        'normalize',
+        'languages',
+        'meta',
+        'chapters',
+        'markdown',
+        'build',
+      ]) {
         setStep(step, 'done');
       }
+      setProgressPercent(100);
+      setProgressDetail('Ready for review');
 
       advanceStep('save');
 
@@ -131,6 +156,17 @@ export function AdminImportPage() {
         if (saved.coverUrl) bookWithStatus.coverUrl = saved.coverUrl;
         syncedToCloud = true;
         await refreshSupabasePublishedCache().catch(() => {});
+      }
+
+      if (bookWithStatus.extractionInfo) {
+        try {
+          sessionStorage.setItem(
+            `idl-extract-${bookWithStatus.id}`,
+            JSON.stringify(bookWithStatus.extractionInfo),
+          );
+        } catch {
+          /* ignore quota */
+        }
       }
 
       const publicBook = reviewBookToPublicBook(bookWithStatus);
@@ -205,7 +241,7 @@ export function AdminImportPage() {
             </div>
             <p className="text-[15px] font-semibold text-[#0B1B2B]">Drag &amp; drop your PDF here</p>
             <p className="mt-1 text-[13px] text-[#94A3B8]">or click to browse</p>
-            <p className="mt-3 text-[12px] text-[#CBD5E1]">Supported: PDF · Max 100 MB</p>
+            <p className="mt-3 text-[12px] text-[#CBD5E1]">Supported: PDF · Max {formatMaxBookPdfSize()}</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -256,9 +292,27 @@ export function AdminImportPage() {
 
         {(phase === 'processing' || phase === 'done' || phase === 'error') && steps.length > 0 && (
           <div className="rounded-xl border border-[#E5E1D8] bg-white p-6">
-            <p className="mb-4 text-[13px] font-semibold text-[#0B1B2B]">
+            <p className="mb-2 text-[13px] font-semibold text-[#0B1B2B]">
               {phase === 'processing' ? 'Processing…' : phase === 'done' ? 'Complete' : 'Failed'}
             </p>
+            {phase === 'processing' && (progressDetail || progressPercent > 0) && (
+              <div className="mb-4 rounded-lg border border-[#E5E1D8] bg-[#FAFAF8] px-3 py-2.5">
+                {progressDetail && (
+                  <p className="text-[13px] font-medium text-[#0B1B2B]">{progressDetail}</p>
+                )}
+                <div className="mt-2">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E1D8]">
+                    <div
+                      className="h-full rounded-full bg-[#C9A646] transition-all duration-300"
+                      style={{ width: `${Math.min(100, progressPercent)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#64748B] tabular-nums">
+                    {Math.round(progressPercent)}%
+                  </p>
+                </div>
+              </div>
+            )}
             <ol className="space-y-2.5">
               {steps.map((step, i) => (
                 <li key={step.id} className="flex items-center gap-3">

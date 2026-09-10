@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { FileUp, Loader2, X } from 'lucide-react';
 import { importPdfFile } from '@/lib/pdfImportHelpers';
+import { formatMaxBookPdfSize, validateBookPdfFile } from '@/lib/uploadLimits';
 import type { BookWithStructure } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -15,8 +16,9 @@ export function BookDocumentUpload({ onImported }: BookDocumentUploadProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function processFile(f: File) {
-    if (f.type !== 'application/pdf') {
-      setError('Please upload a PDF document.');
+    const validation = validateBookPdfFile(f);
+    if (!validation.ok) {
+      setError(validation.message);
       return;
     }
     setFile(f);
@@ -92,7 +94,7 @@ export function BookDocumentUpload({ onImported }: BookDocumentUploadProps) {
                 Upload PDF Manuscript
               </p>
               <p className="mt-1 text-[12px] text-[#94A3B8] text-center max-w-xs">
-                Drag & drop your PDF here, or browse from your computer
+                Drag & drop your PDF here, or browse from your computer. Max {formatMaxBookPdfSize()}.
               </p>
               <button
                 type="button"

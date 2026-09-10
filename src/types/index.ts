@@ -34,13 +34,41 @@ export interface HijriPeriod {
   description: string;
 }
 
+/** Optional language metadata for multilingual books (backward-compatible). */
+export type BookContentLanguage = 'en' | 'ar' | 'ur' | 'mixed' | 'unknown';
+export type BookContentDirection = 'ltr' | 'rtl';
+
+export type ContentBlockLang = {
+  language?: BookContentLanguage;
+  direction?: BookContentDirection;
+};
+
 export type ContentBlock =
-  | { type: 'paragraph'; text: string }
-  | { type: 'heading'; text: string; level?: number }
-  | { type: 'quote'; text: string; attribution?: string }
-  | { type: 'list'; ordered?: boolean; items: string[] }
-  | { type: 'footnote'; number: number; text: string }
-  | { type: 'reference'; text: string; source?: string };
+  | ({ type: 'paragraph'; text: string } & ContentBlockLang)
+  | ({ type: 'heading'; text: string; level?: number } & ContentBlockLang)
+  | ({
+      type: 'quote';
+      text: string;
+      attribution?: string;
+      author?: string;
+      source?: string;
+    } & ContentBlockLang)
+  | ({ type: 'list'; ordered?: boolean; items: string[] } & ContentBlockLang)
+  | ({ type: 'footnote'; number: number; text: string } & ContentBlockLang)
+  | ({ type: 'reference'; text: string; source?: string } & ContentBlockLang)
+  | ({ type: 'arabic'; text: string } & ContentBlockLang)
+  | ({
+      type: 'quran';
+      arabic?: string;
+      translation?: string;
+      reference?: string;
+    } & ContentBlockLang)
+  | ({
+      type: 'hadith';
+      text: string;
+      narrator?: string;
+      reference?: string;
+    } & ContentBlockLang);
 
 export interface BookSection {
   id: string;

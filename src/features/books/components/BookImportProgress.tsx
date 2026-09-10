@@ -8,8 +8,11 @@ export interface ImportStep {
 
 interface BookImportProgressProps {
   steps: ImportStep[];
-  documentType?: 'text' | 'scanned' | null;
+  documentType?: 'text' | 'scanned' | 'mixed' | null;
   errorMessage?: string;
+  /** Live detail e.g. "Page 250 / 1000" */
+  detailMessage?: string;
+  percent?: number;
 }
 
 function StepIcon({ status }: { status: ImportStep['status'] }) {
@@ -38,22 +41,50 @@ function StepIcon({ status }: { status: ImportStep['status'] }) {
   );
 }
 
-export function BookImportProgress({ steps, documentType, errorMessage }: BookImportProgressProps) {
+export function BookImportProgress({
+  steps,
+  documentType,
+  errorMessage,
+  detailMessage,
+  percent,
+}: BookImportProgressProps) {
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-[14px] font-semibold text-[#0B1B2B]">Processing</h3>
         {documentType && (
           <span className="rounded-full border border-[#E5E1D8] bg-[#F7F6F2] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
-            {documentType === 'scanned' ? 'Scanned PDF — OCR' : 'Text PDF'}
+            {documentType === 'scanned'
+              ? 'Scanned PDF — OCR needed'
+              : documentType === 'mixed'
+                ? 'Mixed PDF'
+                : 'Text PDF'}
           </span>
         )}
       </div>
 
+      {(detailMessage || percent != null) && (
+        <div className="mb-4 rounded-lg border border-[#E5E1D8] bg-[#FAFAF8] px-3 py-2.5">
+          {detailMessage && (
+            <p className="text-[13px] font-medium text-[#0B1B2B]">{detailMessage}</p>
+          )}
+          {percent != null && (
+            <div className="mt-2">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E1D8]">
+                <div
+                  className="h-full rounded-full bg-[#C9A646] transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-[#64748B] tabular-nums">{Math.round(percent)}%</p>
+            </div>
+          )}
+        </div>
+      )}
+
       <ol className="space-y-3">
         {steps.map((step, i) => (
           <li key={step.id} className="flex items-center gap-3">
-            {/* Connector line */}
             <div className="flex flex-col items-center">
               <StepIcon status={step.status} />
               {i < steps.length - 1 && (

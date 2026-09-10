@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BookOpen,
@@ -14,11 +15,59 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { books as allBooks, getFeaturedBooks, getBooksByAuthor } from '@/data/books';
-import { scholars as allScholars } from '@/data/scholars';
-import { categories } from '@/data/categories';
 import { hijriPeriods, formatHijriRange } from '@/data/periods';
 import { BookGridAnimated } from '@/components/library/BookGrid';
+import { useLibraryFilters } from '@/hooks/useLibraryFilters';
+import { useScholars } from '@/hooks/useScholars';
+import { useCategories } from '@/hooks/useCategories';
+import { usePageMeta } from '@/hooks/usePageMeta';
+import { useCountUp } from '@/hooks/useCountUp';
+import type { LucideIcon } from 'lucide-react';
+
+function StatCard({
+  label,
+  count,
+  suffix = '',
+  icon: Icon,
+  delay,
+}: {
+  label: string;
+  count: number;
+  suffix?: string;
+  icon: LucideIcon;
+  delay: number;
+}) {
+  const [inView, setInView] = useState(false);
+  const display = useCountUp(count, inView);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay }}
+      onViewportEnter={() => setInView(true)}
+      className="group relative overflow-hidden rounded-2xl border border-line bg-cream p-5 sm:p-6 shadow-sm shadow-ink-900/5 transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-lg hover:shadow-accent/10"
+    >
+      <div className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-full bg-accent/10 blur-2xl transition-opacity group-hover:opacity-100" />
+      <div className="relative flex flex-col items-start gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-dark text-ink-900 shadow-md shadow-accent/25">
+          <Icon size={20} strokeWidth={1.75} />
+        </div>
+        <div>
+          <p className="font-cinzel text-3xl sm:text-4xl font-semibold tracking-wide text-ink-900 tabular-nums">
+            {display}
+            {suffix}
+          </p>
+          <p className="mt-1 text-xs sm:text-sm font-medium uppercase tracking-[0.14em] text-ink-500">
+            {label}
+          </p>
+        </div>
+      </div>
+      <div className="absolute bottom-0 inset-x-0 h-0.5 origin-left scale-x-0 bg-accent transition-transform duration-300 group-hover:scale-x-100" />
+    </motion.div>
+  );
+}
 
 const ABOUT_IMAGE =
   'https://images.pexels.com/photos/1537086/pexels-photo-1537086.jpeg?auto=compress&cs=tinysrgb&w=1920&h=600&fit=crop';
@@ -27,20 +76,36 @@ const SCHOLAR_FALLBACK =
   'https://images.pexels.com/photos/3662667/pexels-photo-3662667.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop';
 
 export function AboutPage() {
-  // ── Data ─────────────────────────────────────────────────────────────────
-  const stats = [
-    { label: 'Books',     value: allBooks.length + '+',     icon: BookOpen },
-    { label: 'Scholars',  value: allScholars.length + '+',  icon: Users },
-    { label: 'Subjects',  value: categories.length + '+',   icon: Layers },
-    { label: 'Hijri Eras', value: hijriPeriods.length,      icon: Clock },
-  ];
+  usePageMeta({
+    title: 'About — Islamic Digital Library',
+    description:
+      'Learn about the Islamic Digital Library — a platform for structured English reading of authentic Islamic scholarship across centuries.',
+    path: '/about',
+  });
 
-  const featuredScholars = allScholars.slice(0, 4);
+  const { filteredBooks: libraryBooks, totalBooks } = useLibraryFilters();
+  const { scholars } = useScholars();
+  const { categories } = useCategories();
 
-  const allFeatured = getFeaturedBooks();
-  const featuredBooks = allFeatured.length >= 8
-    ? allFeatured.slice(0, 8)
-    : [...allFeatured, ...allBooks.filter((b) => !b.featured)].slice(0, 8);
+  const bookCount = Math.max(totalBooks, libraryBooks.length);
+  const stats = useMemo(
+    () => [
+      { label: 'Books', count: bookCount, suffix: '+', icon: BookOpen },
+      { label: 'Scholars', count: scholars.length, suffix: '+', icon: Users },
+      { label: 'Subjects', count: categories.length, suffix: '+', icon: Layers },
+      { label: 'Hijri Eras', count: hijriPeriods.length, suffix: '', icon: Clock },
+    ],
+    [bookCount, scholars.length, categories.length],
+  );
+
+  const featuredScholars = scholars.slice(0, 4);
+
+  const featuredBooks = useMemo(() => {
+    const featured = libraryBooks.filter((b) => b.featured);
+    if (featured.length >= 8) return featured.slice(0, 8);
+    const rest = libraryBooks.filter((b) => !b.featured);
+    return [...featured, ...rest].slice(0, 8);
+  }, [libraryBooks]);
 
   return (
     <PageContainer>
@@ -55,8 +120,9 @@ export function AboutPage() {
             alt="Islamic architecture"
             className="h-full w-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-ink-900/95 via-ink-900/85 to-ink-900/60" />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink-900/40 to-ink-900/90" />
+          <div className="absolute inset-0 bg-ink-900/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-ink-900/80 via-ink-900/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-ink-900/25 to-ink-900/55" />
         </div>
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-accent/60 via-accent/30 to-transparent" />
 
@@ -70,10 +136,10 @@ export function AboutPage() {
             <p className="mb-3 font-serif text-xs font-semibold uppercase tracking-widest text-accent">
               About
             </p>
-            <h1 className="font-serif text-4xl sm:text-5xl font-semibold leading-[1.12] tracking-tight text-white">
+            <h1 className="font-cinzel text-4xl sm:text-5xl font-semibold leading-[1.12] tracking-wide text-white">
               The Islamic Digital Library
             </h1>
-            <p className="mt-5 text-base leading-relaxed text-ink-300 max-w-xl">
+            <p className="mt-5 text-base leading-relaxed text-white/85 max-w-xl">
               A platform dedicated to making centuries of Islamic scholarship accessible — presented
               in structured, beautiful English reading experiences, not scanned PDFs.
             </p>
@@ -84,25 +150,20 @@ export function AboutPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          2. STATS BAR  (light)
+          2. STATS — elevated metric cards
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="bg-paper border-b border-line">
+      <section className="relative z-10 -mt-6 sm:-mt-8 pb-2">
         <div className="container-page">
-          <div className="grid grid-cols-2 divide-x divide-y divide-line sm:grid-cols-4 sm:divide-y-0">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {stats.map((stat, i) => (
-              <motion.div
+              <StatCard
                 key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="flex flex-col items-center gap-2 py-8"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/25 bg-accent/10">
-                  <stat.icon size={18} className="text-accent" />
-                </div>
-                <p className="font-serif text-3xl font-semibold text-ink-900">{stat.value}</p>
-                <p className="text-xs text-ink-500">{stat.label}</p>
-              </motion.div>
+                label={stat.label}
+                count={stat.count}
+                suffix={stat.suffix}
+                icon={stat.icon}
+                delay={i * 0.07}
+              />
             ))}
           </div>
         </div>
@@ -167,7 +228,7 @@ export function AboutPage() {
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {featuredScholars.map((scholar, i) => {
-              const bookCount = getBooksByAuthor(scholar.id).length;
+              const bookCount = libraryBooks.filter((b) => b.authorId === scholar.id).length;
               return (
                 <motion.div
                   key={scholar.id}
@@ -277,7 +338,7 @@ export function AboutPage() {
 
                 <div className="grid grid-cols-7 gap-2">
                   {hijriPeriods.slice(0, 14).map((period, i) => {
-                    const count = allBooks.filter(
+                    const count = libraryBooks.filter(
                       (b) => b.hijriStart >= period.start && b.hijriEnd <= period.end
                     ).length;
                     const active = count > 0;
@@ -355,7 +416,7 @@ export function AboutPage() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {categories.map((cat, i) => {
-              const count = allBooks.filter((b) => b.categoryIds.includes(cat.id)).length;
+              const count = libraryBooks.filter((b) => b.categoryIds.includes(cat.id)).length;
               return (
                 <motion.div
                   key={cat.id}
@@ -537,7 +598,7 @@ export function AboutPage() {
               <h2 className="font-serif text-3xl font-semibold text-ink-900">What You Can Do</h2>
             </motion.div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 {
                   icon: Search,
@@ -572,19 +633,18 @@ export function AboutPage() {
               ].map((feature, i) => (
                 <motion.div
                   key={feature.title}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 14 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.35, delay: Math.min(i * 0.06, 0.3) }}
-                  className="flex items-start gap-4 rounded-xl border border-line bg-cream p-5 transition-all hover:border-accent/40"
+                  className="group relative overflow-hidden rounded-2xl border border-line bg-cream p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-lg hover:shadow-ink-900/5"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent/10">
-                    <feature.icon size={18} className="text-accent" strokeWidth={1.5} />
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-light to-transparent opacity-80" />
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-900 text-accent transition-colors duration-300 group-hover:bg-accent group-hover:text-ink-900">
+                    <feature.icon size={20} strokeWidth={1.5} />
                   </div>
-                  <div>
-                    <h3 className="font-serif text-base font-semibold text-ink-900">{feature.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-ink-500">{feature.desc}</p>
-                  </div>
+                  <h3 className="font-serif text-lg font-semibold text-ink-900">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-500">{feature.desc}</p>
                 </motion.div>
               ))}
             </div>

@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import { BookStatusBadge } from './BookStatusBadge';
 import { BookCategoryBadges } from './BookCategoryBadges';
@@ -34,10 +33,7 @@ export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
       : '—';
 
   return (
-    <motion.tr
-      layout
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0, x: 48, transition: { duration: 0.45 } }}
+    <tr
       className="group transition-colors hover:bg-[#FAFAF8]"
     >
       <td className="pl-5 pr-3 py-3.5"><CoverThumb book={book} /></td>
@@ -97,6 +93,6 @@ export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
           <BookActions book={book} onActionComplete={onActionComplete} />
         </div>
       </td>
-    </motion.tr>
+    </tr>
   );
 }

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   BookOpen, CheckCircle, Clock, AlertCircle,
   GraduationCap, Upload, ArrowRight,
-  Archive, RefreshCw,
+  Archive, RefreshCw, Layers, ExternalLink,
 } from 'lucide-react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
@@ -18,10 +18,12 @@ import {
 } from '@/lib/bookApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getAllImportedBooks } from '@/hooks/useBookStore';
+import { BOOKS_CHANGED_EVENT } from '@/hooks/useAdminBooks';
+import { useScholars, SCHOLARS_CHANGED_EVENT } from '@/hooks/useScholars';
+import { useCategories, CATEGORIES_CHANGED_EVENT } from '@/hooks/useCategories';
 import { formatDate } from '@/lib/utils';
 import { BookStatusBadge } from '@/features/books/components/BookStatusBadge';
 
-// ─── Skeleton loader ──────────────────────────────────────────────────────────
 function StatSkeleton() {
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white px-5 py-5 shadow-sm animate-pulse">
@@ -37,7 +39,6 @@ function StatSkeleton() {
   );
 }
 
-// ─── Recent books table ───────────────────────────────────────────────────────
 function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; loading: boolean }) {
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white shadow-sm overflow-hidden">
@@ -76,9 +77,8 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
         </div>
       ) : (
         <>
-          {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#E5E1D8] bg-[#F7F6F2]">
                   {['Book', 'Author', 'Status', 'Updated'].map((h) => (
@@ -88,9 +88,9 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E1D8]">
+              <tbody>
                 {books.map((book) => (
-                  <tr key={book.id} className="hover:bg-[#FAFAF8] transition-colors">
+                  <tr key={book.id} className="border-b border-[#E5E1D8] last:border-b-0 hover:bg-[#FAFAF8] transition-colors">
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/admin/books/${book.id}/review`}
@@ -112,7 +112,6 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
             </table>
           </div>
 
-          {/* Mobile list */}
           <ul className="divide-y divide-[#E5E1D8] sm:hidden">
             {books.map((book) => (
               <li key={book.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
@@ -138,7 +137,6 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
   );
 }
 
-// ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
   {
     title: 'Import Book',
@@ -160,7 +158,6 @@ const quickActions = [
   },
 ];
 
-// ─── Fade-in wrapper ──────────────────────────────────────────────────────────
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   return (
     <motion.div
@@ -173,19 +170,19 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export function AdminDashboardPage() {
-  const [stats, setStats]         = useState<DashboardStats | null>(null);
-  const [recentBooks, setRecent]  = useState<DashboardRecentBook[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentBooks, setRecent] = useState<DashboardRecentBook[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingBooks, setLoadingBooks] = useState(true);
+  const { scholars } = useScholars();
+  const { categories } = useCategories();
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoadingStats(true);
     setLoadingBooks(true);
 
     if (isSupabaseConfigured()) {
-      // Supabase only — no local storage books mixed in
       const [s, r] = await Promise.allSettled([
         fetchDashboardStats(),
         fetchRecentBooks(8),
@@ -193,23 +190,27 @@ export function AdminDashboardPage() {
       setStats(s.status === 'fulfilled' ? s.value : { total: 0, published: 0, drafts: 0, needsReview: 0, processing: 0, archived: 0 });
       setRecent(r.status === 'fulfilled' ? r.value : []);
     } else {
-      // No Supabase — show only localStorage imported books
       const imported = getAllImportedBooks();
-      const importedStats: DashboardStats = {
-        total:       imported.length,
-        published:   imported.filter((b) => b.status === 'published').length,
-        drafts:      imported.filter((b) => b.status === 'draft').length,
-        needsReview: imported.filter((b) => (b.status as string) === 'needs_review').length,
-        processing:  imported.filter((b) => (b.status as string) === 'processing').length,
-        archived:    imported.filter((b) => (b.status as string) === 'archived').length,
+      type BookWithOptionalStatus = (typeof imported)[number] & {
+        status?: import('@/features/books/types').BookStatus | string;
+        authorName?: string;
       };
-      const importedRecent: DashboardRecentBook[] = [...imported]
+      const localBooks = imported as BookWithOptionalStatus[];
+      const importedStats: DashboardStats = {
+        total: localBooks.length,
+        published: localBooks.filter((b) => b.status === 'published').length,
+        drafts: localBooks.filter((b) => b.status === 'draft').length,
+        needsReview: localBooks.filter((b) => b.status === 'needs_review').length,
+        processing: localBooks.filter((b) => b.status === 'processing').length,
+        archived: localBooks.filter((b) => b.status === 'archived').length,
+      };
+      const importedRecent: DashboardRecentBook[] = [...localBooks]
         .sort((a, b) => (b.addedDate ?? '').localeCompare(a.addedDate ?? ''))
         .slice(0, 8)
         .map((b) => ({
           id: b.id,
           title: b.title,
-          authorName: (b as { authorName?: string }).authorName ?? b.authorId ?? '—',
+          authorName: b.authorName ?? b.authorId ?? '—',
           status: (b.status as import('@/features/books/types').BookStatus) || 'published',
           updatedAt: b.addedDate ?? new Date().toISOString().slice(0, 10),
         }));
@@ -219,9 +220,25 @@ export function AdminDashboardPage() {
 
     setLoadingStats(false);
     setLoadingBooks(false);
-  }
+  }, []);
 
-  useEffect(() => { void loadData(); }, []);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const refresh = () => void loadData();
+    window.addEventListener(BOOKS_CHANGED_EVENT, refresh);
+    window.addEventListener(SCHOLARS_CHANGED_EVENT, refresh);
+    window.addEventListener(CATEGORIES_CHANGED_EVENT, refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener(BOOKS_CHANGED_EVENT, refresh);
+      window.removeEventListener(SCHOLARS_CHANGED_EVENT, refresh);
+      window.removeEventListener(CATEGORIES_CHANGED_EVENT, refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [loadData]);
 
   const s = stats;
 
@@ -232,6 +249,7 @@ export function AdminDashboardPage() {
           value: s.total,
           supporting: 'Books in the library',
           icon: BookOpen,
+          href: '/admin/books',
         },
         {
           label: 'Published',
@@ -240,6 +258,7 @@ export function AdminDashboardPage() {
           icon: CheckCircle,
           iconColor: 'text-emerald-600',
           iconBg: 'bg-emerald-50',
+          href: '/admin/books',
         },
         {
           label: 'Needs Review',
@@ -248,6 +267,7 @@ export function AdminDashboardPage() {
           icon: AlertCircle,
           iconColor: 'text-amber-600',
           iconBg: 'bg-amber-50',
+          href: '/admin/books',
         },
         {
           label: 'Drafts',
@@ -256,6 +276,7 @@ export function AdminDashboardPage() {
           icon: Clock,
           iconColor: 'text-slate-500',
           iconBg: 'bg-slate-100',
+          href: '/admin/books',
         },
       ]
     : [];
@@ -263,30 +284,36 @@ export function AdminDashboardPage() {
   return (
     <AdminShell pageTitle="Dashboard">
       <div className="max-w-5xl space-y-8">
-
-        {/* Page header */}
         <FadeIn>
           <div className="flex items-start justify-between gap-4">
             <AdminPageHeader
               title="Dashboard"
-              description="Welcome back. Here's what's happening in your library."
+              description="Live overview of your library — stats update when books, scholars, or categories change."
             />
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              disabled={loadingStats}
-              title="Refresh stats"
-              className="mt-1 flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#64748B] transition-colors hover:bg-[#F7F6F2] disabled:opacity-50 shrink-0"
-            >
-              <RefreshCw size={13} className={loadingStats ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+            <div className="mt-1 flex shrink-0 items-center gap-2">
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#C9A646]/40 bg-[#C9A646]/10 px-3 py-2 text-[12px] font-medium text-[#C9A646] transition-colors hover:bg-[#C9A646]/20"
+              >
+                <ExternalLink size={13} />
+                View Website
+              </a>
+              <button
+                type="button"
+                onClick={() => void loadData()}
+                disabled={loadingStats}
+                title="Refresh stats"
+                className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#64748B] transition-colors hover:bg-[#F7F6F2] disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={loadingStats ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
           </div>
         </FadeIn>
 
-        {/* Source badge removed */}
-
-        {/* Stats */}
         <FadeIn delay={0.05}>
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {loadingStats
@@ -300,31 +327,60 @@ export function AdminDashboardPage() {
                     icon={stat.icon}
                     iconColor={stat.iconColor}
                     iconBg={stat.iconBg}
+                    href={stat.href}
                   />
                 ))}
           </div>
         </FadeIn>
 
-        {/* Archived note — only show if there are archived books */}
+        <FadeIn delay={0.08}>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <DashboardStatCard
+              label="Scholars"
+              value={scholars.length}
+              supporting="Author profiles"
+              icon={GraduationCap}
+              href="/admin/scholars"
+            />
+            <DashboardStatCard
+              label="Subjects"
+              value={categories.length}
+              supporting="Library categories"
+              icon={Layers}
+              href="/admin/categories"
+            />
+            <DashboardStatCard
+              label="Processing"
+              value={s?.processing ?? 0}
+              supporting="Imports in progress"
+              icon={Upload}
+              iconColor="text-sky-600"
+              iconBg="bg-sky-50"
+              href="/admin/books"
+            />
+          </div>
+        </FadeIn>
+
         {s && s.archived > 0 && (
-          <FadeIn delay={0.07}>
+          <FadeIn delay={0.1}>
             <Link
               to="/admin/books?view=archived"
               className="flex items-center gap-2 rounded-lg border border-[#E5E1D8] bg-white px-4 py-3 text-[13px] text-[#64748B] transition-colors hover:bg-[#F7F6F2] hover:text-[#0B1B2B]"
             >
               <Archive size={14} className="text-[#94A3B8]" />
-              <span><span className="font-semibold text-[#0B1B2B]">{s.archived}</span> archived book{s.archived !== 1 ? 's' : ''} — view or restore them</span>
+              <span>
+                <span className="font-semibold text-[#0B1B2B]">{s.archived}</span> archived book
+                {s.archived !== 1 ? 's' : ''} — view or restore them
+              </span>
               <ArrowRight size={13} className="ml-auto" />
             </Link>
           </FadeIn>
         )}
 
-        {/* Recent Books */}
-        <FadeIn delay={0.1}>
+        <FadeIn delay={0.12}>
           <RecentBooksTable books={recentBooks} loading={loadingBooks} />
         </FadeIn>
 
-        {/* Quick Actions */}
         <FadeIn delay={0.15}>
           <div>
             <h3 className="mb-4 text-[15px] font-semibold text-[#0B1B2B]">Quick Actions</h3>
@@ -341,7 +397,6 @@ export function AdminDashboardPage() {
             </div>
           </div>
         </FadeIn>
-
       </div>
     </AdminShell>
   );

@@ -18,7 +18,7 @@ export function ScholarCard({ scholar }: ScholarCardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="group flex flex-col overflow-hidden rounded-xl border border-line bg-cream transition-all hover:border-line-strong hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-cream transition-all duration-200 hover:border-accent/50 hover:shadow-lg hover:shadow-ink-900/5 hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-ink-900/5">
         {scholar.imageUrl ? (

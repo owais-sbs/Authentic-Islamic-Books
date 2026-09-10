@@ -1,5 +1,4 @@
-import { AnimatePresence } from 'framer-motion';
-import { BookTableRow } from './BookTableRow';
+﻿import { BookTableRow } from './BookTableRow';
 import { BooksMobileList } from './BooksMobileList';
 import { BooksEmptyState } from './BooksEmptyState';
 import { BooksTableSkeleton } from './BooksTableSkeleton';
@@ -26,9 +25,8 @@ export function BooksTable({
 }: BooksTableProps) {
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white shadow-sm overflow-hidden">
-      {/* Desktop */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[820px]">
+        <table className="w-full min-w-[820px] border-collapse">
           <thead>
             <tr className="border-b border-[#E5E1D8] bg-[#F7F6F2]">
               <th className="pl-5 pr-3 py-3 w-12" />
@@ -42,12 +40,11 @@ export function BooksTable({
               <th className="pl-3 pr-5 py-3 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5E1D8]">
-            <AnimatePresence mode="popLayout">
-              {!isLoading && books.map((book) => (
+          <tbody className="[&>tr]:border-b [&>tr]:border-[#E5E1D8] [&>tr:last-child]:border-b-0">
+            {!isLoading &&
+              books.map((book) => (
                 <BookTableRow key={book.id} book={book} onActionComplete={onActionComplete} />
               ))}
-            </AnimatePresence>
           </tbody>
         </table>
         {isLoading && <BooksTableSkeleton />}
@@ -56,11 +53,14 @@ export function BooksTable({
         )}
       </div>
 
-      {/* Mobile */}
       <div className="md:hidden">
-        {isLoading ? <BooksTableSkeleton /> :
-          books.length === 0 ? <BooksEmptyState hasFilters={hasFilters} onClearFilters={onClearFilters} /> :
-          <BooksMobileList books={books} onActionComplete={onActionComplete} />}
+        {isLoading ? (
+          <BooksTableSkeleton />
+        ) : books.length === 0 ? (
+          <BooksEmptyState hasFilters={hasFilters} onClearFilters={onClearFilters} />
+        ) : (
+          <BooksMobileList books={books} onActionComplete={onActionComplete} />
+        )}
       </div>
 
       {!isLoading && books.length > 0 && (

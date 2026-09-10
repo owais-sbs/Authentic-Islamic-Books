@@ -1,64 +1,57 @@
 import type { ContentBlock } from '@/types';
-import { enrichContentBlocks, normalizeReaderText } from '@/lib/readerContent';
+import { parseBookContent } from '@/services/content/parseBookContent';
+import { enrichContentBlocks } from '@/lib/readerContent';
+import { languageMeta, type BookLanguage } from './language';
 
-const LIST_ITEM = /^(\d+[.)]|\u2022|\*|-)\s+(.+)$/;
+function withLang(block: ContentBlock): ContentBlock {
+  if (block.language && block.direction) return block;
 
-/** Convert cleaned section text into rich reader blocks (paragraphs, quotes, lists). */
-export function textToContentBlocks(text: string): ContentBlock[] {
-  if (!text.trim()) return [];
-
-  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  const blocks: ContentBlock[] = [];
-  let paragraph = '';
-  let listItems: string[] = [];
-  let listOrdered = false;
-
-  const flushParagraph = () => {
-    const p = paragraph.trim();
-    if (!p) return;
-    const sentences = p.split(/(?<=[.!?؟])\s+/).filter((s) => s.length > 8);
-    let chunk = '';
-    for (const sentence of sentences) {
-      chunk += (chunk ? ' ' : '') + sentence;
-      if (chunk.split(/\s+/).length >= 45) {
-        blocks.push({ type: 'paragraph', text: chunk.trim() });
-        chunk = '';
-      }
-    }
-    if (chunk.trim()) blocks.push({ type: 'paragraph', text: chunk.trim() });
-    paragraph = '';
-  };
-
-  const flushList = () => {
-    if (listItems.length === 0) return;
-    blocks.push({ type: 'list', ordered: listOrdered, items: [...listItems] });
-    listItems = [];
-    listOrdered = false;
-  };
-
-  for (const line of lines) {
-    const listMatch = LIST_ITEM.exec(line);
-    if (listMatch) {
-      flushParagraph();
-      listOrdered = /^\d+[.)]/.test(line);
-      listItems.push(listMatch[2].trim());
-      continue;
-    }
-
-    if (/^["“«].+["”»]?$/.test(line) || (line.startsWith('"') && line.length > 20)) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: 'quote', text: line.replace(/^["“«]|["”»]$/g, '') });
-      continue;
-    }
-
-    flushList();
-    paragraph += (paragraph ? ' ' : '') + line;
+  if (block.type === 'arabic') {
+    return {
+      ...block,
+      language: block.language ?? 'ar',
+      direction: block.direction ?? 'rtl',
+    };
   }
 
-  flushList();
-  flushParagraph();
+  if (block.type === 'quran') {
+    return {
+      ...block,
+      language: block.language ?? 'ar',
+      direction: block.direction ?? 'rtl',
+    };
+  }
 
-  const result = blocks.length > 0 ? blocks : [{ type: 'paragraph', text: normalizeReaderText(text.trim()) }];
-  return enrichContentBlocks(result);
+  if (block.type === 'list') {
+    const sample = block.items.join(' ');
+    const meta = languageMeta(sample);
+    return { ...block, language: block.language ?? meta.language, direction: block.direction ?? meta.direction };
+  }
+
+  const text =
+    'text' in block && typeof block.text === 'string'
+      ? block.text
+      : 'translation' in block && typeof (block as { translation?: string }).translation === 'string'
+        ? (block as { translation: string }).translation
+        : '';
+
+  if (!text) return block;
+  const meta = languageMeta(text);
+  return {
+    ...block,
+    language: (block.language ?? meta.language) as BookLanguage,
+    direction: block.direction ?? meta.direction,
+  };
+}
+
+/**
+ * Convert cleaned section text into rich reader blocks.
+ * Preserves natural paragraphs — no artificial ~45-word splitting.
+ * Attaches optional language/direction metadata.
+ */
+export function textToContentBlocks(text: string): ContentBlock[] {
+  if (!text.trim()) return [];
+  const parsed = parseBookContent(text);
+  const enriched = enrichContentBlocks(parsed);
+  return enriched.map(withLang);
 }

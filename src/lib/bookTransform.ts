@@ -1,7 +1,11 @@
 import type { BookWithStructure, BookStatus } from '@/features/books/types';
 import type { Book, BookChapter, BookSection, ContentBlock } from '@/types';
 import { enrichContentBlocks } from '@/lib/readerContent';
-import { rawTextToContentBlocks } from '@/lib/pdfExtractor';
+import {
+  contentBlocksToHtml,
+  htmlDocumentToContentBlocks,
+  parseBookContent,
+} from '@/services/content/parseBookContent';
 
 // ─── Category maps ────────────────────────────────────────────────────────────
 
@@ -45,41 +49,63 @@ export function generateSlug(title: string, fallbackId: string): string {
   );
 }
 
+function looksLikeHtml(content: string): boolean {
+  return /<\/?[a-z][a-z0-9]*\b[^>]*>/i.test(content);
+}
+
+/**
+ * Convert stored section content (HTML from admin/editor, or plain text from
+ * legacy PDF imports) into semantic ContentBlocks for the reader.
+ *
+ * Always ensures semantic parsing runs on dense/plain content so existing
+ * imported books improve without re-import.
+ */
 export function htmlToContentBlocks(html: string): ContentBlock[] {
   if (!html?.trim()) return [];
 
-  const div = document.createElement('div');
-  div.innerHTML = html;
+  // Legacy / PDF import: plain text — parse semantically (incl. dense blobs)
+  if (!looksLikeHtml(html)) {
+    return enrichContentBlocks(parseBookContent(html));
+  }
 
-  const blocks: ContentBlock[] = [];
+  let blocks = htmlDocumentToContentBlocks(html);
 
-  div.childNodes.forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent?.trim();
-      if (text) blocks.push({ type: 'paragraph', text });
-      return;
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-    const el = node as HTMLElement;
-    const tag = el.tagName.toLowerCase();
-    const text = el.textContent?.trim() ?? '';
-    if (!text) return;
+  const hasSemantic = blocks.some((b) =>
+    ['quran', 'arabic', 'hadith', 'footnote'].includes(b.type),
+  );
 
-    if (tag === 'blockquote') {
-      blocks.push({ type: 'quote', text });
-    } else if (tag === 'h2' || tag === 'h3') {
-      blocks.push({ type: 'heading', text, level: tag === 'h2' ? 1 : 2 });
-    } else if (tag === 'ul' || tag === 'ol') {
-      const items = Array.from(el.querySelectorAll('li'))
-        .map((li) => li.textContent?.trim() ?? '')
-        .filter(Boolean);
-      if (items.length) blocks.push({ type: 'list', ordered: tag === 'ol', items });
-    } else if (text) {
-      blocks.push({ type: 'paragraph', text });
-    }
-  });
+  if (!hasSemantic) {
+    // Paragraph/heading HTML without semantic types — re-parse as text
+    const plain =
+      blocks
+        .map((b) => {
+          if ('text' in b && typeof b.text === 'string') return b.text;
+          if (b.type === 'list') return b.items.join('\n');
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n\n') || html.replace(/<[^>]+>/g, '\n');
+    blocks = parseBookContent(plain);
+  } else {
+    // Keep semantic blocks; re-parse leftover dense paragraphs that still mix scripts
+    blocks = blocks.flatMap((b) => {
+      if (b.type !== 'paragraph') return [b];
+      const t = b.text;
+      if (t.length > 80 && /[\u0600-\u06FF]/.test(t) && /[A-Za-z]/.test(t)) {
+        return parseBookContent(t);
+      }
+      if (t.length > 200 && /\b(?:Qur['’]?an|Narrated|Sahih al-Bukhari)\b/i.test(t)) {
+        return parseBookContent(t);
+      }
+      return [b];
+    });
+  }
 
-  return blocks.length > 0 ? enrichContentBlocks(blocks) : enrichContentBlocks(rawTextToContentBlocks(div.textContent ?? html));
+  if (blocks.length === 0) {
+    blocks = parseBookContent(html.replace(/<[^>]+>/g, '\n'));
+  }
+
+  return enrichContentBlocks(blocks);
 }
 
 export function reviewBookToPublicBook(book: BookWithStructure): Book {
@@ -181,6 +207,12 @@ export function publicBookToAdminBook(
   };
 }
 
+function blocksToStoredContent(blocks: ContentBlock[] | undefined): string {
+  if (!blocks?.length) return '';
+  // Prefer semantic HTML so round-trips keep Qur'an / Arabic / hadith types
+  return contentBlocksToHtml(blocks);
+}
+
 export function publicBookToReviewBook(book: Book, status: BookStatus = 'draft'): BookWithStructure {
   return {
     id: book.id,
@@ -205,7 +237,7 @@ export function publicBookToReviewBook(book: Book, status: BookStatus = 'draft')
       ? {
           id: 'intro',
           title: 'Introduction',
-          content: book.introduction.map((b) => ('text' in b ? b.text : '')).join('\n\n'),
+          content: blocksToStoredContent(book.introduction),
           order: 0,
         }
       : undefined,
@@ -222,7 +254,7 @@ export function publicBookToReviewBook(book: Book, status: BookStatus = 'draft')
         number: sec.number,
         title: sec.title,
         subtitle: sec.subtitle,
-        content: sec.content?.map((b) => ('text' in b ? b.text : '')).join('\n\n') ?? '',
+        content: blocksToStoredContent(sec.content),
         order: si,
       })),
     })),

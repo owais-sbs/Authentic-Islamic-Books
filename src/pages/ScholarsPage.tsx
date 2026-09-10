@@ -2,14 +2,25 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHero } from '@/components/layout/PageHero';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ScholarCard } from '@/components/scholar/ScholarCard';
 import { useScholars } from '@/hooks/useScholars';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { hijriPeriods } from '@/data/periods';
 
 type SortOption = 'az' | 'za' | 'oldest' | 'newest';
 
+const HERO_IMG =
+  'https://images.pexels.com/photos/256541/pexels-photo-256541.jpeg?auto=compress&cs=tinysrgb&w=1600&h=700&fit=crop';
+
 export function ScholarsPage() {
+  usePageMeta({
+    title: 'Scholars — Islamic Digital Library',
+    description: 'Meet the scholars behind centuries of Islamic learning and explore their works.',
+    path: '/scholars',
+  });
+
   const { scholars: allScholars } = useScholars();
   const [search, setSearch] = useState('');
   const [periodFilter, setPeriodFilter] = useState('');
@@ -28,9 +39,7 @@ export function ScholarsPage() {
     if (periodFilter) {
       const period = hijriPeriods.find((p) => p.id === periodFilter);
       if (period) {
-        result = result.filter(
-          (s) => s.bornHijri >= period.start && s.diedHijri <= period.end
-        );
+        result = result.filter((s) => s.bornHijri >= period.start && s.diedHijri <= period.end);
       }
     }
 
@@ -54,18 +63,18 @@ export function ScholarsPage() {
 
   return (
     <PageContainer>
-      <div className="container-page py-8">
+      <PageHero
+        eyebrow="The Scholars"
+        title="Voices Across the Centuries"
+        description={`Browse ${allScholars.length} scholars from across the centuries of Islamic scholarship.`}
+        imageUrl={HERO_IMG}
+        compact
+      />
+
+      <div className="container-page py-8 sm:py-10">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Scholars' }]} />
 
-        <div className="mb-8">
-          <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-ink-900">Scholars</h1>
-          <p className="mt-2 text-ink-500 max-w-2xl">
-            Browse {allScholars.length} scholars from across the centuries of Islamic scholarship.
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mb-6 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
             <input
@@ -73,7 +82,7 @@ export function ScholarsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search scholars..."
-              className="w-full rounded-lg border border-line bg-cream py-2.5 pl-10 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
+              className="w-full rounded-xl border border-line bg-cream py-2.5 pl-10 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
             />
             {search && (
               <button
@@ -89,7 +98,7 @@ export function ScholarsPage() {
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
-              className="rounded-lg border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
             >
               <option value="">All Periods</option>
               {hijriPeriods.map((p) => (
@@ -101,7 +110,7 @@ export function ScholarsPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="rounded-lg border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
             >
               <option value="az">A–Z</option>
               <option value="za">Z–A</option>
@@ -124,11 +133,18 @@ export function ScholarsPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.35 }}
             className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           >
-            {filteredScholars.map((scholar) => (
-              <ScholarCard key={scholar.id} scholar={scholar} />
+            {filteredScholars.map((scholar, i) => (
+              <motion.div
+                key={scholar.id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.35) }}
+              >
+                <ScholarCard scholar={scholar} />
+              </motion.div>
             ))}
           </motion.div>
         )}

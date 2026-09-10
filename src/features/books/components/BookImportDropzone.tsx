@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Upload, FileText, X } from 'lucide-react';
+import { formatMaxBookPdfSize, validateBookPdfFile } from '@/lib/uploadLimits';
 
 interface SelectedFile {
   name: string;
@@ -10,24 +11,39 @@ interface BookImportDropzoneProps {
   file: SelectedFile | null;
   onFileSelect: (file: File) => void;
   onFileRemove: () => void;
+  onValidationError?: (message: string) => void;
 }
 
 function formatSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-export function BookImportDropzone({ file, onFileSelect, onFileRemove }: BookImportDropzoneProps) {
+export function BookImportDropzone({
+  file,
+  onFileSelect,
+  onFileRemove,
+  onValidationError,
+}: BookImportDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function acceptFile(f: File) {
+    const validation = validateBookPdfFile(f);
+    if (!validation.ok) {
+      onValidationError?.(validation.message);
+      return;
+    }
+    onFileSelect(f);
+  }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
-    if (f?.type === 'application/pdf') onFileSelect(f);
+    if (f) acceptFile(f);
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) onFileSelect(f);
+    if (f) acceptFile(f);
   }
 
   if (file) {
@@ -64,11 +80,16 @@ export function BookImportDropzone({ file, onFileSelect, onFileRemove }: BookImp
       </div>
       <p className="text-[15px] font-semibold text-[#0B1B2B]">Drag &amp; drop your PDF here</p>
       <p className="mt-1 text-[13px] text-[#94A3B8]">or click to browse</p>
-      <p className="mt-4 text-[12px] text-[#CBD5E1]">Supported format: PDF · Max size: 100 MB</p>
+      <p className="mt-4 text-[12px] text-[#CBD5E1]">
+        Supported format: PDF · Max size: {formatMaxBookPdfSize()}
+      </p>
       <button
         type="button"
         className="mt-5 rounded-lg border border-[#E5E1D8] bg-white px-5 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-white hover:border-[#C9A646]/40"
-        onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          inputRef.current?.click();
+        }}
       >
         Choose PDF
       </button>

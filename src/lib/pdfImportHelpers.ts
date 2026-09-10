@@ -1,5 +1,7 @@
 import { parsePdf, parsedBookToPublicFormat, type ParsedBook } from '@/lib/pdfExtractor';
 import { publicBookToReviewBook } from '@/lib/bookTransform';
+import { validateBookPdfFile } from '@/lib/uploadLimits';
+import { formatLanguagesLabel } from '@/services/pdf/language';
 import type { BookWithStructure } from '@/features/books/types';
 import type { PipelineProgressCallback } from '@/services/pdf/types';
 
@@ -46,6 +48,16 @@ function guessAuthorId(authorName: string): string {
   return 'scholar-ibn-kathir';
 }
 
+function languageLabel(langs: string[] | undefined): string {
+  if (!langs?.length) return 'English';
+  if (langs.includes('ar') && langs.includes('en')) return 'Arabic, English';
+  if (langs.includes('ur') && langs.includes('en')) return 'Urdu, English';
+  if (langs.includes('ar')) return 'Arabic';
+  if (langs.includes('ur')) return 'Urdu';
+  if (langs.includes('en')) return 'English';
+  return formatLanguagesLabel(langs as import('@/services/pdf/language').BookLanguage[]);
+}
+
 export function parsedPdfToReviewBook(parsed: ParsedBook, fileName: string): BookWithStructure {
   const bookId = crypto.randomUUID();
   const title = parsed.meta.title || fileName.replace(/\.pdf$/i, '');
@@ -59,10 +71,12 @@ export function parsedPdfToReviewBook(parsed: ParsedBook, fileName: string): Boo
     title,
     categoryIds,
     authorId,
-    coverColor
+    coverColor,
   );
 
   const review = publicBookToReviewBook(publicBook, 'needs_review');
+  const langs = parsed.extraction?.languages ?? [];
+
   return {
     ...review,
     authorName: parsed.meta.author || review.authorName,
@@ -72,6 +86,18 @@ export function parsedPdfToReviewBook(parsed: ParsedBook, fileName: string): Boo
     chapterCount: parsed.chapters.length,
     sectionCount: parsed.chapters.reduce((n, ch) => n + ch.sections.length, 0),
     extractionStatus: 'completed',
+    language: languageLabel(langs),
+    extractionInfo: parsed.extraction
+      ? {
+          fileSizeBytes: parsed.extraction.fileSizeBytes,
+          documentType: parsed.extraction.documentType,
+          languages: langs,
+          warnings: parsed.extraction.warnings,
+          lowConfidenceHeadings: parsed.extraction.lowConfidenceHeadings,
+          scannedPageNums: parsed.extraction.scannedPageNums,
+          ocrPageCount: parsed.extraction.ocrPageCount,
+        }
+      : undefined,
   };
 }
 
@@ -79,6 +105,10 @@ export async function importPdfFile(
   file: File,
   onProgress?: PipelineProgressCallback,
 ): Promise<BookWithStructure> {
+  const validation = validateBookPdfFile(file);
+  if (!validation.ok) {
+    throw new Error(validation.message);
+  }
   const parsed = await parsePdf(file, onProgress);
   return parsedPdfToReviewBook(parsed, file.name);
 }

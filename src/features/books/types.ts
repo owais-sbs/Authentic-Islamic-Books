@@ -85,12 +85,23 @@ export interface BookImport {
   bookId?: string;
   status: 'uploading' | 'processing' | 'completed' | 'failed';
   progress: number;           // 0–100
-  documentType?: 'text' | 'scanned';
+  documentType?: 'text' | 'scanned' | 'mixed';
   extractedWordCount?: number;
   detectedChapterCount?: number;
   detectedSectionCount?: number;
   errorMessage?: string;
   createdAt: string;
+}
+
+/** Extraction quality metadata shown on admin review (optional, backward-compatible). */
+export interface BookExtractionInfo {
+  fileSizeBytes?: number;
+  documentType?: 'text' | 'scanned' | 'mixed';
+  languages?: string[];
+  warnings?: string[];
+  lowConfidenceHeadings?: number;
+  scannedPageNums?: number[];
+  ocrPageCount?: number;
 }
 
 // ─── Filter / sort helpers (UI state only, not persisted) ─────────────────────
@@ -110,4 +121,6 @@ export type BooksSortKey = 'updatedAt_desc' | 'title_asc' | 'title_desc';
 export interface BookWithStructure extends Book {
   introduction?: Omit<BookIntroduction, 'bookId'>;
   chapters: BookChapter[];
+  /** Present after PDF import — review quality panel */
+  extractionInfo?: BookExtractionInfo;
 }

@@ -1,38 +1,41 @@
 /**
  * pdfExtractor.ts
- * Browser-side PDF text extraction using pdfjs-dist.
+ * Browser-side PDF text extraction using pdfjs-dist + Tesseract OCR fallback.
  *
- * Chapter detection strategy (in order of priority):
- *  1. Explicit heading patterns  ("Chapter 1", "Part II", etc.)
- *  2. Short ALL-CAPS lines that look like section titles
- *  3. Numbered-heading lines     ("1. Title", "2. Title")
- *  4. Adaptive page-based split  — one chapter per N pages so every page
- *     of content ends up in a chapter regardless of PDF formatting
- *
- * The old hardcoded "3 chunks" fallback is replaced by option 4, which
- * scales with the actual document length.
+ * Memory model: incremental page-by-page extraction.
+ * Each PDFPageProxy is released after text (or OCR) is read.
  */
 
 import type { ContentBlock, BookChapter, BookSection } from '@/types';
 import { runPipeline } from '@/services/pdf/pipeline';
 import { textToContentBlocks } from '@/services/pdf/toContentBlocks';
-import type { PipelineProgressCallback } from '@/services/pdf/types';
+import type {
+  ExtractionMeta,
+  PipelineProgressCallback,
+} from '@/services/pdf/types';
+import { validateBookPdfFile } from '@/lib/uploadLimits';
+import { pageHasUsableText } from '@/services/pdf/documentType';
+import {
+  getOcrProvider,
+  ocrTextIsUsable,
+} from '@/services/pdf/ocr';
 
-// ─── PDF.js lazy import ───────────────────────────────────────────────────────
 async function getPdfjs() {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url
+    import.meta.url,
   ).toString();
   return pdfjsLib;
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface RawPage {
   pageNum: number;
   text: string;
+  /** True when text came from OCR rather than PDF.js */
+  fromOcr?: boolean;
+  /** Marked when PDF.js found little/no usable text (before/without OCR) */
+  requiresOcr?: boolean;
 }
 
 export interface DetectedMeta {
@@ -63,293 +66,275 @@ export interface ParsedBook {
   chapters: DetectedChapter[];
   pageCount: number;
   wordCount: number;
+  extraction?: ExtractionMeta;
 }
 
-// ─── Heading patterns ─────────────────────────────────────────────────────────
-
-/** Explicit chapter/part keywords */
-const EXPLICIT_CHAPTER = [
-  /^chapter\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
-  /^part\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
-  /^lesson\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
-  /^unit\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
-  /^book\s+(\d+|[ivxlcdm]+)\s*[:\-–—]?\s*(.{0,80})$/i,
-];
-
-/** Lines like "1. The Foundations" or "IV. Introduction" */
-const NUMBERED_HEADING = /^(\d{1,3}|[IVX]{1,6})[.)]\s+([A-Z\u0600-\u06FF][^\n]{2,70})$/;
-
-/** Numbered sub-sections like "1.1 Background" */
-const SECTION_PATTERNS = [
-  /^(\d+\.\d+)\s+([A-Z\u0600-\u06FF][^\n]{2,70})$/,
-  /^(\d+\.\d+)\s*[:\-–—]\s*(.{3,70})$/,
-];
-
-// Hijri year patterns
-const HIJRI_RANGE  = /(\d{3,4})\s*[–\-]\s*(\d{3,4})\s*AH/i;
-const HIJRI_SINGLE = /\b(\d{3,4})\s*AH\b/i;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function detectHijriYears(text: string): { start?: number; end?: number } {
-  const r = HIJRI_RANGE.exec(text);
-  if (r) return { start: +r[1], end: +r[2] };
-  const s = HIJRI_SINGLE.exec(text);
-  if (s) return { start: +s[1] };
-  return {};
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
 }
 
-function isExplicitChapterLine(line: string): { num: string; title: string } | null {
-  for (const pat of EXPLICIT_CHAPTER) {
-    const m = pat.exec(line);
-    if (m) return { num: m[1] || '', title: (m[2] || '').trim() };
+export function textContentToLines(
+  items: Array<{ str?: string; transform?: number[]; hasEOL?: boolean; width?: number }>,
+): string {
+  type Glyph = { str: string; x: number; y: number; hasEOL?: boolean };
+  const glyphs: Glyph[] = [];
+
+  for (const item of items) {
+    if (!item || typeof item.str !== 'string') continue;
+    const str = item.str;
+    if (!str) continue;
+    const transform = item.transform;
+    const x = transform?.[4] ?? 0;
+    const y = transform?.[5] ?? 0;
+    glyphs.push({ str, x, y, hasEOL: item.hasEOL });
   }
-  return null;
-}
 
-function isNumberedHeadingLine(line: string): { num: string; title: string } | null {
-  const m = NUMBERED_HEADING.exec(line);
-  if (m) return { num: m[1], title: m[2].trim() };
-  return null;
-}
+  if (glyphs.length === 0) return '';
 
-/** True if a short line looks like an ALL-CAPS section title (≥3 words, ≤10 words) */
-function isAllCapsHeading(line: string): boolean {
-  const words = line.split(/\s+/);
-  return (
-    words.length >= 2 &&
-    words.length <= 10 &&
-    line === line.toUpperCase() &&
-    /^[A-Z]/.test(line) &&
-    !/^\d+$/.test(line)
-  );
-}
+  const Y_TOLERANCE = 2.5;
+  const lines: Glyph[][] = [];
+  const sorted = [...glyphs].sort((a, b) => b.y - a.y || a.x - b.x);
 
-// ─── Metadata detection ───────────────────────────────────────────────────────
+  for (const g of sorted) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(last[0].y - g.y) <= Y_TOLERANCE) {
+      last.push(g);
+    } else {
+      lines.push([g]);
+    }
+  }
 
-function detectMeta(fullText: string, fileName: string): DetectedMeta {
-  const lines = fullText.split('\n').map((l) => l.trim()).filter(Boolean);
-
-  const fileTitle = fileName
-    .replace(/\.pdf$/i, '')
-    .replace(/[-_]/g, ' ')
+  return lines
+    .map((lineGlyphs) => {
+      lineGlyphs.sort((a, b) => a.x - b.x);
+      let line = '';
+      let prev: Glyph | null = null;
+      for (const g of lineGlyphs) {
+        if (!prev) {
+          line = g.str;
+        } else {
+          const needsSpace =
+            !prev.hasEOL &&
+            !/^\s/.test(g.str) &&
+            !/\s$/.test(prev.str) &&
+            !/^[.,;:!?)\]]/.test(g.str);
+          line += needsSpace ? ` ${g.str}` : g.str;
+        }
+        prev = g;
+        if (g.hasEOL) break;
+      }
+      return line.replace(/[ \t]{2,}/g, ' ').trim();
+    })
+    .filter(Boolean)
+    .join('\n')
     .trim();
-
-  // Title: look in the first 20 lines for a short, capitalised line
-  const titleLine = lines.slice(0, 20).find(
-    (l) =>
-      l.length >= 4 &&
-      l.length <= 90 &&
-      l.split(/\s+/).length <= 14 &&
-      !/^\d+$/.test(l) &&
-      !isExplicitChapterLine(l) &&
-      !NUMBERED_HEADING.test(l)
-  );
-  const title = titleLine || fileTitle;
-
-  // Author: line starting with a known label
-  const authorLine = lines.slice(0, 40).find((l) =>
-    /^(by|author|written by|compiled by|translated by)\s+/i.test(l)
-  );
-  const author = authorLine
-    ? authorLine.replace(/^(by|author|written by|compiled by|translated by)\s*/i, '').trim()
-    : '';
-
-  // Description: first sentence-like line (30-250 chars, >5 words)
-  const descLine = lines.slice(0, 50).find(
-    (l) =>
-      l.length > 30 &&
-      l.length < 250 &&
-      l.split(/\s+/).length > 5 &&
-      !isExplicitChapterLine(l) &&
-      l !== title
-  );
-
-  const hijri = detectHijriYears(fullText.slice(0, 3000));
-
-  return {
-    title: title.trim(),
-    author,
-    description: descLine || '',
-    hijriStart: hijri.start,
-    hijriEnd: hijri.end,
-  };
 }
 
-// ─── Chapter splitting ────────────────────────────────────────────────────────
-
-function splitIntoChapters(pages: RawPage[]): DetectedChapter[] {
-  const fullText = pages.map((p) => p.text).join('\n');
-  const lines = fullText.split('\n');
-
-  const chapters: DetectedChapter[] = [];
-  const state = { current: null as DetectedChapter | null };
-  let chapterCounter = 0;
-
-  function pushNew(num: string, title: string) {
-    if (state.current) chapters.push(state.current);
-    chapterCounter++;
-    state.current = {
-      number: num || String(chapterCounter),
-      title: title || `Chapter ${chapterCounter}`,
-      description: '',
-      rawText: '',
-      sections: [],
-    };
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const exp = isExplicitChapterLine(line);
-    if (exp) { pushNew(exp.num, exp.title); continue; }
-
-    const num = isNumberedHeadingLine(line);
-    if (num) { pushNew(num.num, num.title); continue; }
-
-    if (isAllCapsHeading(line)) { pushNew('', line); continue; }
-
-    if (state.current) state.current.rawText += line + '\n';
-  }
-  if (state.current) chapters.push(state.current);
-
-  // ── Fallback: no headings detected ──────────────────────────────────────────
-  // Split by pages so the number of chapters scales with the document.
-  if (chapters.length === 0) {
-    const PAGES_PER_CHAPTER = 5; // ~5 pages per chapter is a reasonable default
-    const totalPages = pages.length;
-    const numChapters = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHAPTER));
-
-    for (let ci = 0; ci < numChapters; ci++) {
-      const startPage = ci * PAGES_PER_CHAPTER;
-      const endPage   = Math.min(startPage + PAGES_PER_CHAPTER, totalPages);
-      const chunkText = pages
-        .slice(startPage, endPage)
-        .map((p) => p.text)
-        .join('\n');
-
-      if (chunkText.trim()) {
-        chapters.push({
-          number: String(ci + 1),
-          title: `Chapter ${ci + 1}`,
-          description: '',
-          rawText: chunkText,
-          sections: [],
-        });
-      }
-    }
-  }
-
-  // Split each chapter into sections
-  for (const chapter of chapters) {
-    chapter.sections = splitIntoSections(chapter.rawText, chapter.number);
-  }
-
-  return chapters;
+/** Render a PDF.js page to a canvas for OCR. */
+async function renderPageToCanvas(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  page: any,
+  scale = 2,
+): Promise<HTMLCanvasElement> {
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Could not create canvas for OCR.');
+  const task = page.render({ canvasContext: ctx, viewport });
+  await task.promise;
+  return canvas;
 }
 
-// ─── Section splitting ────────────────────────────────────────────────────────
+const EXTRACT_BATCH_SIZE = 50;
 
-function splitIntoSections(chapterText: string, chapterNum: string): DetectedSection[] {
-  if (!chapterText.trim()) return [];
-
-  const lines = chapterText.split('\n');
-  const sections: DetectedSection[] = [];
-  let current: DetectedSection | null = null;
-  let secCounter = 0;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    let matched = false;
-    for (const pat of SECTION_PATTERNS) {
-      const m = pat.exec(line);
-      if (m) {
-        if (current) sections.push(current);
-        secCounter++;
-        current = {
-          number: m[1] || `${chapterNum}.${secCounter}`,
-          title: (m[2] || `Section ${secCounter}`).trim(),
-          rawText: '',
-        };
-        matched = true;
-        break;
-      }
-    }
-
-    if (!matched && current) {
-      current.rawText += line + ' ';
-    }
-  }
-  if (current) sections.push(current);
-
-  // Fallback: no numbered sections → split by word count
-  // Scale section size to chapter size so large chapters get more sections
-  if (sections.length === 0 && chapterText.trim()) {
-    const words = chapterText.trim().split(/\s+/);
-    const totalWords = words.length;
-
-    // Target ~400 words per section, but at least 1 and at most 20 per chapter
-    const WORDS_PER_SECTION = 400;
-    const numSections = Math.min(20, Math.max(1, Math.round(totalWords / WORDS_PER_SECTION)));
-    const chunkSize = Math.ceil(totalWords / numSections);
-
-    for (let i = 0; i < numSections; i++) {
-      const chunk = words.slice(i * chunkSize, (i + 1) * chunkSize).join(' ');
-      if (chunk.trim()) {
-        const secNum = `${chapterNum}.${i + 1}`;
-        sections.push({
-          number: secNum,
-          title: `Section ${secNum}`,
-          rawText: chunk,
-        });
-      }
-    }
-  }
-
-  return sections;
+export interface ExtractPagesOptions {
+  onProgress?: PipelineProgressCallback;
+  batchSize?: number;
+  /** Enable OCR for pages without selectable text (default true in browser) */
+  enableOcr?: boolean;
 }
 
-// ─── Main parse function ──────────────────────────────────────────────────────
+export interface ExtractPagesResult {
+  pages: RawPage[];
+  ocrPageNums: number[];
+  ocrFailedPageNums: number[];
+}
 
-export async function extractPagesFromFile(file: File): Promise<RawPage[]> {
+/**
+ * Incrementally extract text from every page.
+ * Scanned pages are rendered and passed through Tesseract OCR.
+ */
+export async function extractPagesFromFile(
+  file: File,
+  options?: ExtractPagesOptions,
+): Promise<RawPage[]> {
+  const result = await extractPagesFromFileDetailed(file, options);
+  return result.pages;
+}
+
+export async function extractPagesFromFileDetailed(
+  file: File,
+  options?: ExtractPagesOptions,
+): Promise<ExtractPagesResult> {
+  const validation = validateBookPdfFile(file);
+  if (!validation.ok) {
+    throw new Error(validation.message);
+  }
+
+  const onProgress = options?.onProgress;
+  const batchSize = options?.batchSize ?? EXTRACT_BATCH_SIZE;
+  const enableOcr = options?.enableOcr ?? typeof window !== 'undefined';
+
+  onProgress?.('read', 'Reading PDF…', { percent: 0 });
+
   const pdfjsLib = await getPdfjs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const totalPages = pdf.numPages;
+
+  onProgress?.('read', `Reading PDF… ${totalPages} pages`, {
+    totalPages,
+    percent: 2,
+  });
 
   const pages: RawPage[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
+  const ocrPageNums: number[] = [];
+  const ocrFailedPageNums: number[] = [];
+  let ocrReady = false;
+  const ocr = getOcrProvider();
+
+  for (let i = 1; i <= totalPages; i++) {
     const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const text = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-    pages.push({ pageNum: i, text });
+    let text = '';
+    let fromOcr = false;
+    let requiresOcr = false;
+
+    try {
+      const content = await page.getTextContent();
+      const items = content.items as Array<{
+        str?: string;
+        transform?: number[];
+        hasEOL?: boolean;
+        width?: number;
+      }>;
+      text = textContentToLines(items);
+
+      if (!pageHasUsableText(text)) {
+        requiresOcr = true;
+
+        if (enableOcr && ocr.isAvailable()) {
+          if (!ocrReady) {
+            onProgress?.('ocr', 'Preparing OCR for scanned pages…', { percent: 20 });
+            await ocr.init?.((msg) => {
+              onProgress?.('ocr', msg, { percent: 22 });
+            });
+            ocrReady = true;
+          }
+
+          const percent = 25 + Math.round((i / totalPages) * 35);
+          onProgress?.('ocr', `Running OCR… Page ${i} / ${totalPages}`, {
+            page: i,
+            totalPages,
+            percent,
+          });
+
+          try {
+            const canvas = await renderPageToCanvas(page, 2);
+            const result = await ocr.recognizePage({ pageNum: i, image: canvas });
+            // Free canvas memory
+            canvas.width = 0;
+            canvas.height = 0;
+
+            if (ocrTextIsUsable(result.text)) {
+              text = result.text;
+              fromOcr = true;
+              ocrPageNums.push(i);
+              requiresOcr = false;
+            } else {
+              ocrFailedPageNums.push(i);
+            }
+          } catch {
+            ocrFailedPageNums.push(i);
+          }
+        }
+      }
+    } finally {
+      try {
+        page.cleanup();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    pages.push({
+      pageNum: i,
+      text,
+      fromOcr,
+      requiresOcr,
+    });
+
+    if (!fromOcr && !requiresOcr) {
+      const percent = Math.min(55, Math.round((i / totalPages) * 50) + 5);
+      if (i === 1 || i === totalPages || i % 5 === 0) {
+        onProgress?.('extract', `Extracting text… Page ${i} / ${totalPages}`, {
+          page: i,
+          totalPages,
+          percent,
+        });
+      }
+    }
+
+    if (i % batchSize === 0) {
+      await yieldToUi();
+    }
   }
-  return pages;
+
+  try {
+    await getOcrProvider().terminate?.();
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    await pdf.destroy();
+  } catch {
+    /* ignore */
+  }
+
+  onProgress?.('extract', `Extracted ${totalPages} pages`, {
+    page: totalPages,
+    totalPages,
+    percent: 55,
+  });
+
+  return { pages, ocrPageNums, ocrFailedPageNums };
 }
 
 export async function parsePdf(
   file: File,
   onProgress?: PipelineProgressCallback,
 ): Promise<ParsedBook> {
-  onProgress?.('read', 'Reading PDF document…');
-  const pages = await extractPagesFromFile(file);
-  onProgress?.('extract', 'Extracting text content…');
-  return runPipeline(pages, file.name, onProgress);
+  const { pages, ocrPageNums, ocrFailedPageNums } = await extractPagesFromFileDetailed(file, {
+    onProgress,
+  });
+  return runPipeline(pages, file.name, onProgress, {
+    fileSizeBytes: file.size,
+    ocrPageNums,
+    ocrFailedPageNums,
+  });
 }
-
-// ─── Conversion to public Book format ─────────────────────────────────────────
 
 export function rawTextToContentBlocks(text: string): ContentBlock[] {
   return textToContentBlocks(text);
 }
-
-// ─── Safe slug ────────────────────────────────────────────────────────────────
 
 function safeSlug(text: string): string {
   return (
@@ -366,30 +351,30 @@ function safeSlug(text: string): string {
   );
 }
 
-// ─── Build public Book object ──────────────────────────────────────────────────
-
 export function parsedBookToPublicFormat(
   parsed: ParsedBook,
   bookId: string,
   slugHint: string,
   categoryIds: string[],
   authorId: string,
-  coverColor: string
+  coverColor: string,
 ): import('@/types').Book {
   const cleanSlug = safeSlug(parsed.meta.title) || safeSlug(slugHint);
   const intro: ContentBlock[] = rawTextToContentBlocks(parsed.introductionText);
 
   const chapters: BookChapter[] = parsed.chapters.map((ch, ci) => ({
     id: `${bookId}-ch-${ci + 1}`,
-    number: ch.number,
+    number: ch.number || String(ci + 1),
     title: ch.title,
     description: ch.description || undefined,
-    sections: ch.sections.map((sec, si): BookSection => ({
-      id: `${bookId}-ch-${ci + 1}-sec-${si + 1}`,
-      number: sec.number,
-      title: sec.title,
-      content: rawTextToContentBlocks(sec.rawText),
-    })),
+    sections: ch.sections.map(
+      (sec, si): BookSection => ({
+        id: `${bookId}-ch-${ci + 1}-sec-${si + 1}`,
+        number: sec.number || `${ci + 1}.${si + 1}`,
+        title: sec.title,
+        content: rawTextToContentBlocks(sec.rawText),
+      }),
+    ),
   }));
 
   return {
@@ -399,12 +384,11 @@ export function parsedBookToPublicFormat(
     subtitle: undefined,
     authorId,
     description:
-      parsed.meta.description ||
-      `${parsed.meta.title} — an Islamic scholarly work.`,
+      parsed.meta.description || `${parsed.meta.title} — an Islamic scholarly work.`,
     longDescription: undefined,
     coverColor,
     hijriStart: parsed.meta.hijriStart ?? 700,
-    hijriEnd:   parsed.meta.hijriEnd   ?? 800,
+    hijriEnd: parsed.meta.hijriEnd ?? 800,
     categoryIds,
     chapters,
     introduction: intro,

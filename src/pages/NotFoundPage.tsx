@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+﻿import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { BookOpen, Search, Library, ArrowRight } from 'lucide-react';
 import { getFeaturedBooks } from '@/data/books';
 import { BookCover } from '@/components/book/BookCover';
@@ -8,54 +9,52 @@ import { Footer } from '@/components/layout/Footer';
 export function NotFoundPage() {
   const { pathname } = useLocation();
 
-  // Detect if user tried to reach a book path
-  const isBookPath   = pathname.startsWith('/books/');
-  const isAdminPath  = pathname.startsWith('/admin');
-
-  // Don't show navbar/footer for admin 404s
+  const isBookPath = pathname.startsWith('/books/');
+  const isAdminPath = pathname.startsWith('/admin');
   const isPublic = !isAdminPath;
-
-  // Grab 3 featured books as suggestions
   const featured = getFeaturedBooks().slice(0, 3);
 
-  const content = (
+  return (
     <div className="flex min-h-screen flex-col bg-paper">
       {isPublic && <Navbar />}
 
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
-        {/* Icon */}
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-ink-900/5 mb-6">
-          <BookOpen size={32} className="text-ink-300" />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center"
+        >
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-accent/15">
+            <BookOpen size={32} className="text-accent" />
+          </div>
 
-        {/* Heading */}
-        <h1 className="font-serif text-3xl font-semibold text-ink-900 sm:text-4xl">
-          {isBookPath ? 'Book Not Found' : 'Page Not Found'}
-        </h1>
+          <h1 className="font-cinzel text-3xl font-semibold text-ink-900 sm:text-4xl">
+            {isBookPath ? 'Book Not Found' : 'Page Not Found'}
+          </h1>
 
-        <p className="mt-3 max-w-md text-base text-ink-500">
-          {isBookPath
-            ? `We couldn't find a book at "${pathname.replace('/books/', '')}". It may have been moved or the link is incorrect.`
-            : "The page you're looking for doesn't exist or may have been moved."}
-        </p>
+          <p className="mt-3 max-w-md text-base text-ink-500">
+            {isBookPath
+              ? `We could not find a book at "${pathname.replace('/books/', '')}". It may have been moved or the link is incorrect.`
+              : "The page you are looking for does not exist or may have been moved."}
+          </p>
 
-        {/* Primary actions */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            to="/library"
-            className="inline-flex items-center gap-2 rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-medium text-cream transition-all hover:bg-ink-800"
-          >
-            <Library size={16} /> Browse Library
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-lg border border-line bg-cream px-5 py-2.5 text-sm font-medium text-ink-700 transition-all hover:border-ink-400 hover:text-ink-900"
-          >
-            Back to Home
-          </Link>
-        </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/library"
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-ink-900 transition-all hover:bg-accent-light"
+            >
+              <Library size={16} /> Browse Library
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-cream px-5 py-2.5 text-sm font-medium text-ink-700 transition-all hover:border-accent hover:text-ink-900"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </motion.div>
 
-        {/* Suggested books (only for book paths or general 404) */}
         {isPublic && featured.length > 0 && (
           <div className="mt-16 w-full max-w-3xl">
             <div className="mb-6 flex items-center justify-between">
@@ -71,14 +70,18 @@ export function NotFoundPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {featured.map(book => (
+              {featured.map((book) => (
                 <Link
                   key={book.id}
                   to={`/books/${book.slug}`}
-                  className="group flex items-center gap-4 rounded-xl border border-line bg-cream p-4 text-left transition-all hover:border-line-strong hover:shadow-sm sm:flex-col sm:items-start sm:gap-3"
+                  className="group flex items-center gap-4 rounded-2xl border border-line bg-cream p-4 text-left transition-all duration-200 hover:border-accent/50 hover:shadow-md sm:flex-col sm:items-start sm:gap-3"
                 >
                   <div className="shrink-0">
-                    <BookCover book={book} size="sm" className="transition-transform duration-300 group-hover:scale-105" />
+                    <BookCover
+                      book={book}
+                      size="sm"
+                      className="transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="font-serif text-sm font-semibold leading-snug text-ink-900 line-clamp-2 group-hover:text-accent-dark transition-colors">
@@ -94,16 +97,16 @@ export function NotFoundPage() {
           </div>
         )}
 
-        {/* Search hint */}
         {isPublic && (
-          <p className="mt-10 flex items-center gap-2 text-sm text-ink-400">
+          <p className="mt-10 flex flex-wrap items-center justify-center gap-2 text-sm text-ink-400">
             <Search size={14} />
             Try searching from the
-            <Link to="/library" className="font-medium text-accent hover:underline">library page</Link>
+            <Link to="/library" className="font-medium text-accent hover:underline">
+              library page
+            </Link>
           </p>
         )}
 
-        {/* Admin-specific 404 */}
         {isAdminPath && (
           <Link
             to="/admin"
@@ -117,6 +120,4 @@ export function NotFoundPage() {
       {isPublic && <Footer />}
     </div>
   );
-
-  return content;
 }

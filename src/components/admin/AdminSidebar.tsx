@@ -9,6 +9,7 @@ import {
   Settings,
   X,
   BookMarked,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -121,6 +122,20 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
+        {/* View public site */}
+        <div className="mb-5 px-1">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#C9A646]/40 bg-[#C9A646]/15 px-3 py-2.5 text-[13px] font-semibold text-[#C9A646] transition-colors hover:bg-[#C9A646]/25 hover:text-[#e0c06a]"
+          >
+            <ExternalLink size={15} />
+            View Website
+          </a>
+        </div>
+
         {navigation.map((group) => (
           <div key={group.group} className="mb-5">
             <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
