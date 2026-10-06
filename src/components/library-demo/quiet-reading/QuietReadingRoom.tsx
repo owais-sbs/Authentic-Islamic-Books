@@ -162,7 +162,7 @@ export function QuietReadingRoom() {
     } else setStage('end');
   };
 
-  /** One paper turn only — content swaps mid-fold; paper key stays stable for the whole flip. */
+  /** One paper turn only — content swaps mid-turn; paper key stays stable for the whole flip. */
   const runPaperTurn = (dir: 1 | -1, apply: () => void) => {
     if (turningRef.current) return;
     turningRef.current = true;
@@ -170,11 +170,12 @@ export function QuietReadingRoom() {
     setTurnId((n) => n + 1);
     setPaperFlip(true);
     clearFlipTimers();
-    midSwapRef.current = setTimeout(() => apply(), 390);
+    const mobile = isMobileRef.current;
+    midSwapRef.current = setTimeout(() => apply(), mobile ? 220 : 390);
     endFlipRef.current = setTimeout(() => {
       setPaperFlip(false);
       turningRef.current = false;
-    }, 820);
+    }, mobile ? 560 : 820);
   };
 
   const openBook = () => {
@@ -509,43 +510,76 @@ export function QuietReadingRoom() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className={cn('qob-hardcover', paperFlip && 'qob-hardcover-turning')}>
-                <div className={cn('qob-pages', paperFlip && 'qob-pages-turning')}>
+              <div
+                className={cn(
+                  'qob-hardcover',
+                  paperFlip && !isMobile && 'qob-hardcover-turning'
+                )}
+              >
+                <div
+                  className={cn(
+                    'qob-pages',
+                    paperFlip && !isMobile && 'qob-pages-turning'
+                  )}
+                >
                   {isMobile ? (
                     <div className="qob-page-layer">{renderOpenSpread()}</div>
                   ) : (
                     renderOpenSpread()
                   )}
 
-                  {paperFlip && <div className="qob-turn-shade" aria-hidden />}
+                  {paperFlip && !isMobile && <div className="qob-turn-shade" aria-hidden />}
 
-                  {paperFlip && (
-                    <motion.div
-                      key={`paper-${turnId}`}
-                      className={cn(
-                        'qob-paper',
-                        turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back',
-                        isMobile && 'qob-paper-mobile'
-                      )}
-                      initial={{ rotateY: 0 }}
-                      animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
-                      transition={{
-                        duration: 0.78,
-                        ease: [0.645, 0.045, 0.355, 1],
-                      }}
-                      style={{
-                        transformStyle: 'preserve-3d',
-                        transformPerspective: isMobile ? 1800 : 2400,
-                      }}
-                    >
-                      <div className="qob-paper-face qob-paper-face-front">
-                        <span className="qob-paper-curl" aria-hidden />
-                      </div>
-                      <div className="qob-paper-face qob-paper-face-rear">
-                        <span className="qob-paper-curl qob-paper-curl-rear" aria-hidden />
-                      </div>
-                    </motion.div>
-                  )}
+                  {paperFlip &&
+                    (isMobile ? (
+                      /* Mobile: slide peel inside the clip — no rotateY (avoids left-corner shrink) */
+                      <motion.div
+                        key={`paper-m-${turnId}`}
+                        className={cn(
+                          'qob-paper',
+                          'qob-paper-mobile',
+                          turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back'
+                        )}
+                        initial={{ x: '0%', opacity: 1 }}
+                        animate={{
+                          x: turnDir > 0 ? '-102%' : '102%',
+                          opacity: 1,
+                        }}
+                        transition={{
+                          duration: 0.55,
+                          ease: [0.4, 0, 0.2, 1],
+                        }}
+                      >
+                        <div className="qob-paper-face qob-paper-face-front qob-paper-face-mobile">
+                          <span className="qob-paper-edge" aria-hidden />
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={`paper-${turnId}`}
+                        className={cn(
+                          'qob-paper',
+                          turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back'
+                        )}
+                        initial={{ rotateY: 0 }}
+                        animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
+                        transition={{
+                          duration: 0.78,
+                          ease: [0.645, 0.045, 0.355, 1],
+                        }}
+                        style={{
+                          transformStyle: 'preserve-3d',
+                          transformPerspective: 2400,
+                        }}
+                      >
+                        <div className="qob-paper-face qob-paper-face-front">
+                          <span className="qob-paper-curl" aria-hidden />
+                        </div>
+                        <div className="qob-paper-face qob-paper-face-rear">
+                          <span className="qob-paper-curl qob-paper-curl-rear" aria-hidden />
+                        </div>
+                      </motion.div>
+                    ))}
                 </div>
               </div>
             </motion.div>
@@ -1756,20 +1790,13 @@ const bookStyles = `
     margin-right: auto;
     overflow: hidden;
   }
-  .qob-hardcover-turning {
-    overflow: visible !important;
-  }
   .qob-pages {
     grid-template-columns: 1fr;
     height: var(--qob-spread-h);
     min-height: var(--qob-spread-h);
-    overflow: hidden;
-    perspective: none; /* perspective lives on .qob-book-wrap so 3D is not flattened */
-    transform-style: preserve-3d;
-    -webkit-transform-style: preserve-3d;
-  }
-  .qob-pages-turning {
-    overflow: visible !important;
+    overflow: hidden; /* keep clipped — prevents left-corner shrink on turn */
+    perspective: none;
+    transform-style: flat;
   }
   .qob-page-layer {
     display: block;
@@ -1779,7 +1806,6 @@ const bookStyles = `
     width: 100%;
     grid-column: 1;
     grid-row: 1;
-    transform-style: preserve-3d;
   }
   .qob-page-layer > .qob-page {
     height: 100%;
@@ -1796,45 +1822,53 @@ const bookStyles = `
     border: none;
     box-shadow: inset 0 0 30px -16px var(--qob-gutter);
   }
-  /*
-   * Full-leaf turn from the spine (left), same motion language as desktop’s
-   * right-leaf flip — sheet stays visible because overflow opens while turning.
-   */
-  .qob-paper,
+  /* Mobile page peel — slides inside the frame, no 3D foreshortening */
   .qob-paper-mobile {
     display: block !important;
     width: 100%;
     left: 0;
     right: 0;
     z-index: 40;
-    filter: drop-shadow(0 12px 28px rgba(20, 30, 24, 0.35));
+    transform-origin: center center !important;
+    filter: none;
+    will-change: transform;
   }
-  .qob-paper-fwd {
-    right: 0;
-    left: 0;
-    transform-origin: left center;
-  }
-  .qob-paper-back {
+  .qob-paper-mobile.qob-paper-fwd,
+  .qob-paper-mobile.qob-paper-back {
     left: 0;
     right: 0;
-    transform-origin: right center;
+    transform-origin: center center;
   }
-  .qob-paper-face {
-    box-shadow:
-      0 0 0 1px rgba(42, 42, 42, 0.06),
-      8px 0 24px rgba(20, 30, 24, 0.18);
-  }
-  .qob-paper-face-front {
+  .qob-paper-face-mobile {
+    border-radius: 0;
+    box-shadow: none;
     background:
-      linear-gradient(90deg, rgba(42,42,42,0.16) 0%, transparent 28%),
-      linear-gradient(180deg, #FFFCF0 0%, var(--qob-page) 45%, #F0E9DC 100%);
+      linear-gradient(90deg, rgba(42,42,42,0.04), transparent 18%),
+      linear-gradient(180deg, #FFFCF0 0%, var(--qob-page) 50%, #F0E9DC 100%);
   }
-  .qob-turn-shade {
+  .qob-paper-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    pointer-events: none;
+  }
+  .qob-paper-mobile.qob-paper-fwd .qob-paper-edge {
+    right: 0;
     background: linear-gradient(
       90deg,
-      rgba(20, 30, 24, 0.14),
-      rgba(20, 30, 24, 0.04) 50%,
-      rgba(20, 30, 24, 0.2)
+      transparent,
+      rgba(20, 30, 24, 0.08) 40%,
+      rgba(20, 30, 24, 0.22)
+    );
+  }
+  .qob-paper-mobile.qob-paper-back .qob-paper-edge {
+    left: 0;
+    background: linear-gradient(
+      270deg,
+      transparent,
+      rgba(20, 30, 24, 0.08) 40%,
+      rgba(20, 30, 24, 0.22)
     );
   }
   .qob-leaf {
