@@ -160,20 +160,18 @@ export function QuietReadingRoom() {
     } else setStage('end');
   };
 
-  /** Paper flips from spine (desktop) or full leaf (mobile); content swaps mid-turn. */
+  /** Same paper turn on desktop + mobile; content swaps at the mid-fold. */
   const runPaperTurn = (dir: 1 | -1, apply: () => void) => {
     if (turningRef.current) return;
     turningRef.current = true;
     setTurnDir(dir);
     setPaperFlip(true);
     clearFlipTimers();
-    const mid = isMobileRef.current ? 420 : 380;
-    const end = isMobileRef.current ? 900 : 820;
-    midSwapRef.current = setTimeout(() => apply(), mid);
+    midSwapRef.current = setTimeout(() => apply(), 390);
     endFlipRef.current = setTimeout(() => {
       setPaperFlip(false);
       turningRef.current = false;
-    }, end);
+    }, 820);
   };
 
   const openBook = () => {
@@ -182,9 +180,19 @@ export function QuietReadingRoom() {
     setTurnDir(1);
     setMobileIndex(0);
     setStage('title');
+    /* After the cover opens, run one leaf-turn so mobile sees the same paper motion */
     window.setTimeout(() => {
       turningRef.current = false;
-    }, isMobileRef.current ? 650 : 450);
+      if (isMobileRef.current) {
+        setPaperFlip(true);
+        turningRef.current = true;
+        clearFlipTimers();
+        endFlipRef.current = setTimeout(() => {
+          setPaperFlip(false);
+          turningRef.current = false;
+        }, 820);
+      }
+    }, isMobileRef.current ? 520 : 420);
   };
 
   const goNext = () => {
@@ -428,10 +436,15 @@ export function QuietReadingRoom() {
     return null;
   };
 
-  const flipDuration = isMobile ? 0.88 : 0.78;
-
   return (
-    <div className={cn('qob-root', themeClass, isMobile && 'qob-mobile')}>
+    <div
+      className={cn(
+        'qob-root',
+        themeClass,
+        isMobile && 'qob-mobile',
+        paperFlip && 'qob-turning'
+      )}
+    >
       <style>{bookStyles}</style>
 
       <div className="qob-toolbar">
@@ -496,16 +509,19 @@ export function QuietReadingRoom() {
               <motion.div
                 key="closed"
                 className="qob-closed-motion"
-                initial={{ opacity: 0, y: 12, rotateY: 8 }}
-                animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{
-                  opacity: 0,
-                  rotateY: isMobile ? -55 : -18,
-                  x: isMobile ? -24 : 0,
-                  scale: 0.96,
+                  opacity: 0.15,
+                  rotateY: isMobile ? -78 : -28,
+                  scale: isMobile ? 0.94 : 0.98,
                 }}
-                transition={{ duration: isMobile ? 0.55 : 0.36, ease: [0.645, 0.045, 0.355, 1] }}
-                style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
+                transition={{ duration: isMobile ? 0.52 : 0.36, ease: [0.645, 0.045, 0.355, 1] }}
+                style={{
+                  transformOrigin: 'left center',
+                  transformStyle: 'preserve-3d',
+                  transformPerspective: 1400,
+                }}
               >
                 <ClosedCover onOpen={openBook} />
               </motion.div>
@@ -515,17 +531,20 @@ export function QuietReadingRoom() {
                 className="qob-open-shell"
                 initial={{
                   opacity: 0,
-                  y: isMobile ? 8 : 14,
-                  rotateY: isMobile ? 48 : 12,
-                  x: isMobile ? 28 : 0,
+                  rotateY: isMobile ? 72 : 16,
+                  x: isMobile ? 18 : 0,
                 }}
-                animate={{ opacity: 1, y: 0, rotateY: 0, x: 0 }}
-                exit={{ opacity: 0, rotateY: isMobile ? 30 : 0 }}
-                transition={{ duration: isMobile ? 0.58 : 0.36, ease: [0.22, 1, 0.36, 1] }}
-                style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
+                animate={{ opacity: 1, rotateY: 0, x: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: isMobile ? 0.56 : 0.36, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  transformOrigin: 'left center',
+                  transformStyle: 'preserve-3d',
+                  transformPerspective: 1400,
+                }}
               >
-                <div className="qob-hardcover">
-                  <div className="qob-pages">
+                <div className={cn('qob-hardcover', paperFlip && 'qob-hardcover-turning')}>
+                  <div className={cn('qob-pages', paperFlip && 'qob-pages-turning')}>
                     {isMobile ? (
                       <div className="qob-page-layer" key={mobileLeaf?.key ?? 'page'}>
                         {renderOpenSpread()}
@@ -534,24 +553,46 @@ export function QuietReadingRoom() {
                       renderOpenSpread()
                     )}
 
+                    {/* Soft under-page dim so the turn reads clearly on phones */}
+                    <AnimatePresence>
+                      {paperFlip && (
+                        <motion.div
+                          key="turn-shade"
+                          className="qob-turn-shade"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      )}
+                    </AnimatePresence>
+
                     <AnimatePresence>
                       {paperFlip && (
                         <motion.div
                           key={`paper-${turnDir}-${isMobile ? mobileIndex : `${stage}-${spreadIndex}`}`}
                           className={cn(
                             'qob-paper',
-                            turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back'
+                            turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back',
+                            isMobile && 'qob-paper-mobile'
                           )}
                           initial={{ rotateY: 0 }}
                           animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
                           transition={{
-                            duration: flipDuration,
+                            duration: 0.78,
                             ease: [0.645, 0.045, 0.355, 1],
                           }}
-                          style={{ transformStyle: 'preserve-3d' }}
+                          style={{
+                            transformStyle: 'preserve-3d',
+                            transformPerspective: isMobile ? 1800 : 2400,
+                          }}
                         >
-                          <div className="qob-paper-face qob-paper-face-front" />
-                          <div className="qob-paper-face qob-paper-face-rear" />
+                          <div className="qob-paper-face qob-paper-face-front">
+                            <span className="qob-paper-curl" aria-hidden />
+                          </div>
+                          <div className="qob-paper-face qob-paper-face-rear">
+                            <span className="qob-paper-curl qob-paper-curl-rear" aria-hidden />
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1347,9 +1388,10 @@ const bookStyles = `
   top: 0;
   bottom: 0;
   width: 50%;
-  z-index: 20;
+  z-index: 30;
   pointer-events: none;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   will-change: transform;
 }
 .qob-paper-fwd {
@@ -1369,6 +1411,7 @@ const bookStyles = `
     linear-gradient(90deg, rgba(42,42,42,0.07), transparent 14%),
     linear-gradient(180deg, #FFFCF0 0%, var(--qob-page) 40%, #F3EDE3 100%);
   box-shadow: 0 8px 28px rgba(20, 30, 24, 0.18);
+  overflow: hidden;
 }
 .qob-paper-face-front {
   background:
@@ -1386,6 +1429,49 @@ const bookStyles = `
 }
 .qob-paper-back .qob-paper-face-front {
   border-right: 1px solid rgba(42,42,42,0.08);
+}
+.qob-paper-curl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 62%,
+    rgba(0,0,0,0.06) 78%,
+    rgba(255,255,255,0.35) 88%,
+    rgba(0,0,0,0.12) 100%
+  );
+}
+.qob-paper-curl-rear {
+  background: linear-gradient(
+    255deg,
+    transparent 0%,
+    transparent 55%,
+    rgba(0,0,0,0.1) 75%,
+    rgba(255,255,255,0.2) 90%,
+    rgba(0,0,0,0.14) 100%
+  );
+}
+.qob-turn-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(20, 30, 24, 0.08),
+    rgba(20, 30, 24, 0.02) 45%,
+    rgba(20, 30, 24, 0.14)
+  );
+}
+/* While turning, do not clip the 3D sheet */
+.qob-hardcover-turning,
+.qob-pages-turning {
+  overflow: visible !important;
+}
+.qob-turning .qob-book-wrap {
+  z-index: 4;
 }
 .qob-leaf {
   flex: 1 1 auto;
@@ -1696,27 +1782,45 @@ const bookStyles = `
 }
 .font-arabic { font-family: Amiri, 'Traditional Arabic', serif; }
 
-/* Mobile — one page at a time + full-width flip (never stack both leaves) */
+/* Mobile — one page at a time; same gutter-style paper turn as desktop */
 @media (max-width: 900px) {
   .qob-stage {
     --qob-spread-h: min(76vh, 780px);
     padding: 1rem 0.65rem 0;
   }
   .qob-toolbar-inner { padding: 0.55rem 0.85rem; }
-  .qob-book-wrap { perspective: 1400px; }
+  .qob-book-wrap {
+    perspective: 1800px;
+    -webkit-perspective: 1800px;
+    overflow: visible;
+  }
+  .qob-closed-motion,
+  .qob-open-shell {
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+  }
   .qob-hardcover {
     padding: 10px 10px 12px;
     border-radius: 6px 12px 12px 6px;
     max-width: min(100%, 440px);
     margin-left: auto;
     margin-right: auto;
+    overflow: hidden;
+  }
+  .qob-hardcover-turning {
+    overflow: visible !important;
   }
   .qob-pages {
     grid-template-columns: 1fr;
     height: var(--qob-spread-h);
     min-height: var(--qob-spread-h);
     overflow: hidden;
-    perspective: 1600px;
+    perspective: none; /* perspective lives on .qob-book-wrap so 3D is not flattened */
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+  }
+  .qob-pages-turning {
+    overflow: visible !important;
   }
   .qob-page-layer {
     display: block;
@@ -1726,6 +1830,7 @@ const bookStyles = `
     width: 100%;
     grid-column: 1;
     grid-row: 1;
+    transform-style: preserve-3d;
   }
   .qob-page-layer > .qob-page {
     height: 100%;
@@ -1742,24 +1847,46 @@ const bookStyles = `
     border: none;
     box-shadow: inset 0 0 30px -16px var(--qob-gutter);
   }
-  /* Full-leaf paper turn — visible on phones */
-  .qob-paper {
-    display: block;
+  /*
+   * Full-leaf turn from the spine (left), same motion language as desktop’s
+   * right-leaf flip — sheet stays visible because overflow opens while turning.
+   */
+  .qob-paper,
+  .qob-paper-mobile {
+    display: block !important;
     width: 100%;
     left: 0;
     right: 0;
-    box-shadow: 0 10px 40px rgba(20, 30, 24, 0.28);
+    z-index: 40;
+    filter: drop-shadow(0 12px 28px rgba(20, 30, 24, 0.35));
   }
   .qob-paper-fwd {
+    right: 0;
+    left: 0;
     transform-origin: left center;
   }
   .qob-paper-back {
+    left: 0;
+    right: 0;
     transform-origin: right center;
+  }
+  .qob-paper-face {
+    box-shadow:
+      0 0 0 1px rgba(42, 42, 42, 0.06),
+      8px 0 24px rgba(20, 30, 24, 0.18);
   }
   .qob-paper-face-front {
     background:
-      linear-gradient(90deg, rgba(42,42,42,0.12) 0%, transparent 22%),
+      linear-gradient(90deg, rgba(42,42,42,0.16) 0%, transparent 28%),
       linear-gradient(180deg, #FFFCF0 0%, var(--qob-page) 45%, #F0E9DC 100%);
+  }
+  .qob-turn-shade {
+    background: linear-gradient(
+      90deg,
+      rgba(20, 30, 24, 0.14),
+      rgba(20, 30, 24, 0.04) 50%,
+      rgba(20, 30, 24, 0.2)
+    );
   }
   .qob-leaf {
     padding: 1.2rem 1.1rem 3rem;
@@ -1789,5 +1916,9 @@ const bookStyles = `
   .qob-nav { max-width: 100%; }
   .qob-nav p { font-size: 11px; }
   .qob-closed-cta { font-size: 0.7rem; }
+  .qob-book-wrap {
+    perspective: 1400px;
+    -webkit-perspective: 1400px;
+  }
 }
 `;
