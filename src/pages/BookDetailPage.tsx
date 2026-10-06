@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Layers, FileText, ChevronDown, Plus, Minus } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -13,12 +13,22 @@ import { getScholarById } from '@/data/scholars';
 import { getCategoryById } from '@/data/categories';
 import { countAllSections, estimateReadingTime } from '@/data/books';
 import { formatHijriRange } from '@/data/periods';
-import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache } from '@/lib/bookApi';
+import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache, getSupabasePublishedCache } from '@/lib/bookApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { getAllImportedBooks } from '@/hooks/useBookStore';
 import { NotFoundPage } from './NotFoundPage';
 import { cn } from '@/lib/utils';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import type { BookSection, BookChapter, Book, ContentBlock } from '@/types';
+
+function resolveBookSync(slug: string, stateBook?: Book): Book | undefined {
+  if (stateBook?.slug === slug) return stateBook;
+  const fromLookup = getBookBySlug(slug);
+  if (fromLookup) return fromLookup;
+  const fromCache = getSupabasePublishedCache().find((b) => b.slug === slug);
+  if (fromCache) return fromCache;
+  return getAllImportedBooks().find((b) => b.slug === slug);
+}
 
 // ─── Section accordion ────────────────────────────────────────────────────────
 // Shown inside a chapter — e.g. "1.1 Background"
@@ -225,12 +235,14 @@ function IntroAccordion({ book }: { book: Book }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function BookDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const stateBook = (location.state as { book?: Book } | null)?.book;
 
-  // 1. Try sync lookup first (static + localStorage + existing Supabase cache)
+  // Sync resolve first (nav state / cache / static) — avoids spinner after Hijri click
   const [book, setBook] = useState<Book | undefined>(() =>
-    slug ? getBookBySlug(slug) : undefined
+    slug ? resolveBookSync(slug, stateBook) : undefined
   );
-  const [loading, setLoading] = useState(!book && isSupabaseConfigured());
+  const [loading, setLoading] = useState(() => !!(slug && !resolveBookSync(slug, stateBook) && isSupabaseConfigured()));
   const [notFound, setNotFound] = useState(false);
 
   usePageMeta({
@@ -242,10 +254,18 @@ export function BookDetailPage() {
     path: slug ? `/books/${slug}` : undefined,
   });
 
-  // 2. If not found synchronously AND Supabase is configured, fetch async
+  // Keep in sync when navigating between books via Hijri menu (same page component)
   useEffect(() => {
-    if (book || !slug) return;
+    if (!slug) return;
+    const resolved = resolveBookSync(slug, stateBook);
+    if (resolved) {
+      setBook(resolved);
+      setLoading(false);
+      setNotFound(false);
+      return;
+    }
     if (!isSupabaseConfigured()) {
+      setBook(undefined);
       setNotFound(true);
       setLoading(false);
       return;
@@ -254,18 +274,22 @@ export function BookDetailPage() {
     setLoading(true);
     fetchPublishedBooksFromSupabase()
       .then((remoteBooks) => {
-        // Populate the cache so future sync lookups work
         setSupabasePublishedCache(remoteBooks);
         const found = remoteBooks.find((b) => b.slug === slug);
         if (found) {
           setBook(found);
+          setNotFound(false);
         } else {
+          setBook(undefined);
           setNotFound(true);
         }
       })
-      .catch(() => setNotFound(true))
+      .catch(() => {
+        setBook(undefined);
+        setNotFound(true);
+      })
       .finally(() => setLoading(false));
-  }, [slug, book]);
+  }, [slug, stateBook]);
 
   // Loading state — spinner while fetching from Supabase
   if (loading) {

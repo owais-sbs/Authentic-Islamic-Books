@@ -59,7 +59,7 @@ export function TimelinePage() {
                     </div>
                     <div className="relative z-10 mb-3 h-3 w-3 rounded-full bg-accent ring-4 ring-paper" />
                     <Link
-                      to={`/library?period=${period.id}`}
+                      to={`/?period=${period.id}#library`}
                       className="group w-full rounded-xl border border-line bg-cream p-3 text-center transition-all duration-200 hover:border-accent hover:shadow-md hover:-translate-y-0.5"
                     >
                       <p className="text-[10px] text-ink-400">{period.label}</p>
@@ -102,7 +102,7 @@ export function TimelinePage() {
                 >
                   <div className="absolute left-4 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full bg-accent ring-4 ring-paper" />
                   <Link
-                    to={`/library?period=${period.id}`}
+                    to={`/?period=${period.id}#library`}
                     className="group block rounded-2xl border border-line bg-cream p-4 transition-all duration-200 hover:border-accent active:scale-[0.99]"
                   >
                     <p className="font-serif text-base font-semibold text-ink-900">{period.label}</p>

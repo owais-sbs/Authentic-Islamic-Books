@@ -2,8 +2,12 @@
  * Controlled Markdown intermediate representation for PDF imports.
  * Deterministic serialize/parse — not a general Markdown engine.
  *
- * Chapter/section numbers are always written as decimal digits so
- * double-digit chapters (10, 11, 12…) round-trip correctly.
+ * Designed for large multi-chapter / multi-hundred-page books:
+ * - Chapter/section numbers are always decimal digits (10, 11, 100…)
+ *   so double- and triple-digit chapters round-trip correctly.
+ * - Em-dash separators keep numbers unambiguous vs title text.
+ * - Full chapter/section body text is preserved without truncation.
+ * - Page count is stored in metadata (`> PAGES:`) for admin review.
  */
 
 import type { DetectedChapter, DetectedMeta, DetectedSection } from '@/lib/pdfExtractor';
@@ -19,8 +23,25 @@ export interface MarkdownBookDraft {
   chapters: DetectedChapter[];
 }
 
+/** Digits-only chapter/section number (supports 1…n with no upper digit cap). */
+const NUM = String.raw`(\d+(?:\.\d+)*)`;
+
 function escapeOneLine(s: string): string {
   return s.replace(/\r?\n/g, ' ').trim();
+}
+
+/** Normalize chapter/section number to clean decimal digits (no leading zeros). */
+function normalizeNumber(raw: string): string {
+  const t = raw.trim();
+  if (!t) return '';
+  // Keep dotted hierarchies like 12.3.1 intact; strip only leading zeros per segment.
+  return t
+    .split('.')
+    .map((part) => {
+      const n = Number(part);
+      return Number.isFinite(n) ? String(n) : part;
+    })
+    .join('.');
 }
 
 /** Serialize structured detection results into controlled Markdown. */
@@ -48,7 +69,7 @@ export function structureToMarkdown(draft: MarkdownBookDraft): string {
   for (const ch of draft.chapters) {
     // Format: ## CHAPTER <digits> — <title>
     // Em-dash separator keeps multi-digit numbers unambiguous vs title text.
-    const num = (ch.number || '').trim() || '?';
+    const num = normalizeNumber(ch.number || '') || '?';
     const title = escapeOneLine(ch.title || '');
     lines.push(title ? `## CHAPTER ${num} — ${title}` : `## CHAPTER ${num}`);
     lines.push('');
@@ -57,7 +78,7 @@ export function structureToMarkdown(draft: MarkdownBookDraft): string {
       lines.push('');
     }
     for (const sec of ch.sections) {
-      const sNum = (sec.number || '').trim() || '?';
+      const sNum = normalizeNumber(sec.number || '') || '?';
       const sTitle = escapeOneLine(sec.title || '');
       lines.push(sTitle ? `### SECTION ${sNum} — ${sTitle}` : `### SECTION ${sNum}`);
       lines.push('');
@@ -77,14 +98,14 @@ function parseHeadingMeta(line: string): { kind: 'chapter' | 'section' | 'intro'
   }
 
   // Preferred: ## CHAPTER 11 — Title  (also accepts : - –)
-  // Number group is digits only so "11" never truncates to "1".
+  // Number group is digits only so "11" / "100" never truncates.
   const ch =
-    /^##\s+CHAPTER\s+(\d+(?:\.\d+)*)\s*[—–:\-]\s*(.+)$/i.exec(line) ||
-    /^##\s+CHAPTER\s+(\d+(?:\.\d+)*)\s*$/i.exec(line) ||
+    new RegExp(`^##\\s+CHAPTER\\s+${NUM}\\s*[—–:\\-]\\s*(.+)$`, 'i').exec(line) ||
+    new RegExp(`^##\\s+CHAPTER\\s+${NUM}\\s*$`, 'i').exec(line) ||
     // Legacy colon / bare formats from older imports
-    /^##\s+CHAPTER(?:\s+(\d+(?:\.\d+)*))?(?:\s*:\s*(.*))?$/i.exec(line);
+    new RegExp(`^##\\s+CHAPTER(?:\\s+${NUM})?(?:\\s*:\\s*(.*))?$`, 'i').exec(line);
   if (ch) {
-    const num = (ch[1] || '').trim();
+    const num = normalizeNumber(ch[1] || '');
     const title = (ch[2] || '').trim();
     return {
       kind: 'chapter',
@@ -94,11 +115,11 @@ function parseHeadingMeta(line: string): { kind: 'chapter' | 'section' | 'intro'
   }
 
   const sec =
-    /^###\s+SECTION\s+(\d+(?:\.\d+)*)\s*[—–:\-]\s*(.+)$/i.exec(line) ||
-    /^###\s+SECTION\s+(\d+(?:\.\d+)*)\s*$/i.exec(line) ||
-    /^###\s+SECTION(?:\s+(\d+(?:\.\d+)*))?(?:\s*:\s*(.*))?$/i.exec(line);
+    new RegExp(`^###\\s+SECTION\\s+${NUM}\\s*[—–:\\-]\\s*(.+)$`, 'i').exec(line) ||
+    new RegExp(`^###\\s+SECTION\\s+${NUM}\\s*$`, 'i').exec(line) ||
+    new RegExp(`^###\\s+SECTION(?:\\s+${NUM})?(?:\\s*:\\s*(.*))?$`, 'i').exec(line);
   if (sec) {
-    const num = (sec[1] || '').trim();
+    const num = normalizeNumber(sec[1] || '');
     const title = (sec[2] || '').trim();
     return {
       kind: 'section',
@@ -179,7 +200,7 @@ export function markdownToStructure(markdown: string): {
     }
     if (line.startsWith('> PAGES:')) {
       const n = Number(line.replace(/^>\s*PAGES:\s*/i, '').trim());
-      if (!Number.isNaN(n)) pageCount = n;
+      if (!Number.isNaN(n) && n >= 0) pageCount = n;
       continue;
     }
     if (line.startsWith('> DESCRIPTION:')) {

@@ -155,6 +155,15 @@ async function renderPageToCanvas(
 
 const EXTRACT_BATCH_SIZE = 50;
 
+/** Yield more often on large books so the UI stays responsive. */
+function adaptiveBatchSize(totalPages: number, requested?: number): number {
+  if (requested != null) return requested;
+  if (totalPages > 400) return 8;
+  if (totalPages > 200) return 15;
+  if (totalPages > 80) return 25;
+  return EXTRACT_BATCH_SIZE;
+}
+
 export interface ExtractPagesOptions {
   onProgress?: PipelineProgressCallback;
   batchSize?: number;
@@ -190,7 +199,6 @@ export async function extractPagesFromFileDetailed(
   }
 
   const onProgress = options?.onProgress;
-  const batchSize = options?.batchSize ?? EXTRACT_BATCH_SIZE;
   const enableOcr = options?.enableOcr ?? typeof window !== 'undefined';
 
   onProgress?.('read', 'Reading PDF…', { percent: 0 });
@@ -199,6 +207,7 @@ export async function extractPagesFromFileDetailed(
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = pdf.numPages;
+  const batchSize = adaptiveBatchSize(totalPages, options?.batchSize);
 
   onProgress?.('read', `Reading PDF… ${totalPages} pages`, {
     totalPages,

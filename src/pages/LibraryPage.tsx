@@ -1,206 +1,67 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, LayoutGrid, List, SlidersHorizontal, X, BookOpen } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { PageHero } from '@/components/layout/PageHero';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
-import { LibraryFilters } from '@/components/library/LibraryFilters';
-import { BookGrid } from '@/components/library/BookGrid';
-import { Drawer } from '@/components/ui/Drawer';
-import { useLibraryFilters, type SortOption } from '@/hooks/useLibraryFilters';
+import { LibraryHeader, LibraryCatalog } from '@/components/library-demo';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
-const sortOptions: { value: SortOption; label: string }[] = [
-  { value: 'popular', label: 'Most Popular' },
-  { value: 'recent', label: 'Recently Added' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'az', label: 'A–Z' },
-  { value: 'za', label: 'Z–A' },
-];
-
-const HERO_IMG =
-  'https://images.pexels.com/photos/1370295/pexels-photo-1370295.jpeg?auto=compress&cs=tinysrgb&w=1600&h=700&fit=crop';
-
+/**
+ * /library — card catalog of static demo formats.
+ * Click a card to open that book’s full layout at /library/:slug.
+ * Demo content is frontend-only; Supabase library is unchanged.
+ */
 export function LibraryPage() {
   usePageMeta({
     title: 'Library — Islamic Digital Library',
-    description: 'Browse and filter authentic Islamic books by scholar, subject, and Hijri period.',
+    description:
+      'Browse seven scholarly presentation formats for Islamic books, articles, quotations, and immersive reading.',
     path: '/library',
   });
 
-  const {
-    filters,
-    filteredBooks,
-    totalBooks,
-    togglePeriod,
-    toggleCategory,
-    toggleScholar,
-    setQuery,
-    setSort,
-    clearAll,
-    hasActiveFilters,
-  } = useLibraryFilters();
-
-  const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-  const [searchParams] = useSearchParams();
-
   return (
     <PageContainer>
-      <PageHero
-        eyebrow="The Collection"
-        title="Islamic Library"
-        description={`Browse ${totalBooks} ${totalBooks === 1 ? 'book' : 'books'} from across centuries of Islamic scholarship.`}
-        imageUrl={HERO_IMG}
-        compact
-      />
+      <LibraryHeader />
 
-      <div className="container-page py-8 sm:py-10">
+      <div className="container-page py-6 sm:py-8">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Library' }]} />
-
-        <div className="relative mb-6 mt-4 max-w-2xl">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input
-            type="text"
-            value={filters.query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by title or description..."
-            className="w-full rounded-xl border border-line bg-cream py-3 pl-12 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
-          />
-          {filters.query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700"
-              aria-label="Clear search"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-
-        <div className="mb-4 flex items-center justify-between lg:hidden">
-          <button
-            onClick={() => setFilterDrawerOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-line bg-cream px-4 py-2.5 text-sm font-medium text-ink-900 transition-colors hover:border-ink-900"
-          >
-            <SlidersHorizontal size={16} /> Filters
-          </button>
-          <span className="text-sm text-ink-500">{filteredBooks.length} results</span>
-        </div>
-
-        <div className="flex gap-8">
-          <aside className="hidden lg:block w-64 shrink-0">
-            <div className="sticky top-24">
-              <LibraryFilters
-                filters={filters}
-                onTogglePeriod={togglePeriod}
-                onToggleCategory={toggleCategory}
-                onToggleScholar={toggleScholar}
-                onClearAll={clearAll}
-                hasActiveFilters={hasActiveFilters}
-              />
-            </div>
-          </aside>
-
-          <div className="flex-1 min-w-0">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-              <span className="text-sm font-medium text-ink-900">
-                {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}
-              </span>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <select
-                    value={filters.sort}
-                    onChange={(e) => setSort(e.target.value as SortOption)}
-                    className="appearance-none rounded-xl border border-line bg-cream py-2 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
-                  >
-                    {sortOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 text-xs">
-                    ▾
-                  </span>
-                </div>
-                <div className="flex rounded-xl border border-line bg-cream">
-                  <button
-                    onClick={() => setView('grid')}
-                    className={`flex h-9 w-9 items-center justify-center rounded-l-xl transition-colors ${
-                      view === 'grid' ? 'bg-ink-900 text-cream' : 'text-ink-500 hover:text-ink-900'
-                    }`}
-                    aria-label="Grid view"
-                    aria-pressed={view === 'grid'}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                  <button
-                    onClick={() => setView('list')}
-                    className={`flex h-9 w-9 items-center justify-center rounded-r-xl transition-colors ${
-                      view === 'list' ? 'bg-ink-900 text-cream' : 'text-ink-500 hover:text-ink-900'
-                    }`}
-                    aria-label="List view"
-                    aria-pressed={view === 'list'}
-                  >
-                    <List size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {filteredBooks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <BookOpen size={40} className="text-ink-300" />
-                <h3 className="mt-4 font-serif text-lg font-semibold text-ink-900">No books found</h3>
-                <p className="mt-2 text-sm text-ink-500 max-w-sm">
-                  {hasActiveFilters
-                    ? 'No books match the current filters. Try adjusting or clearing your filters.'
-                    : 'No books match your search.'}
-                </p>
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearAll}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-ink-800"
-                  >
-                    <X size={14} /> Clear Filters
-                  </button>
-                )}
-              </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${view}-${filteredBooks.length}-${searchParams.toString()}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <BookGrid books={filteredBooks} variant={view} />
-                </motion.div>
-              </AnimatePresence>
-            )}
-          </div>
-        </div>
+        <p className="mt-4 max-w-2xl font-serif text-[15px] leading-relaxed text-ink-600">
+          Open a card to preview that format’s full reading layout. Each work is separate — Book
+          07 is a fullscreen Quiet Reading Room for long-form study.
+        </p>
       </div>
 
-      <Drawer
-        open={filterDrawerOpen}
-        onClose={() => setFilterDrawerOpen(false)}
-        title="Filters"
-        width="w-80"
-      >
-        <LibraryFilters
-          filters={filters}
-          onTogglePeriod={togglePeriod}
-          onToggleCategory={toggleCategory}
-          onToggleScholar={toggleScholar}
-          onClearAll={clearAll}
-          hasActiveFilters={hasActiveFilters}
-        />
-      </Drawer>
+      <LibraryCatalog />
+
+      <section className="border-t border-line bg-ink-900">
+        <div className="container-page py-12 sm:py-14">
+          <h2 className="font-cinzel text-xl font-semibold tracking-wide text-white sm:text-2xl">
+            Library Information
+          </h2>
+          <div className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <InfoBlock
+              title="Card-based browsing"
+              body="Each card opens one professional layout. The catalogue stays scannable while preserving long-form scholarly reading inside each work."
+            />
+            <InfoBlock
+              title="References & integrity"
+              body="Demo quotations and attributions are illustrative. Production content should cite verified editions. Your live Supabase catalogue is not modified by these demos."
+            />
+            <InfoBlock
+              title="Book 07 — Quiet Reading Room"
+              body="An immersive open-book environment: cover, title, contents, chapters, Arabic sources, Aa settings, and night reading — less UI, more reading."
+            />
+          </div>
+        </div>
+      </section>
     </PageContainer>
+  );
+}
+
+function InfoBlock({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+        {title}
+      </h3>
+      <p className="mt-3 font-serif text-[14px] leading-relaxed text-white/70">{body}</p>
+    </div>
   );
 }

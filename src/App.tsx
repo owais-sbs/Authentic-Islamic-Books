@@ -7,6 +7,7 @@ import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 const LibraryPage       = lazy(() => import('@/pages/LibraryPage').then((m)       => ({ default: m.LibraryPage })));
+const LibraryDemoDetailPage = lazy(() => import('@/pages/LibraryDemoDetailPage').then((m) => ({ default: m.LibraryDemoDetailPage })));
 const ScholarsPage      = lazy(() => import('@/pages/ScholarsPage').then((m)      => ({ default: m.ScholarsPage })));
 const ScholarDetailPage = lazy(() => import('@/pages/ScholarDetailPage').then((m) => ({ default: m.ScholarDetailPage })));
 const BookDetailPage    = lazy(() => import('@/pages/BookDetailPage').then((m)    => ({ default: m.BookDetailPage })));
@@ -42,6 +43,7 @@ export default function App() {
           <Routes>
             <Route path="/"                 element={<HomePage />} />
             <Route path="/library"          element={<LibraryPage />} />
+            <Route path="/library/:slug"    element={<LibraryDemoDetailPage />} />
             <Route path="/scholars"         element={<ScholarsPage />} />
             <Route path="/scholars/:slug"   element={<ScholarDetailPage />} />
             {/* Library Read → book detail (cover + chapter dropdowns) */}

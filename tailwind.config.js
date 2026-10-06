@@ -5,6 +5,7 @@ export default {
     extend: {
       colors: {
         paper: '#F5F4EF',
+        parchment: '#FBF8F1',
         ink: {
           900: '#0B1929',
           800: '#0F1D2F',
@@ -25,10 +26,21 @@ export default {
           subtle: '#F0E9D2',
         },
         cream: '#FFFFFF',
+        burgundy: {
+          DEFAULT: '#8B2E2E',
+          soft: '#A84848',
+          muted: '#F5E8E8',
+        },
+        forest: {
+          DEFAULT: '#1A3A2A',
+          mid: '#2D5A42',
+          soft: '#E8F0EB',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'Geist', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         serif: ['Source Serif 4', 'Literata', 'Lora', 'Georgia', 'serif'],
+        arabic: ['Amiri', 'Traditional Arabic', 'Scheherazade New', 'serif'],
         cinzel: ['Cinzel', 'Georgia', 'serif'],
         'cinzel-decorative': ['Cinzel Decorative', 'Georgia', 'serif'],
       },

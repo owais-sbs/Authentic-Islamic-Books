@@ -8,23 +8,29 @@ import type { NormalizedPage } from './types';
 import { detectStructureFromPages } from './structureDetector';
 
 describe('upload limit', () => {
-  it('enforces 20 MB in bytes', () => {
-    expect(MAX_PDF_SIZE).toBe(20 * 1024 * 1024);
+  it('enforces 50 MB in bytes', () => {
+    expect(MAX_PDF_SIZE).toBe(50 * 1024 * 1024);
   });
 
-  it('rejects files over 20 MB', () => {
-    const big = new File([new ArrayBuffer(MAX_PDF_SIZE + 1)], 'big.pdf', {
+  it('rejects files over 50 MB', () => {
+    const big = {
+      name: 'big.pdf',
       type: 'application/pdf',
-    });
+      size: MAX_PDF_SIZE + 1,
+    } as File;
     const result = validateBookPdfFile(big);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).toContain('20 MB');
+      expect(result.message).toContain('50 MB');
     }
   });
 
-  it('accepts files at or under 20 MB', () => {
-    const ok = new File([new ArrayBuffer(1024)], 'ok.pdf', { type: 'application/pdf' });
+  it('accepts files at or under 50 MB', () => {
+    const ok = {
+      name: 'ok.pdf',
+      type: 'application/pdf',
+      size: 40 * 1024 * 1024,
+    } as File;
     expect(validateBookPdfFile(ok).ok).toBe(true);
   });
 });
@@ -162,6 +168,38 @@ describe('markdown IR', () => {
     expect(parsed.chapters.map((c) => c.number)).toEqual(
       Array.from({ length: 12 }, (_, i) => String(i + 1)),
     );
+  });
+
+  it('round-trips large page books (50+ chapters, high page count)', () => {
+    const chapters = Array.from({ length: 55 }, (_, i) => ({
+      number: String(i + 1),
+      title: `Chapter Title ${i + 1}`,
+      description: '',
+      rawText: '',
+      sections: [
+        {
+          number: `${i + 1}.1`,
+          title: 'Opening',
+          rawText: `Scholarly content for chapter ${i + 1}. `.repeat(3),
+        },
+      ],
+    }));
+    const md = structureToMarkdown({
+      meta: { title: 'Large Scholarly Work', author: 'Demo Scholar', description: '' },
+      languages: ['en', 'ar'],
+      documentType: 'text',
+      pageCount: 480,
+      introductionText: 'A long introduction preserved in full.',
+      chapters,
+    });
+    expect(md).toContain('> PAGES: 480');
+    expect(md).toContain('## CHAPTER 50 — Chapter Title 50');
+    expect(md).toContain('## CHAPTER 55 — Chapter Title 55');
+    const parsed = markdownToStructure(md);
+    expect(parsed.pageCount).toBe(480);
+    expect(parsed.chapters).toHaveLength(55);
+    expect(parsed.chapters[49].number).toBe('50');
+    expect(parsed.chapters[54].sections[0].rawText).toContain('chapter 55');
   });
 
   it('still parses legacy CHAPTER N: Title markup', () => {

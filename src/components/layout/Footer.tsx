@@ -7,7 +7,7 @@ const footerSections = [
     links: [
       { label: 'Explore Books', href: '/library' },
       { label: 'Scholars', href: '/scholars' },
-      { label: 'Timeline', href: '/timeline' },
+      { label: 'Hijri Timeline', href: '/timeline' },
       { label: 'Categories', href: '/categories' },
     ],
   },

@@ -73,6 +73,15 @@ The table of contents is a hierarchical, expandable navigation tree. Clicking an
 
 Library filters are managed by the `useLibraryFilters` hook, which syncs filter state to URL query parameters (`?period=701-800&category=hadith&scholar=ibn-kathir`). This enables shareable filtered views and browser back/forward navigation.
 
+## Admin PDF Import
+
+Admins can upload scholarly PDFs from **Import Book** / the review document upload flow.
+
+- **Format:** PDF only
+- **Maximum file size:** **50 MB** (configured in `src/lib/uploadLimits.ts`)
+- **Page count:** not capped by page number — large multi-chapter / multi-hundred-page books are allowed as long as the file stays under 50 MB
+- Processing runs in the browser (pdf.js + optional OCR). Extracted text is converted through a controlled Markdown IR (`src/services/pdf/markdown.ts`) that preserves chapter numbers (including 10, 11, 50+) and full body text before review and publish
+
 ## How to Add Demo Books
 
 1. Add a new scholar to `src/data/scholars.ts`
