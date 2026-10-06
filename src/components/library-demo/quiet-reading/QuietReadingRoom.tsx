@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, type ReactNode } from 'react';
+import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -20,14 +20,41 @@ import { cn } from '@/lib/utils';
 /** Reading journey: closed cover → title → TOC → chapters → end resources */
 type Stage = 'closed' | 'title' | 'toc' | 'reading' | 'end';
 
+type MobileLeaf =
+  | { key: string; kind: 'half-title'; footer: string; roman: true }
+  | { key: string; kind: 'title'; footer: string; roman: true }
+  | { key: string; kind: 'toc'; footer: string; roman: true }
+  | { key: string; kind: 'edition'; footer: string; roman: true }
+  | { key: string; kind: 'chapter'; pageIndex: number; footer: number; roman: false }
+  | { key: string; kind: 'references'; footer: number; roman: false }
+  | { key: string; kind: 'resources'; footer: number; roman: false };
+
+const MOBILE_MQ = '(max-width: 900px)';
+
+function useIsMobileBook() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_MQ).matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isMobile;
+}
+
 /**
  * Format 07 — Quiet Reading Room
- * Closed hardcover → tall open book; paper sheet flips from the spine.
- * Equal height: title, TOC, chapter spreads, and closing all use --qob-spread-h.
+ * Desktop: two-page spread with gutter flip.
+ * Mobile: one page at a time with a full-width page turn.
  */
 export function QuietReadingRoom() {
+  const isMobile = useIsMobileBook();
   const [stage, setStage] = useState<Stage>('closed');
   const [spreadIndex, setSpreadIndex] = useState(0);
+  const [mobileIndex, setMobileIndex] = useState(0);
   const [activeTocId, setActiveTocId] = useState('ch1');
   const [theme, setTheme] = useState<QuietTheme>('light');
   const [fontSize, setFontSize] = useState(17);
@@ -43,6 +70,8 @@ export function QuietReadingRoom() {
   const turningRef = useRef(false);
   const midSwapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endFlipRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
 
   const contentSpreads = useMemo(() => {
     const pairs: { left: (typeof quietPages)[0] | null; right: (typeof quietPages)[0] }[] = [];
@@ -54,6 +83,55 @@ export function QuietReadingRoom() {
     }
     return pairs;
   }, []);
+
+  const mobileLeaves = useMemo<MobileLeaf[]>(
+    () => [
+      { key: 'half-title', kind: 'half-title', footer: 'i', roman: true },
+      { key: 'title', kind: 'title', footer: 'ii', roman: true },
+      { key: 'toc', kind: 'toc', footer: 'iii', roman: true },
+      { key: 'edition', kind: 'edition', footer: 'iv', roman: true },
+      ...quietPages.map(
+        (p, i): MobileLeaf => ({
+          key: p.id,
+          kind: 'chapter',
+          pageIndex: i,
+          footer: p.pageNumber,
+          roman: false,
+        })
+      ),
+      { key: 'references', kind: 'references', footer: 301, roman: false },
+      { key: 'resources', kind: 'resources', footer: 302, roman: false },
+    ],
+    []
+  );
+
+  /** When resizing into mobile, map the current desktop spread onto a single leaf. */
+  const wasMobileRef = useRef(isMobile);
+  useEffect(() => {
+    const crossedToMobile = isMobile && !wasMobileRef.current;
+    wasMobileRef.current = isMobile;
+    if (!crossedToMobile || stage === 'closed') return;
+    if (stage === 'title') {
+      setMobileIndex(0);
+      return;
+    }
+    if (stage === 'toc') {
+      setMobileIndex(2);
+      return;
+    }
+    if (stage === 'reading') {
+      const pageIdx = spreadIndex * 2;
+      const leafIdx = mobileLeaves.findIndex(
+        (l) => l.kind === 'chapter' && l.pageIndex === pageIdx
+      );
+      if (leafIdx >= 0) setMobileIndex(leafIdx);
+      return;
+    }
+    if (stage === 'end') {
+      const leafIdx = mobileLeaves.findIndex((l) => l.kind === 'references');
+      if (leafIdx >= 0) setMobileIndex(leafIdx);
+    }
+  }, [isMobile, stage, spreadIndex, mobileLeaves]);
 
   const themeClass =
     theme === 'dark' ? 'qob-dark' : theme === 'sepia' ? 'qob-sepia' : 'qob-light';
@@ -70,33 +148,57 @@ export function QuietReadingRoom() {
     endFlipRef.current = null;
   };
 
-  /** Physical paper sheet flips from the gutter; content swaps mid-turn. */
+  const syncStageFromMobile = (idx: number) => {
+    const leaf = mobileLeaves[idx];
+    if (!leaf) return;
+    if (leaf.kind === 'half-title' || leaf.kind === 'title') setStage('title');
+    else if (leaf.kind === 'toc' || leaf.kind === 'edition') setStage('toc');
+    else if (leaf.kind === 'chapter') {
+      setStage('reading');
+      setSpreadIndex(Math.floor(leaf.pageIndex / 2));
+      setActiveTocId(quietPages[leaf.pageIndex]?.chapterId ?? 'ch1');
+    } else setStage('end');
+  };
+
+  /** Paper flips from spine (desktop) or full leaf (mobile); content swaps mid-turn. */
   const runPaperTurn = (dir: 1 | -1, apply: () => void) => {
     if (turningRef.current) return;
     turningRef.current = true;
     setTurnDir(dir);
     setPaperFlip(true);
     clearFlipTimers();
-    midSwapRef.current = setTimeout(() => apply(), 380);
+    const mid = isMobileRef.current ? 420 : 380;
+    const end = isMobileRef.current ? 900 : 820;
+    midSwapRef.current = setTimeout(() => apply(), mid);
     endFlipRef.current = setTimeout(() => {
       setPaperFlip(false);
       turningRef.current = false;
-    }, 820);
+    }, end);
   };
 
   const openBook = () => {
     if (turningRef.current) return;
     turningRef.current = true;
     setTurnDir(1);
+    setMobileIndex(0);
     setStage('title');
     window.setTimeout(() => {
       turningRef.current = false;
-    }, 450);
+    }, isMobileRef.current ? 650 : 450);
   };
 
   const goNext = () => {
     if (stage === 'closed') {
       openBook();
+      return;
+    }
+    if (isMobile) {
+      if (mobileIndex >= mobileLeaves.length - 1) return;
+      runPaperTurn(1, () => {
+        const next = mobileIndex + 1;
+        setMobileIndex(next);
+        syncStageFromMobile(next);
+      });
       return;
     }
     runPaperTurn(1, () => {
@@ -119,6 +221,23 @@ export function QuietReadingRoom() {
 
   const goPrev = () => {
     if (stage === 'closed') return;
+    if (isMobile) {
+      if (mobileIndex <= 0) {
+        if (turningRef.current) return;
+        turningRef.current = true;
+        setStage('closed');
+        window.setTimeout(() => {
+          turningRef.current = false;
+        }, 500);
+        return;
+      }
+      runPaperTurn(-1, () => {
+        const next = mobileIndex - 1;
+        setMobileIndex(next);
+        syncStageFromMobile(next);
+      });
+      return;
+    }
     if (stage === 'title') {
       if (turningRef.current) return;
       turningRef.current = true;
@@ -152,21 +271,79 @@ export function QuietReadingRoom() {
       if (idx < 0) idx = 0;
       setSpreadIndex(Math.floor(idx / 2));
       setStage('reading');
+      if (isMobileRef.current) {
+        const leafIdx = mobileLeaves.findIndex(
+          (l) => l.kind === 'chapter' && l.pageIndex === idx
+        );
+        if (leafIdx >= 0) setMobileIndex(leafIdx);
+      }
     });
   };
 
-  const stageLabel =
-    stage === 'closed'
-      ? 'Cover'
-      : stage === 'title'
-        ? 'Title page'
-        : stage === 'toc'
-          ? 'Contents'
-          : stage === 'reading'
-            ? `Chapter · Spread ${spreadIndex + 1}/${contentSpreads.length}`
-            : 'Closing';
+  const mobileLeaf = mobileLeaves[mobileIndex];
+  const atMobileEnd = isMobile && mobileIndex >= mobileLeaves.length - 1;
+  const atDesktopEnd = !isMobile && stage === 'end';
+
+  const stageLabel = (() => {
+    if (stage === 'closed') return 'Cover';
+    if (isMobile && mobileLeaf) {
+      if (mobileLeaf.kind === 'half-title') return 'Title · i';
+      if (mobileLeaf.kind === 'title') return 'Title · ii';
+      if (mobileLeaf.kind === 'toc') return 'Contents · iii';
+      if (mobileLeaf.kind === 'edition') return 'Edition notes · iv';
+      if (mobileLeaf.kind === 'chapter') {
+        const p = quietPages[mobileLeaf.pageIndex];
+        return `${p?.chapterLabel ?? 'Chapter'} · p.${mobileLeaf.footer}`;
+      }
+      if (mobileLeaf.kind === 'references') return 'References';
+      return 'Resources';
+    }
+    if (stage === 'title') return 'Title page';
+    if (stage === 'toc') return 'Contents';
+    if (stage === 'reading') return `Chapter · Spread ${spreadIndex + 1}/${contentSpreads.length}`;
+    return 'Closing';
+  })();
+
+  const renderMobileLeaf = (leaf: MobileLeaf) => {
+    if (leaf.kind === 'half-title') return <HalfTitleLeaf />;
+    if (leaf.kind === 'title') return <TitleLeaf />;
+    if (leaf.kind === 'toc') return <TocLeaf activeId={activeTocId} onSelect={selectToc} />;
+    if (leaf.kind === 'edition') return <EditionNotesLeaf />;
+    if (leaf.kind === 'chapter') {
+      const page = quietPages[leaf.pageIndex];
+      if (!page) return <div className="qob-leaf" />;
+      return (
+        <ChapterLeaf
+          page={page}
+          showArabic={showArabic}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          activeRef={activeRef}
+          onActiveRef={setActiveRef}
+          showAudio={page.pageNumber === 88}
+          audioPlaying={audioPlaying}
+          onToggleAudio={() => setAudioPlaying((p) => !p)}
+        />
+      );
+    }
+    if (leaf.kind === 'references') return <ReferencesLeaf />;
+    return (
+      <ResourcesLeaf
+        audioPlaying={audioPlaying}
+        onToggleAudio={() => setAudioPlaying((p) => !p)}
+      />
+    );
+  };
 
   const renderOpenSpread = () => {
+    if (isMobile && mobileLeaf) {
+      return (
+        <BookPage side="right" key={mobileLeaf.key}>
+          {renderMobileLeaf(mobileLeaf)}
+          <PageFooterMark label={mobileLeaf.footer} roman={mobileLeaf.roman} />
+        </BookPage>
+      );
+    }
     if (stage === 'title') {
       return (
         <>
@@ -251,8 +428,10 @@ export function QuietReadingRoom() {
     return null;
   };
 
+  const flipDuration = isMobile ? 0.88 : 0.78;
+
   return (
-    <div className={cn('qob-root', themeClass)}>
+    <div className={cn('qob-root', themeClass, isMobile && 'qob-mobile')}>
       <style>{bookStyles}</style>
 
       <div className="qob-toolbar">
@@ -317,10 +496,16 @@ export function QuietReadingRoom() {
               <motion.div
                 key="closed"
                 className="qob-closed-motion"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.32 }}
+                initial={{ opacity: 0, y: 12, rotateY: 8 }}
+                animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                exit={{
+                  opacity: 0,
+                  rotateY: isMobile ? -55 : -18,
+                  x: isMobile ? -24 : 0,
+                  scale: 0.96,
+                }}
+                transition={{ duration: isMobile ? 0.55 : 0.36, ease: [0.645, 0.045, 0.355, 1] }}
+                style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
               >
                 <ClosedCover onOpen={openBook} />
               </motion.div>
@@ -328,26 +513,41 @@ export function QuietReadingRoom() {
               <motion.div
                 key="open-shell"
                 className="qob-open-shell"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.36 }}
+                initial={{
+                  opacity: 0,
+                  y: isMobile ? 8 : 14,
+                  rotateY: isMobile ? 48 : 12,
+                  x: isMobile ? 28 : 0,
+                }}
+                animate={{ opacity: 1, y: 0, rotateY: 0, x: 0 }}
+                exit={{ opacity: 0, rotateY: isMobile ? 30 : 0 }}
+                transition={{ duration: isMobile ? 0.58 : 0.36, ease: [0.22, 1, 0.36, 1] }}
+                style={{ transformOrigin: 'left center', transformStyle: 'preserve-3d' }}
               >
                 <div className="qob-hardcover">
                   <div className="qob-pages">
-                    {renderOpenSpread()}
+                    {isMobile ? (
+                      <div className="qob-page-layer" key={mobileLeaf?.key ?? 'page'}>
+                        {renderOpenSpread()}
+                      </div>
+                    ) : (
+                      renderOpenSpread()
+                    )}
 
                     <AnimatePresence>
                       {paperFlip && (
                         <motion.div
-                          key={`paper-${turnDir}`}
+                          key={`paper-${turnDir}-${isMobile ? mobileIndex : `${stage}-${spreadIndex}`}`}
                           className={cn(
                             'qob-paper',
                             turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back'
                           )}
                           initial={{ rotateY: 0 }}
                           animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
-                          transition={{ duration: 0.78, ease: [0.645, 0.045, 0.355, 1] }}
+                          transition={{
+                            duration: flipDuration,
+                            ease: [0.645, 0.045, 0.355, 1],
+                          }}
                           style={{ transformStyle: 'preserve-3d' }}
                         >
                           <div className="qob-paper-face qob-paper-face-front" />
@@ -369,24 +569,35 @@ export function QuietReadingRoom() {
             disabled={stage === 'closed'}
             onClick={goPrev}
           >
-            <ChevronLeft size={16} /> Previous
+            <ChevronLeft size={16} /> {isMobile && stage !== 'closed' && mobileIndex <= 0 ? 'Cover' : 'Previous'}
           </button>
-          <p className="font-serif text-[13px] text-[var(--qob-muted)]">{stageLabel}</p>
+          <p className="font-serif text-[13px] text-[var(--qob-muted)] text-center leading-snug">
+            {stageLabel}
+            {isMobile && stage !== 'closed' && (
+              <span className="block font-sans text-[10px] tracking-wide opacity-70">
+                {mobileIndex + 1} / {mobileLeaves.length}
+              </span>
+            )}
+          </p>
           <button
             type="button"
             className="qob-nav-btn"
-            disabled={stage === 'end'}
+            disabled={atMobileEnd || atDesktopEnd}
             onClick={goNext}
           >
             {stage === 'closed'
               ? 'Open book'
-              : stage === 'title'
-                ? 'Contents'
-                : stage === 'toc'
-                  ? 'Begin chapters'
-                  : stage === 'reading' && spreadIndex >= contentSpreads.length - 1
-                    ? 'Closing'
-                    : 'Next'}{' '}
+              : isMobile
+                ? atMobileEnd
+                  ? 'End'
+                  : 'Next'
+                : stage === 'title'
+                  ? 'Contents'
+                  : stage === 'toc'
+                    ? 'Begin chapters'
+                    : stage === 'reading' && spreadIndex >= contentSpreads.length - 1
+                      ? 'Closing'
+                      : 'Next'}{' '}
             <ChevronRight size={16} />
           </button>
         </div>
@@ -420,7 +631,7 @@ function ClosedCover({ onOpen }: { onOpen: () => void }) {
             <p className="qob-closed-author">{quietBook.author}</p>
             <p className="qob-closed-meta">{quietBook.edition}</p>
             <p className="qob-closed-meta">{quietBook.publication}</p>
-            <span className="qob-closed-cta">Click to open →</span>
+            <span className="qob-closed-cta">Tap or click to open →</span>
           </div>
         </div>
         <div className="qob-closed-pages-edge" aria-hidden />
@@ -935,7 +1146,6 @@ const bookStyles = `
 .qob-tool-btn:hover { opacity: 1; background: color-mix(in srgb, var(--qob-ink) 6%, transparent); }
 .qob-tool-active { opacity: 1; color: var(--qob-accent); background: var(--qob-highlight); }
 .qob-stage {
-  /* Equal tall frame for every open spread — grows if content needs more room (never clips). */
   --qob-spread-h: min(92vh, 1040px);
   max-width: 1180px;
   margin: 0 auto;
@@ -949,6 +1159,7 @@ const bookStyles = `
   width: 100%;
   display: flex;
   justify-content: center;
+  transform-style: preserve-3d;
 }
 .qob-closed-motion,
 .qob-open-shell {
@@ -1079,39 +1290,48 @@ const bookStyles = `
   box-shadow: 2px 0 6px rgba(0,0,0,0.15);
 }
 
-/* Open hardcover — tall equal pages; content never cut off */
+/* Open hardcover — tall equal pages */
 .qob-hardcover {
   position: relative;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 16px 18px 22px;
+  padding: 16px 18px 18px;
   border-radius: 4px 12px 12px 4px;
   background: linear-gradient(180deg, var(--qob-cover) 0%, var(--qob-cover-edge) 100%);
   box-shadow:
     0 22px 55px rgba(20, 30, 24, 0.24),
     0 2px 0 rgba(255,255,255,0.08) inset;
+  overflow: hidden;
+  transform-style: preserve-3d;
 }
 .qob-pages {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
+  height: var(--qob-spread-h);
   min-height: var(--qob-spread-h);
   background: var(--qob-page);
   border-radius: 2px;
   box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset;
-  overflow: visible;
+  overflow: hidden;
   perspective: 2400px;
+  transform-style: preserve-3d;
+}
+.qob-page-layer {
+  display: contents;
 }
 .qob-page {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: var(--qob-spread-h);
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   background: var(--qob-page);
   z-index: 1;
-  overflow: visible;
+  overflow: hidden;
 }
 .qob-page-left {
   box-shadow: inset -22px 0 32px -20px var(--qob-gutter);
@@ -1121,7 +1341,7 @@ const bookStyles = `
   box-shadow: inset 22px 0 32px -20px var(--qob-gutter);
 }
 
-/* Physical paper sheet — flips from the book gutter */
+/* Physical paper sheet — flips from the book gutter (half width on desktop) */
 .qob-paper {
   position: absolute;
   top: 0;
@@ -1130,6 +1350,7 @@ const bookStyles = `
   z-index: 20;
   pointer-events: none;
   transform-style: preserve-3d;
+  will-change: transform;
 }
 .qob-paper-fwd {
   right: 0;
@@ -1168,11 +1389,12 @@ const bookStyles = `
 }
 .qob-leaf {
   flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
-  padding: 2rem 2rem 1rem;
+  padding: 1.75rem 2rem 3.25rem;
   font-family: 'Source Serif 4', Georgia, serif;
   color: var(--qob-ink);
-  overflow: visible;
+  overflow: hidden;
 }
 .qob-leaf-center {
   display: flex;
@@ -1181,9 +1403,10 @@ const bookStyles = `
   justify-content: center;
   text-align: center;
   width: 100%;
-  min-height: 100%;
-  padding-top: 1.75rem;
-  padding-bottom: 1.75rem;
+  height: 100%;
+  min-height: 0;
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
 }
 .qob-leaf-center-inner {
   display: flex;
@@ -1378,13 +1601,24 @@ const bookStyles = `
 }
 .qob-ref-on { color: var(--qob-gold); text-decoration: underline; }
 .qob-page-footer {
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.85rem 1rem 1.35rem;
+  padding: 0.55rem 1rem 1rem;
   color: var(--qob-gold);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--qob-page) 0%, transparent) 0%,
+    var(--qob-page) 35%,
+    var(--qob-page) 100%
+  );
+  pointer-events: none;
 }
 .qob-footer-rule {
   width: 1.6rem;
@@ -1462,54 +1696,98 @@ const bookStyles = `
 }
 .font-arabic { font-family: Amiri, 'Traditional Arabic', serif; }
 
-/* Tablet / mobile — tall pages, content fully visible */
+/* Mobile — one page at a time + full-width flip (never stack both leaves) */
 @media (max-width: 900px) {
   .qob-stage {
-    --qob-spread-h: min(70vh, 720px);
-    padding: 1.25rem 0.75rem 0;
+    --qob-spread-h: min(76vh, 780px);
+    padding: 1rem 0.65rem 0;
   }
   .qob-toolbar-inner { padding: 0.55rem 0.85rem; }
+  .qob-book-wrap { perspective: 1400px; }
   .qob-hardcover {
-    padding: 12px 12px 16px;
-    border-radius: 4px 10px 10px 4px;
-    max-width: 100%;
+    padding: 10px 10px 12px;
+    border-radius: 6px 12px 12px 6px;
+    max-width: min(100%, 440px);
+    margin-left: auto;
+    margin-right: auto;
   }
   .qob-pages {
     grid-template-columns: 1fr;
-    min-height: auto;
-    overflow: visible;
+    height: var(--qob-spread-h);
+    min-height: var(--qob-spread-h);
+    overflow: hidden;
+    perspective: 1600px;
+  }
+  .qob-page-layer {
+    display: block;
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .qob-page-layer > .qob-page {
+    height: 100%;
+    width: 100%;
   }
   .qob-page {
-    min-height: var(--qob-spread-h);
-    overflow: visible;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
   }
+  .qob-page-left,
+  .qob-page-right {
+    border: none;
+    box-shadow: inset 0 0 30px -16px var(--qob-gutter);
+  }
+  /* Full-leaf paper turn — visible on phones */
   .qob-paper {
-    display: none;
+    display: block;
+    width: 100%;
+    left: 0;
+    right: 0;
+    box-shadow: 0 10px 40px rgba(20, 30, 24, 0.28);
   }
-  .qob-page-left {
-    border-right: none;
-    border-bottom: 1px solid var(--qob-line);
-    box-shadow: none;
+  .qob-paper-fwd {
+    transform-origin: left center;
   }
-  .qob-page-right { box-shadow: none; }
-  .qob-leaf { padding: 1.35rem 1.15rem 0.75rem; overflow: visible; }
-  .qob-page-footer { padding: 0.55rem 0.85rem 1rem; }
-  .qob-chapter-title { font-size: 1.25rem; }
+  .qob-paper-back {
+    transform-origin: right center;
+  }
+  .qob-paper-face-front {
+    background:
+      linear-gradient(90deg, rgba(42,42,42,0.12) 0%, transparent 22%),
+      linear-gradient(180deg, #FFFCF0 0%, var(--qob-page) 45%, #F0E9DC 100%);
+  }
+  .qob-leaf {
+    padding: 1.2rem 1.1rem 3rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .qob-page-footer { padding: 0.5rem 0.85rem 0.95rem; }
+  .qob-chapter-title { font-size: 1.2rem; }
   .qob-closed-book {
-    width: min(82vw, 340px);
-    height: min(72vh, 580px);
+    width: min(78vw, 320px);
+    height: min(68vh, 540px);
   }
+  .qob-closed-inner { margin: 14px; padding: 1.25rem 1rem; }
   .qob-nav {
-    max-width: 100%;
-    margin-top: 1.15rem;
+    max-width: min(100%, 440px);
+    margin-top: 1rem;
+    gap: 0.4rem;
   }
-  .qob-nav-btn { padding: 0.5rem 0.75rem; font-size: 12px; }
+  .qob-nav-btn { padding: 0.55rem 0.7rem; font-size: 12px; }
 }
 
 @media (max-width: 480px) {
-  .qob-stage { --qob-spread-h: min(65vh, 640px); padding: 1rem 0.5rem 0; }
-  .qob-hardcover { padding: 10px 10px 14px; }
-  .qob-leaf { padding: 1.1rem 1rem 0.6rem; }
-  .qob-nav p { font-size: 12px; }
+  .qob-stage { --qob-spread-h: min(72vh, 700px); padding: 0.75rem 0.4rem 0; }
+  .qob-hardcover { padding: 8px 8px 10px; max-width: 100%; }
+  .qob-leaf { padding: 1rem 0.9rem 2.85rem; }
+  .qob-nav { max-width: 100%; }
+  .qob-nav p { font-size: 11px; }
+  .qob-closed-cta { font-size: 0.7rem; }
 }
 `;
