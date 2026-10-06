@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -497,69 +497,59 @@ export function QuietReadingRoom() {
 
       <div className="qob-stage">
         <div className="qob-book-wrap">
-          <AnimatePresence mode="wait">
-            {stage === 'closed' ? (
-              <motion.div
-                key="closed"
-                className="qob-closed-motion"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.32 }}
-              >
-                <ClosedCover onOpen={openBook} />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="open-shell"
-                className="qob-open-shell"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.36 }}
-              >
-                <div className={cn('qob-hardcover', paperFlip && 'qob-hardcover-turning')}>
-                  <div className={cn('qob-pages', paperFlip && 'qob-pages-turning')}>
-                    {isMobile ? (
-                      <div className="qob-page-layer">{renderOpenSpread()}</div>
-                    ) : (
-                      renderOpenSpread()
-                    )}
+          {stage === 'closed' ? (
+            <div className="qob-closed-motion">
+              <ClosedCover onOpen={openBook} />
+            </div>
+          ) : (
+            <motion.div
+              key="open-shell"
+              className="qob-open-shell"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className={cn('qob-hardcover', paperFlip && 'qob-hardcover-turning')}>
+                <div className={cn('qob-pages', paperFlip && 'qob-pages-turning')}>
+                  {isMobile ? (
+                    <div className="qob-page-layer">{renderOpenSpread()}</div>
+                  ) : (
+                    renderOpenSpread()
+                  )}
 
-                    {paperFlip && <div className="qob-turn-shade" aria-hidden />}
+                  {paperFlip && <div className="qob-turn-shade" aria-hidden />}
 
-                    {paperFlip && (
-                      <motion.div
-                        key={`paper-${turnId}`}
-                        className={cn(
-                          'qob-paper',
-                          turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back',
-                          isMobile && 'qob-paper-mobile'
-                        )}
-                        initial={{ rotateY: 0 }}
-                        animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
-                        transition={{
-                          duration: 0.78,
-                          ease: [0.645, 0.045, 0.355, 1],
-                        }}
-                        style={{
-                          transformStyle: 'preserve-3d',
-                          transformPerspective: isMobile ? 1800 : 2400,
-                        }}
-                      >
-                        <div className="qob-paper-face qob-paper-face-front">
-                          <span className="qob-paper-curl" aria-hidden />
-                        </div>
-                        <div className="qob-paper-face qob-paper-face-rear">
-                          <span className="qob-paper-curl qob-paper-curl-rear" aria-hidden />
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
+                  {paperFlip && (
+                    <motion.div
+                      key={`paper-${turnId}`}
+                      className={cn(
+                        'qob-paper',
+                        turnDir > 0 ? 'qob-paper-fwd' : 'qob-paper-back',
+                        isMobile && 'qob-paper-mobile'
+                      )}
+                      initial={{ rotateY: 0 }}
+                      animate={{ rotateY: turnDir > 0 ? -180 : 180 }}
+                      transition={{
+                        duration: 0.78,
+                        ease: [0.645, 0.045, 0.355, 1],
+                      }}
+                      style={{
+                        transformStyle: 'preserve-3d',
+                        transformPerspective: isMobile ? 1800 : 2400,
+                      }}
+                    >
+                      <div className="qob-paper-face qob-paper-face-front">
+                        <span className="qob-paper-curl" aria-hidden />
+                      </div>
+                      <div className="qob-paper-face qob-paper-face-rear">
+                        <span className="qob-paper-curl qob-paper-curl-rear" aria-hidden />
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         <div className="qob-nav">
