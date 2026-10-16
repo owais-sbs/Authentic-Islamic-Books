@@ -2,6 +2,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { LibraryHeader, LibraryCatalog } from '@/components/library-demo';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 
 /**
  * /library — card catalog of static demo formats.
@@ -20,22 +21,24 @@ export function LibraryPage() {
     <PageContainer>
       <LibraryHeader />
 
-      <div className="container-page py-6 sm:py-8">
+      <Reveal className="container-page py-6 sm:py-8">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Library' }]} />
         <p className="mt-4 max-w-2xl font-serif text-[15px] leading-relaxed text-ink-600">
           Open a card to preview that format’s full reading layout. Each work is separate — Book
           07 is a fullscreen Quiet Reading Room for long-form study.
         </p>
-      </div>
+      </Reveal>
 
       <LibraryCatalog />
 
       <section className="border-t border-line bg-ink-900">
         <div className="container-page py-12 sm:py-14">
-          <h2 className="font-cinzel text-xl font-semibold tracking-wide text-white sm:text-2xl">
-            Library Information
-          </h2>
-          <div className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <Reveal as="div">
+            <h2 className="font-cinzel text-xl font-semibold tracking-wide text-white sm:text-2xl">
+              Library Information
+            </h2>
+          </Reveal>
+          <Stagger className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <InfoBlock
               title="Card-based browsing"
               body="Each card opens one professional layout. The catalogue stays scannable while preserving long-form scholarly reading inside each work."
@@ -48,7 +51,7 @@ export function LibraryPage() {
               title="Book 07 — Quiet Reading Room"
               body="An immersive open-book environment: cover, title, contents, chapters, Arabic sources, Aa settings, and night reading — less UI, more reading."
             />
-          </div>
+          </Stagger>
         </div>
       </section>
     </PageContainer>
@@ -57,11 +60,11 @@ export function LibraryPage() {
 
 function InfoBlock({ title, body }: { title: string; body: string }) {
   return (
-    <div>
+    <StaggerItem>
       <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
         {title}
       </h3>
       <p className="mt-3 font-serif text-[14px] leading-relaxed text-white/70">{body}</p>
-    </div>
+    </StaggerItem>
   );
 }

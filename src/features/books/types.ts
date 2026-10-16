@@ -27,6 +27,8 @@ export interface Book {
   coverUrl?: string;
   coverColor: string;
   originalPdfUrl?: string;
+  /** Intermediate markdown from the PDF pipeline (import only, not shown to readers) */
+  sourceMarkdown?: string;
   categories: string[];
   hijriStartYear?: number;
   hijriEndYear?: number;

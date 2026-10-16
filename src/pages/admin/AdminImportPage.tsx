@@ -151,7 +151,9 @@ export function AdminImportPage() {
       const bookWithStatus = { ...reviewBook, status };
 
       if (isSupabaseConfigured()) {
-        const saved = await upsertBookToSupabase(bookWithStatus, status);
+        const saved = await upsertBookToSupabase(bookWithStatus, status, {
+          sourceMarkdown: reviewBook.sourceMarkdown,
+        });
         bookWithStatus.id = saved.id;
         if (saved.coverUrl) bookWithStatus.coverUrl = saved.coverUrl;
         syncedToCloud = true;

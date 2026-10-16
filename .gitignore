@@ -21,3 +21,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Tesseract language data cached by the PDF test harness
+*.traineddata

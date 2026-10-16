@@ -1,5 +1,6 @@
 import type { ContentBlock } from '@/types';
 import { normalizeDisplayText } from '@/services/content/normalizeText';
+import { languageMeta } from '@/services/pdf/language';
 
 const HADITH_HEADER_RE =
   /^(The\s+(?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth|\d+(?:st|nd|rd|th)?)\s+Hadith)\b[:\s-]*/i;
@@ -9,21 +10,10 @@ const INLINE_HADITH_SPLIT =
 
 const NARRATION_RE = /^(It is narrated|Narrated by|On the authority of|According to)/i;
 
-const SECTION_TITLE_RE =
-  /^(Chapter|Section|Part|Book|Introduction|Conclusion|Preface)\s+[\dIVXLC]+/i;
+const SECTION_TITLE_RE = /^(Chapter|Section|Part|Book|CHAPTER|SECTION|PART)\s+(\d+|[IVXLC]+)\b/;
 
-const JUNK_PATTERNS = [
-  /one\s*path\s*business/i,
-  /business\s*solutions/i,
-  /developer\s*assignment/i,
-  /next\.js/i,
-  /supabase\s*client/i,
-  /quadrant\s*technologies/i,
-  /build\s*the\s*ilm/i,
-  /admin\s*panel/i,
-  /full[\s-]*stack/i,
-  /(?:\b[A-Z]\s+){5,}[A-Z]\b/,
-];
+/** "…said:" / "narrated:" style lead-in that introduces a quotation. */
+const QUOTE_LEAD_IN = /(said|says|stated|narrated|reported|wrote|asked|replied)[^.!?]{0,40}[:,]?$/i;
 
 const SEMANTIC_TYPES = new Set(['arabic', 'quran', 'hadith', 'footnote']);
 
@@ -33,12 +23,9 @@ function collapseSpacedCaps(text: string): string {
   return text;
 }
 
-/** Drop PDF cover-page noise and developer-doc fragments. */
+/** Empty / whitespace-only text. Real book text is never dropped. */
 export function isJunkReaderText(text: string): boolean {
-  const normalized = text.trim();
-  if (!normalized) return true;
-  // Do not reject short legitimate lines (headings, Arabic phrases, sources)
-  return JUNK_PATTERNS.some((pattern) => pattern.test(normalized));
+  return !text.trim();
 }
 
 /** Clean PDF/import spacing artifacts for comfortable reading (single-line safe). */
@@ -47,31 +34,8 @@ export function normalizeReaderText(text: string): string {
     normalizeDisplayText(text)
       .replace(/\s+/g, ' ')
       .replace(/\bMuslim\s+s\b/gi, 'Muslims')
-      .replace(/\s+'/g, "'")
-      .replace(/'\s+/g, "'")
       .trim()
   );
-}
-
-function splitLongParagraph(text: string): string[] {
-  const sentences = text.split(/(?<=[.!?؟])\s+/).filter((s) => s.trim().length > 0);
-  if (sentences.length <= 2) return [text];
-
-  const chunks: string[] = [];
-  let current = '';
-
-  for (const sentence of sentences) {
-    const next = current ? `${current} ${sentence}` : sentence;
-    if (next.split(/\s+/).length > 38 && current) {
-      chunks.push(current.trim());
-      current = sentence;
-    } else {
-      current = next;
-    }
-  }
-
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [text];
 }
 
 function chunkToBlocks(chunk: string): ContentBlock[] {
@@ -90,10 +54,13 @@ function chunkToBlocks(chunk: string): ContentBlock[] {
     return [{ type: 'heading', text, level: 2 }];
   }
 
-  const quoteMatch = text.match(/"([^"]{12,})"/);
-  if (quoteMatch && quoteMatch.index !== undefined) {
+  // Pull out a quotation only when it is introduced ("…said:") and substantial —
+  // never from the middle of an ordinary sentence.
+  const quoteMatch = text.match(/["“]([^"”]{40,})["”]/);
+  const leadIn = quoteMatch?.index !== undefined ? text.slice(0, quoteMatch.index).trim() : '';
+  if (quoteMatch && quoteMatch.index !== undefined && (!leadIn || QUOTE_LEAD_IN.test(leadIn))) {
     const blocks: ContentBlock[] = [];
-    const before = text.slice(0, quoteMatch.index).trim();
+    const before = leadIn;
     const after = text.slice(quoteMatch.index + quoteMatch[0].length).trim();
 
     if (before) {
@@ -106,25 +73,13 @@ function chunkToBlocks(chunk: string): ContentBlock[] {
 
     blocks.push({ type: 'quote', text: quoteMatch[1].trim() });
 
-    if (after) {
-      if (after.length > 280) {
-        splitLongParagraph(after).forEach((p) => blocks.push({ type: 'paragraph', text: p }));
-      } else {
-        blocks.push({ type: 'paragraph', text: after });
-      }
-    }
+    if (after) blocks.push({ type: 'paragraph', text: after });
 
     return blocks;
   }
 
   if (NARRATION_RE.test(text)) {
     return [{ type: 'reference', text }];
-  }
-
-  if (text.length > 320) {
-    return splitLongParagraph(text)
-      .map((p) => ({ type: 'paragraph' as const, text: p }))
-      .filter((p) => !isJunkReaderText(p.text));
   }
 
   if (isJunkReaderText(text)) return [];
@@ -146,6 +101,29 @@ function expandParagraphBlock(text: string): ContentBlock[] {
   }
 
   return pieces.flatMap((piece) => chunkToBlocks(piece));
+}
+
+/**
+ * Direction/language are not kept in stored HTML, so derive them from the text:
+ * Arabic / Urdu paragraphs, headings and quotes render right-to-left.
+ */
+function withDirection(block: ContentBlock): ContentBlock {
+  if (block.direction && block.type !== 'arabic') return block;
+  const text =
+    'text' in block && typeof block.text === 'string'
+      ? block.text
+      : block.type === 'list'
+        ? block.items.join(' ')
+        : '';
+  if (!text) return block;
+  const meta = languageMeta(text);
+  if (block.type === 'arabic') {
+    // Urdu was historically stored as Arabic — keep the real language
+    const language = meta.language === 'ur' ? 'ur' : block.language ?? 'ar';
+    return { ...block, language, direction: 'rtl' };
+  }
+  if (meta.direction !== 'rtl') return block;
+  return { ...block, language: block.language ?? meta.language, direction: 'rtl' };
 }
 
 /**
@@ -234,7 +212,7 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
     expanded.push(block);
   }
 
-  return expanded.filter((block) => {
+  return expanded.map(withDirection).filter((block) => {
     if (block.type === 'quran') {
       return Boolean(block.arabic || block.translation || block.reference);
     }

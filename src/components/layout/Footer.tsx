@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BookOpen, Github, Twitter, Mail } from 'lucide-react';
+import { Reveal } from '@/components/motion/Reveal';
 
 const footerSections = [
   {
@@ -25,7 +26,7 @@ export function Footer() {
   return (
     <footer className="mt-auto border-t border-ink-700 bg-ink-900">
       <div className="container-page py-12 sm:py-14">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4">
+        <Reveal className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4">
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-ink-900">
@@ -72,7 +73,7 @@ export function Footer() {
               </ul>
             </div>
           ))}
-        </div>
+        </Reveal>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-ink-700 pt-6 text-center sm:flex-row sm:text-left">
           <p className="text-xs text-ink-400">

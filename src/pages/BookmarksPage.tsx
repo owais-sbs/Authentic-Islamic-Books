@@ -74,10 +74,11 @@ export function BookmarksPage() {
                     return (
                       <motion.div
                         key={saved.slug}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                        className="group flex items-center gap-3 rounded-2xl border border-line bg-cream p-3 transition-all duration-200 hover:border-accent/50 hover:shadow-md"
+                        initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+                        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+                        viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+                        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: (i % 3) * 0.07 }}
+                        className="group flex items-center gap-3 rounded-2xl border border-line bg-cream p-3 transition-[border-color,box-shadow] duration-200 hover:border-accent/50 hover:shadow-md"
                       >
                         <Link to={`/books/${saved.slug}`} className="shrink-0">
                           {book ? (

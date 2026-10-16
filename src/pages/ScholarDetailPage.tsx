@@ -158,8 +158,8 @@ export function ScholarDetailPage() {
                 {scholar.timelineEvents.map((event, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: -12 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, x: -12, filter: 'blur(8px)' }}
+                    whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
                     className="relative pl-6"

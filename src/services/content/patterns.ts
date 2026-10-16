@@ -151,7 +151,9 @@ const SURAH_ALT = SURAH_NAMES.map((n) => n.replace(/[-']/g, '[-’\'\\s]?')).joi
 
 /** Explicit Qur'an citation labels (high confidence). */
 export const QURAN_LABEL_RE = new RegExp(
-  String.raw`^(?:Qur['’]?an|Quran|The\s+Qur['’]?an)\s*[-–—:]?\s*(.+)$`,
+  // Citation form only ("Qur'an 2:255", "Quran — Al-Baqarah 2:255"), not prose
+  // that merely starts with the word ("Quran is the word of Allah.")
+  String.raw`^(?:Qur['’]?an|Quran|The\s+Qur['’]?an)\s*[-–—:,]?\s*((?=[^.!?]*\d)[^!?]{1,80})$`,
   'i',
 );
 

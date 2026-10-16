@@ -24,6 +24,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { hijriPeriods } from '@/data/periods';
 import heroImg from '@/assets/home.jpeg';
+import { Reveal } from '@/components/motion/Reveal';
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: 'popular', label: 'Most Popular' },
@@ -186,7 +187,7 @@ export function HomePage() {
         ═══════════════════════════════════════════════════════════════════ */}
         <section ref={libraryRef} id="library" className="bg-paper py-12 sm:py-16 scroll-mt-20">
           <div className="container-page">
-            <div className="mb-8">
+            <Reveal className="mb-8">
               <p className="mb-1 font-serif text-xs font-semibold uppercase tracking-widest text-accent">
                 The Collection
               </p>
@@ -194,9 +195,9 @@ export function HomePage() {
               <p className="mt-2 text-ink-500">
                 Filter by era, scholar, or subject — or search for anything.
               </p>
-            </div>
+            </Reveal>
 
-            <div className="relative mb-6 max-w-2xl">
+            <Reveal delay={0.08} className="relative mb-6 max-w-2xl">
               <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-400" />
               <input
                 type="text"
@@ -214,7 +215,7 @@ export function HomePage() {
                   <X size={16} />
                 </button>
               )}
-            </div>
+            </Reveal>
 
             <div className="mb-4 flex items-center justify-between lg:hidden">
               <button

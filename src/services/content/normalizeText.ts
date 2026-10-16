@@ -7,8 +7,10 @@ const FOOTER_LINE = [
   /^\s*page\s+\d+\s*(of\s+\d+)?\s*$/i,
   /^\s*-\s*\d+\s*-\s*$/,
   /^\s*©\s*/,
-  /^\s*\d{1,4}\s*$/,
 ];
+
+/** Bare page number — only removed when it is the first/last line of a page. */
+const PAGE_NUMBER_LINE = /^\s*[-–(]?\s*(\d{1,4}|[ivxlc]{1,7})\s*[-–)]?\s*$/i;
 
 /** Soft line wrap: ends mid-sentence and next continues lowercase / Arabic. */
 const ENDS_SENTENCE = /[.!?؟:…»"”)]$|^\s*$/;
@@ -16,14 +18,19 @@ const ENDS_SENTENCE = /[.!?؟:…»"”)]$|^\s*$/;
 export function cleanUnicode(text: string): string {
   return text
     .replace(/\u00AD/g, '')
+    // Undecodable glyphs from fonts without a character map
+    .replace(/[\uE000-\uF8FF\uFFFD]/g, '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\u00A0/g, ' ')
+    // Brackets emptied by dropped symbols (e.g. an undecodable ﷺ glyph)
+    .replace(/\s?\(\s*\)|\s?\[\s*\]/g, '')
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n');
 }
 
+/** Join words split by a line-end hyphen ("know-\nledge" → "knowledge"). */
 export function joinHyphenatedBreaks(text: string): string {
-  return text.replace(/(\w)-\n(\w)/g, '$1$2');
+  return text.replace(/(\p{L})-\n(\p{Ll})/gu, '$1$2');
 }
 
 function collapseInlineSpaces(line: string): string {
@@ -62,10 +69,11 @@ export function repairLineWraps(text: string): string {
 
     if (isLikelyPageArtifact(line)) continue;
 
-    // Isolated short numbered / chapter-like lines stay separate
+    // Numbered / chapter-like lines always start a new line (a lowercase
+    // continuation may still be joined onto them below)
     if (isIsolatedStructuralLine(line)) {
       flush();
-      out.push(line);
+      buf = line;
       continue;
     }
 
@@ -77,7 +85,6 @@ export function repairLineWraps(text: string): string {
     const prev = buf;
     const shouldJoin =
       !ENDS_SENTENCE.test(prev) &&
-      !isIsolatedStructuralLine(prev) &&
       line.length > 0 &&
       // next continues sentence (latin lower) or Arabic continuation
       (/^[a-z(]/.test(line) || /^[\u0600-\u06FF]/.test(line));
@@ -117,8 +124,12 @@ export function isIsolatedStructuralLine(line: string): boolean {
  * Detect repeated running headers/footers across pages (high confidence only).
  * `pages` are plain page strings (already line-broken).
  */
+/** Running headers often carry the page number ("PRAYER 45") — compare without digits. */
+function runningKey(line: string): string {
+  return line.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+}
+
 export function stripRepeatedPageArtifacts(pages: string[]): string[] {
-  if (pages.length < 3) return pages;
 
   const firstLineCounts = new Map<string, number>();
   const lastLineCounts = new Map<string, number>();
@@ -129,30 +140,38 @@ export function stripRepeatedPageArtifacts(pages: string[]): string[] {
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length < 2) continue;
-    const first = lines[0];
-    const last = lines[lines.length - 1];
+    const first = runningKey(lines[0]);
+    const last = runningKey(lines[lines.length - 1]);
     if (first.length <= 80) firstLineCounts.set(first, (firstLineCounts.get(first) ?? 0) + 1);
     if (last.length <= 80) lastLineCounts.set(last, (lastLineCounts.get(last) ?? 0) + 1);
   }
 
-  const threshold = Math.max(3, Math.floor(pages.length * 0.4));
-  const headers = new Set(
+  // Too few pages to tell running headers from content: only strip page numbers
+  const threshold = pages.length < 3 ? Infinity : Math.max(3, Math.floor(pages.length * 0.4));
+  const headerKeys = new Set(
     [...firstLineCounts.entries()].filter(([, c]) => c >= threshold).map(([t]) => t),
   );
-  const footers = new Set(
+  const footerKeys = new Set(
     [...lastLineCounts.entries()].filter(([, c]) => c >= threshold).map(([t]) => t),
   );
+  const headers = { has: (line: string) => headerKeys.has(runningKey(line)) };
+  const footers = { has: (line: string) => footerKeys.has(runningKey(line)) };
 
   // Never strip numbered headings that look like content structure
   const safe = (line: string) => !isIsolatedStructuralLine(line) && !/^\d+\.\d+/.test(line);
 
   return pages.map((page) => {
     const lines = page.split('\n');
+    const nonEmpty = lines.map((l, i) => (l.trim() ? i : -1)).filter((i) => i >= 0);
+    const firstIdx = nonEmpty[0];
+    const lastIdx = nonEmpty[nonEmpty.length - 1];
     const filtered = lines.filter((raw, idx) => {
       const line = raw.trim();
       if (!line) return true;
-      if (idx === 0 && headers.has(line) && safe(line)) return false;
-      if (idx === lines.length - 1 && footers.has(line) && safe(line)) return false;
+      const edge = idx === firstIdx || idx === lastIdx;
+      if (idx === firstIdx && headers.has(line) && safe(line)) return false;
+      if (idx === lastIdx && footers.has(line) && safe(line)) return false;
+      if (edge && PAGE_NUMBER_LINE.test(line)) return false;
       if (isLikelyPageArtifact(line)) return false;
       return true;
     });

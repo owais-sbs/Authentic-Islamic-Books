@@ -8,13 +8,17 @@ import { formatHijriRange } from '@/data/periods';
 import { BookCover } from '@/components/book/BookCover';
 import { BookBookmarkButton } from '@/components/book/BookBookmarkButton';
 import { Badge } from '@/components/ui/Badge';
+import { useRevealProps } from '@/components/motion/Reveal';
 
 interface BookCardProps {
   book: Book;
   variant?: 'grid' | 'list';
+  /** Position in its grid — staggers the scroll reveal across a row */
+  index?: number;
 }
 
-export function BookCard({ book, variant = 'grid' }: BookCardProps) {
+export function BookCard({ book, variant = 'grid', index = 0 }: BookCardProps) {
+  const reveal = useRevealProps(variant === 'list' ? 0 : (index % 4) * 0.07);
   const scholar = getScholarById(book.authorId);
   const category = getCategoryById(book.categoryIds[0]);
   // For imported books, authorId may be a placeholder — fall back to authorName
@@ -25,10 +29,8 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
   if (variant === 'list') {
     return (
       <motion.article
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="group flex gap-5 border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-sm relative"
+        {...reveal}
+        className="group flex gap-5 border border-line bg-cream rounded-xl p-5 transition-[border-color,box-shadow] duration-300 hover:border-line-strong hover:shadow-sm relative"
       >
         <div className="absolute top-3 right-3 z-10">
           <BookBookmarkButton
@@ -78,10 +80,9 @@ export function BookCard({ book, variant = 'grid' }: BookCardProps) {
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group flex flex-col border border-line bg-cream rounded-xl p-5 transition-all hover:border-line-strong hover:shadow-md relative"
+      {...reveal}
+      whileHover={{ y: -4, transition: { duration: 0.25, ease: 'easeOut' } }}
+      className="group flex flex-col border border-line bg-cream rounded-xl p-5 transition-[border-color,box-shadow] duration-300 hover:border-line-strong hover:shadow-md relative"
     >
       <div className="absolute top-3 right-3 z-10">
         <BookBookmarkButton

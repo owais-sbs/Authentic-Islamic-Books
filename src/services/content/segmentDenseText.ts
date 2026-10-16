@@ -7,7 +7,10 @@ const ARABIC_CHAR = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70
 
 /** Insert breaks before strong structural markers inside a single line/blob. */
 const MARKER_SPLIT =
-  /\s+(?=(?:Qur['’]?an|Quran)\b|\b(?:Surah|Soorah)\s+[A-Za-z]|\bNarrated\b|\bIt is narrated\b|\bOn the authority of\b|\bThe Messenger of Allah\b|\bThe Prophet\b|\bSahih (?:al-)?(?:Bukhari|Muslim)\b|\bAbu Dawu[d]\b|\b(?:al-)?Tirmidhi\b|\bIbn Majah\b|\bIbn Taymiyyah said\b|\bIbn al-Qayyim said\b|\bShaykh .+ said\b|\bImam .+ said\b|\bSource\s*:|\bReference\s*:|\[\d{1,3}\]\s+\S|\b\d+\.\d+(?:\.\d+)?\s+[A-Z\u0600-\u06FF]|\bCHAPTER\s+(?:\d+|[IVXLC]+)\b|\bChapter\s+(?:\d+|[IVXLC]+)\b)/gi;
+  /\s+(?=(?:Qur['’]?an|Quran)\s+\d|\b(?:Surah|Soorah)\s+[A-Za-z]|\bNarrated\b|\bIt is narrated\b|\bOn the authority of\b|\bSahih (?:al-)?(?:Bukhari|Muslim)\b|\bAbu Dawu[d]\b|\b(?:al-)?Tirmidhi\b|\bIbn Majah\b|\bIbn Taymiyyah said\b|\bIbn al-Qayyim said\b|\bSource\s*:|\bReference\s*:|\[\d{1,3}\]\s+\S|\bCHAPTER\s+(?:\d+|[IVXLC]+)\b|\bChapter\s+(?:\d+|[IVXLC]+)\b)/g;
+
+/** Only very long runs without paragraph breaks are treated as dense blobs. */
+const DENSE_BLOB_MIN = 600;
 
 function isArabicChar(ch: string): boolean {
   return ARABIC_CHAR.test(ch);
@@ -39,7 +42,19 @@ export function splitByScriptRuns(text: string, minArabicRun = 12): string[] {
     arabicRun = 0;
   };
 
-  for (const ch of trimmed) {
+  const chars = [...trimmed];
+  /** Arabic letters ahead before the next Latin letter (spaces/punctuation skipped). */
+  const arabicAhead = (from: number): number => {
+    let n = 0;
+    for (let k = from; k < chars.length; k++) {
+      if (isLatinLetter(chars[k])) break;
+      if (isArabicChar(chars[k])) n += 1;
+    }
+    return n;
+  };
+
+  for (let idx = 0; idx < chars.length; idx++) {
+    const ch = chars[idx];
     const next: 'arabic' | 'latin' | 'other' = isArabicChar(ch)
       ? 'arabic'
       : isLatinLetter(ch)
@@ -62,7 +77,7 @@ export function splitByScriptRuns(text: string, minArabicRun = 12): string[] {
     // Script switch latin ↔ arabic
     if (
       (mode === 'arabic' && next === 'latin' && arabicRun >= minArabicRun) ||
-      (mode === 'latin' && next === 'arabic')
+      (mode === 'latin' && next === 'arabic' && arabicAhead(idx) >= minArabicRun)
     ) {
       flush();
       mode = next;
@@ -97,7 +112,7 @@ export function segmentDenseText(text: string): string[] {
   for (const para of paragraphs) {
     // Marker splits inside long blobs
     const markerParts =
-      para.length > 80
+      para.length > DENSE_BLOB_MIN
         ? para.split(MARKER_SPLIT).map((p) => p.trim()).filter(Boolean)
         : [para];
 

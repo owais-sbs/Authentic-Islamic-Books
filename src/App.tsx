@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AdminRoute, AdminLoginRoute } from '@/components/admin/AdminRoute';
@@ -38,41 +39,44 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ScrollToTop />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/"                 element={<HomePage />} />
-            <Route path="/library"          element={<LibraryPage />} />
-            <Route path="/library/:slug"    element={<LibraryDemoDetailPage />} />
-            <Route path="/scholars"         element={<ScholarsPage />} />
-            <Route path="/scholars/:slug"   element={<ScholarDetailPage />} />
-            {/* Library Read → book detail (cover + chapter dropdowns) */}
-            <Route path="/books/:slug"      element={<BookDetailPage />} />
-            {/* Full reader experience */}
-            <Route path="/books/:slug/read" element={<ReaderPage />} />
-            <Route path="/timeline"         element={<TimelinePage />} />
-            <Route path="/categories"       element={<CategoriesPage />} />
-            <Route path="/about"            element={<AboutPage />} />
-            <Route path="/bookmarks"        element={<BookmarksPage />} />
+        {/* Respect the OS "reduce motion" setting for every framer-motion animation */}
+        <MotionConfig reducedMotion="user">
+          <ScrollToTop />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/"                 element={<HomePage />} />
+              <Route path="/library"          element={<LibraryPage />} />
+              <Route path="/library/:slug"    element={<LibraryDemoDetailPage />} />
+              <Route path="/scholars"         element={<ScholarsPage />} />
+              <Route path="/scholars/:slug"   element={<ScholarDetailPage />} />
+              {/* Library Read → book detail (cover + chapter dropdowns) */}
+              <Route path="/books/:slug"      element={<BookDetailPage />} />
+              {/* Full reader experience */}
+              <Route path="/books/:slug/read" element={<ReaderPage />} />
+              <Route path="/timeline"         element={<TimelinePage />} />
+              <Route path="/categories"       element={<CategoriesPage />} />
+              <Route path="/about"            element={<AboutPage />} />
+              <Route path="/bookmarks"        element={<BookmarksPage />} />
 
-            <Route element={<AdminLoginRoute />}>
-              <Route path="/admin/login" element={<AdminLoginPage />} />
-            </Route>
+              <Route element={<AdminLoginRoute />}>
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+              </Route>
 
-            <Route element={<AdminRoute />}>
-              <Route path="/admin"                       element={<AdminDashboardPage />} />
-              <Route path="/admin/books"                 element={<AdminBooksPage />} />
-              <Route path="/admin/books/new"             element={<AdminReviewPage />} />
-              <Route path="/admin/books/import"          element={<AdminImportPage />} />
-              <Route path="/admin/books/:bookId/review"  element={<AdminReviewPage />} />
-              <Route path="/admin/scholars"              element={<AdminScholarsPage />} />
-              <Route path="/admin/categories"            element={<AdminCategoriesPage />} />
-              <Route path="/admin/settings"              element={<AdminSettingsPage />} />
-            </Route>
+              <Route element={<AdminRoute />}>
+                <Route path="/admin"                       element={<AdminDashboardPage />} />
+                <Route path="/admin/books"                 element={<AdminBooksPage />} />
+                <Route path="/admin/books/new"             element={<AdminReviewPage />} />
+                <Route path="/admin/books/import"          element={<AdminImportPage />} />
+                <Route path="/admin/books/:bookId/review"  element={<AdminReviewPage />} />
+                <Route path="/admin/scholars"              element={<AdminScholarsPage />} />
+                <Route path="/admin/categories"            element={<AdminCategoriesPage />} />
+                <Route path="/admin/settings"              element={<AdminSettingsPage />} />
+              </Route>
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </MotionConfig>
       </AuthProvider>
     </BrowserRouter>
   );

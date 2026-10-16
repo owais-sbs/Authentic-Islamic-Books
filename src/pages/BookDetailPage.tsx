@@ -13,13 +13,14 @@ import { getScholarById } from '@/data/scholars';
 import { getCategoryById } from '@/data/categories';
 import { countAllSections, estimateReadingTime } from '@/data/books';
 import { formatHijriRange } from '@/data/periods';
-import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache, getSupabasePublishedCache } from '@/lib/bookApi';
+import { fetchPublishedBookBySlug, getSupabasePublishedCache } from '@/lib/bookApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getAllImportedBooks } from '@/hooks/useBookStore';
 import { NotFoundPage } from './NotFoundPage';
 import { cn } from '@/lib/utils';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import type { BookSection, BookChapter, Book, ContentBlock } from '@/types';
+import { Reveal } from '@/components/motion/Reveal';
 
 function resolveBookSync(slug: string, stateBook?: Book): Book | undefined {
   if (stateBook?.slug === slug) return stateBook;
@@ -258,7 +259,7 @@ export function BookDetailPage() {
   useEffect(() => {
     if (!slug) return;
     const resolved = resolveBookSync(slug, stateBook);
-    if (resolved) {
+    if (resolved && !resolved.contentPending) {
       setBook(resolved);
       setLoading(false);
       setNotFound(false);
@@ -271,11 +272,13 @@ export function BookDetailPage() {
       return;
     }
 
-    setLoading(true);
-    fetchPublishedBooksFromSupabase()
-      .then((remoteBooks) => {
-        setSupabasePublishedCache(remoteBooks);
-        const found = remoteBooks.find((b) => b.slug === slug);
+    // Show list metadata right away (if cached) while the chapter text loads from Storage
+    if (resolved) setBook(resolved);
+    setLoading(!resolved);
+    let cancelled = false;
+    fetchPublishedBookBySlug(slug)
+      .then((found) => {
+        if (cancelled) return;
         if (found) {
           setBook(found);
           setNotFound(false);
@@ -285,10 +288,16 @@ export function BookDetailPage() {
         }
       })
       .catch(() => {
+        if (cancelled || resolved) return;
         setBook(undefined);
         setNotFound(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug, stateBook]);
 
   // Loading state — spinner while fetching from Supabase
@@ -405,11 +414,13 @@ export function BookDetailPage() {
 
         {/* ── Table of Contents ─────────────────────────────────────── */}
         <div id="contents" className="scroll-mt-24">
-          <h2 className="mb-5 font-serif text-2xl font-semibold text-ink-900">
-            Table of Contents
-          </h2>
+          <Reveal>
+            <h2 className="mb-5 font-serif text-2xl font-semibold text-ink-900">
+              Table of Contents
+            </h2>
+          </Reveal>
 
-          <div className="space-y-2 sm:space-y-3">
+          <Reveal delay={0.08} className="space-y-2 sm:space-y-3">
             {/* Introduction row */}
             <IntroAccordion book={book} />
 
@@ -423,7 +434,7 @@ export function BookDetailPage() {
                 No content available yet.
               </p>
             )}
-          </div>
+          </Reveal>
         </div>
       </div>
     </PageContainer>

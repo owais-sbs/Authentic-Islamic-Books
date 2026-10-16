@@ -68,8 +68,8 @@ export function CategoriesPage() {
             return (
               <motion.div
                 key={cat.id}
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+                whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.35, delay: Math.min(i * 0.05, 0.35) }}
               >

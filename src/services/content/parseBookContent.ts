@@ -472,24 +472,9 @@ export function parseBookContent(raw: string): ContentBlock[] {
       continue;
     }
 
-    // Default paragraph — split very long runs
+    // Default paragraph — kept whole (paragraph breaks come from the source layout)
     consumed.add(i);
-    if (text.length > 420) {
-      const sentences = text.split(/(?<=[.!?؟])\s+/).filter(Boolean);
-      let chunk = '';
-      for (const s of sentences) {
-        const next = chunk ? `${chunk} ${s}` : s;
-        if (next.split(/\s+/).length > 42 && chunk) {
-          blocks.push({ type: 'paragraph', text: chunk.trim() });
-          chunk = s;
-        } else {
-          chunk = next;
-        }
-      }
-      if (chunk.trim()) blocks.push({ type: 'paragraph', text: chunk.trim() });
-    } else {
-      blocks.push({ type: 'paragraph', text });
-    }
+    blocks.push({ type: 'paragraph', text });
   }
 
   return mergeAdjacentHadithNarration(blocks);

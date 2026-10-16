@@ -1,5 +1,5 @@
 import type { ParsedBook, RawPage } from '@/lib/pdfExtractor';
-import { normalizePages, normalizedPagesToPlainText } from './normalizer';
+import { normalizePages, normalizedPagesToPlainText, extractTableOfContents } from './normalizer';
 import {
   countLowConfidenceHeadings,
   detectMetaFromText,
@@ -17,6 +17,18 @@ export interface PipelineOptions {
   fileSizeBytes?: number;
   ocrPageNums?: number[];
   ocrFailedPageNums?: number[];
+  /** Title / author from the PDF metadata — preferred over guessing from page text */
+  pdfTitle?: string;
+  pdfAuthor?: string;
+}
+
+/** PDF metadata is often junk ("Microsoft Word - doc1.docx", "Untitled", a file id) */
+function usableMetadata(value?: string): string | undefined {
+  const v = value?.trim();
+  if (!v || v.length < 4 || v.length > 200) return undefined;
+  if (/^(untitled|document|microsoft word|title|unknown)\b|\.(docx?|pdf|indd|tmp)$|^[\w-]+\.\w{2,4}$/i.test(v)) return undefined;
+  if ((v.match(/\p{L}/gu) || []).length < v.length * 0.5) return undefined;
+  return v;
 }
 
 export function runPipeline(
@@ -40,9 +52,15 @@ export function runPipeline(
 
   onProgress?.('meta', 'Detecting title and author…', { percent: 70 });
   const meta = detectMetaFromText(fullText, fileName);
+  const pdfTitle = usableMetadata(options?.pdfTitle);
+  const pdfAuthor = usableMetadata(options?.pdfAuthor);
+  if (pdfTitle) meta.title = pdfTitle;
+  if (pdfAuthor) meta.author = pdfAuthor;
 
   onProgress?.('chapters', 'Detecting chapters and sections…', { percent: 78 });
-  const structure = detectStructureFromPages(normalized);
+  // The book's own contents page (if any) tells us which headings are real chapters
+  const toc = extractTableOfContents(pages).entries;
+  const structure = detectStructureFromPages(normalized, toc);
   const lowConfidenceHeadings = countLowConfidenceHeadings(structure);
 
   onProgress?.('sections', 'Building hierarchy…', { percent: 84 });
@@ -88,8 +106,8 @@ export function runPipeline(
   const fromMd = markdownToStructure(markdown);
   chapters = applyAutomaticNumbering(fromMd.chapters);
   introductionText = fromMd.introductionText || introductionText;
-  if (fromMd.meta.title) meta.title = fromMd.meta.title;
-  if (fromMd.meta.author) meta.author = fromMd.meta.author;
+  if (fromMd.meta.title && !pdfTitle) meta.title = fromMd.meta.title;
+  if (fromMd.meta.author && !pdfAuthor) meta.author = fromMd.meta.author;
   if (fromMd.meta.description) meta.description = fromMd.meta.description;
 
   // Final safety: never leave a book with words but zero chapters

@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHero } from '@/components/layout/PageHero';
@@ -130,23 +129,11 @@ export function ScholarsPage() {
             <p className="mt-2 text-sm text-ink-500">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.35 }}
-            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          >
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredScholars.map((scholar, i) => (
-              <motion.div
-                key={scholar.id}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.35) }}
-              >
-                <ScholarCard scholar={scholar} />
-              </motion.div>
+              <ScholarCard key={scholar.id} scholar={scholar} index={i} />
             ))}
-          </motion.div>
+          </div>
         )}
       </div>
     </PageContainer>

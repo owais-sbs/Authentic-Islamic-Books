@@ -47,8 +47,8 @@ export function TimelinePage() {
                 return (
                   <motion.div
                     key={period.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+                    whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3) }}
                     className="flex flex-col items-center w-20"
@@ -94,8 +94,8 @@ export function TimelinePage() {
               return (
                 <motion.div
                   key={period.id}
-                  initial={{ opacity: 0, x: -12 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: -12, filter: 'blur(8px)' }}
+                  whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: i * 0.03 }}
                   className="relative pl-12"

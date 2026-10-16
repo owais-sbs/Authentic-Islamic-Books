@@ -163,7 +163,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 key={i}
                 className={cn('reader-arabic', blockClass(block.language ?? 'ar', block.direction ?? 'rtl'))}
                 dir="rtl"
-                lang="ar"
+                lang={block.language === 'ur' ? 'ur' : 'ar'}
                 style={{ fontSize: `${arabicSize}px`, lineHeight: 2 }}
               >
                 {highlightText(block.text, highlightQuery)}

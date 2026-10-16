@@ -86,6 +86,7 @@ export function parsedPdfToReviewBook(parsed: ParsedBook, fileName: string): Boo
     chapterCount: parsed.chapters.length,
     sectionCount: parsed.chapters.reduce((n, ch) => n + ch.sections.length, 0),
     extractionStatus: 'completed',
+    sourceMarkdown: parsed.extraction?.markdown,
     language: languageLabel(langs),
     extractionInfo: parsed.extraction
       ? {

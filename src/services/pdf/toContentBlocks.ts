@@ -9,7 +9,7 @@ function withLang(block: ContentBlock): ContentBlock {
   if (block.type === 'arabic') {
     return {
       ...block,
-      language: block.language ?? 'ar',
+      language: block.language ?? (languageMeta(block.text).language === 'ur' ? 'ur' : 'ar'),
       direction: block.direction ?? 'rtl',
     };
   }

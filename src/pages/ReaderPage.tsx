@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useParams, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { getBookBySlug } from '@/data/books';
-import { fetchPublishedBooksFromSupabase, setSupabasePublishedCache } from '@/lib/bookApi';
+import { fetchPublishedBookBySlug } from '@/lib/bookApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { NotFoundPage } from './NotFoundPage';
 import { Navbar } from '@/components/layout/Navbar';
@@ -23,9 +24,11 @@ export function ReaderPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
 
-  const [book, setBook] = useState<Book | undefined>(() =>
-    slug ? getBookBySlug(slug) : undefined
-  );
+  // A Supabase list entry without its Storage text can't be read yet — load it below
+  const [book, setBook] = useState<Book | undefined>(() => {
+    const cached = slug ? getBookBySlug(slug) : undefined;
+    return cached?.contentPending ? undefined : cached;
+  });
   const [loading, setLoading] = useState(!book && isSupabaseConfigured());
   const [notFound, setNotFound] = useState(false);
 
@@ -33,10 +36,8 @@ export function ReaderPage() {
     if (book || !slug) return;
     if (!isSupabaseConfigured()) { setNotFound(true); setLoading(false); return; }
     setLoading(true);
-    fetchPublishedBooksFromSupabase()
-      .then((remoteBooks) => {
-        setSupabasePublishedCache(remoteBooks);
-        const found = remoteBooks.find((b) => b.slug === slug);
+    fetchPublishedBookBySlug(slug)
+      .then((found) => {
         if (found) setBook(found);
         else setNotFound(true);
       })
@@ -162,6 +163,12 @@ export function ReaderPage() {
         />
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-10">
+          <motion.div
+            key={currentUnit.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
           <ReaderChapterPanel
             unit={currentUnit}
             totalUnits={units.length}
@@ -180,6 +187,7 @@ export function ReaderPage() {
             hasPrev={currentIndex > 0}
             hasNext={currentIndex < units.length - 1}
           />
+          </motion.div>
         </main>
       </div>
 

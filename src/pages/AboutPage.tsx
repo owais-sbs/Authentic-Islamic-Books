@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { hijriPeriods, formatHijriRange } from '@/data/periods';
-import { BookGridAnimated } from '@/components/library/BookGrid';
+import { BookGrid } from '@/components/library/BookGrid';
 import { useLibraryFilters } from '@/hooks/useLibraryFilters';
 import { useScholars } from '@/hooks/useScholars';
 import { useCategories } from '@/hooks/useCategories';
@@ -42,8 +42,8 @@ function StatCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
       viewport={{ once: true }}
       transition={{ duration: 0.4, delay }}
       onViewportEnter={() => setInView(true)}
@@ -176,8 +176,8 @@ export function AboutPage() {
         <div className="container-page">
           <div className="mx-auto max-w-3xl">
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
             >
@@ -232,8 +232,8 @@ export function AboutPage() {
               return (
                 <motion.div
                   key={scholar.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 12, filter: 'blur(8px)' }}
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.35, delay: i * 0.07 }}
                 >
@@ -297,7 +297,7 @@ export function AboutPage() {
               View All <ArrowRight size={14} />
             </Link>
           </div>
-          <BookGridAnimated books={featuredBooks} />
+          <BookGrid books={featuredBooks} />
         </div>
       </section>
 
@@ -307,8 +307,8 @@ export function AboutPage() {
       <section className="bg-paper py-16 sm:py-20">
         <div className="container-page">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
           >
@@ -346,8 +346,8 @@ export function AboutPage() {
                     return (
                       <motion.div
                         key={period.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, y: 8, filter: 'blur(8px)' }}
+                        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.3, delay: Math.min(i * 0.025, 0.3) }}
                         className="flex flex-col items-center"
@@ -420,8 +420,8 @@ export function AboutPage() {
               return (
                 <motion.div
                   key={cat.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 8, filter: 'blur(8px)' }}
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3) }}
                 >
@@ -463,8 +463,8 @@ export function AboutPage() {
             ].map((step, i) => (
               <motion.div
                 key={step.num}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+                whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.1 }}
                 className="relative flex flex-col items-center rounded-2xl border border-line bg-cream p-8 text-center transition-all hover:border-accent/40 hover:shadow-md"
@@ -493,8 +493,8 @@ export function AboutPage() {
         <div className="container-page">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: -20, filter: 'blur(8px)' }}
+              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
             >
@@ -529,8 +529,8 @@ export function AboutPage() {
 
             {/* Mock reader UI — light themed */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: 20, filter: 'blur(8px)' }}
+              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
               className="relative"
@@ -586,8 +586,8 @@ export function AboutPage() {
         <div className="container-page">
           <div className="mx-auto max-w-4xl">
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
               className="mb-10"
@@ -633,8 +633,8 @@ export function AboutPage() {
               ].map((feature, i) => (
                 <motion.div
                   key={feature.title}
-                  initial={{ opacity: 0, y: 14 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.35, delay: Math.min(i * 0.06, 0.3) }}
                   className="group relative overflow-hidden rounded-2xl border border-line bg-cream p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-lg hover:shadow-ink-900/5"
@@ -658,8 +658,8 @@ export function AboutPage() {
       <section className="bg-cream py-16 sm:py-20">
         <div className="container-page">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
             className="relative overflow-hidden rounded-2xl border border-accent/30 bg-paper px-8 py-14 text-center sm:px-12"

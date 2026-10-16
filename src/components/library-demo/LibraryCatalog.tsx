@@ -1,10 +1,11 @@
 import { demoCatalog } from '@/data/libraryDemo';
 import { DemoBookCard } from './DemoBookCard';
+import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 
 export function LibraryCatalog() {
   return (
     <section className="container-page pb-16 sm:pb-20">
-      <div className="mb-8 flex flex-col gap-2 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <Reveal className="mb-8 flex flex-col gap-2 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
           <h2 className="font-cinzel text-xl font-semibold tracking-wide text-ink-900 sm:text-2xl">
             Demonstration Formats
@@ -16,13 +17,15 @@ export function LibraryCatalog() {
         <p className="font-sans text-[12px] font-medium uppercase tracking-[0.14em] text-ink-400">
           {demoCatalog.length} formats
         </p>
-      </div>
+      </Reveal>
 
-      <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
+      <Stagger className="grid gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
         {demoCatalog.map((book) => (
-          <DemoBookCard key={book.id} book={book} />
+          <StaggerItem key={book.id} className="h-full">
+            <DemoBookCard book={book} />
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
     </section>
   );
 }

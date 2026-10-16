@@ -1,10 +1,10 @@
 /**
  * Single source of truth for book PDF upload limits (admin import).
  *
- * PDFs are processed entirely in the browser (pdf.js). Only extracted
- * text/metadata is saved — the PDF binary is not stored for the public reader.
- * Cap is file size (bytes), not page count: a large multi-hundred-page
- * scholarly PDF under 50 MB is allowed.
+ * PDFs are processed in the browser (pdf.js). Only the converted content is
+ * saved (Supabase Storage, book-content bucket) — the PDF itself is not stored.
+ * Cap is file size (bytes), not page count: a multi-hundred-page scholarly
+ * PDF under 50 MB is allowed.
  */
 export const MAX_BOOK_PDF_SIZE_MB = 50;
 

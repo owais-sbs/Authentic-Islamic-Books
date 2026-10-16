@@ -5,20 +5,23 @@ import type { Scholar } from '@/types';
 import { getBooksByAuthor } from '@/data/books';
 import { formatHijriRange } from '@/data/periods';
 import { Badge } from '@/components/ui/Badge';
+import { useRevealProps } from '@/components/motion/Reveal';
 
 interface ScholarCardProps {
   scholar: Scholar;
+  /** Position in its grid — staggers the scroll reveal across a row */
+  index?: number;
 }
 
-export function ScholarCard({ scholar }: ScholarCardProps) {
+export function ScholarCard({ scholar, index = 0 }: ScholarCardProps) {
   const bookCount = getBooksByAuthor(scholar.id).length;
+  const reveal = useRevealProps((index % 4) * 0.07);
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-cream transition-all duration-200 hover:border-accent/50 hover:shadow-lg hover:shadow-ink-900/5 hover:-translate-y-0.5"
+      {...reveal}
+      whileHover={{ y: -4, transition: { duration: 0.25, ease: 'easeOut' } }}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-cream transition-[border-color,box-shadow] duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-ink-900/5"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-ink-900/5">
         {scholar.imageUrl ? (

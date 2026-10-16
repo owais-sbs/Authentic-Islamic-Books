@@ -173,7 +173,7 @@ export function AdminSettingsPage() {
             <SettingCard
               icon={Database}
               title="Supabase Database"
-              description="Books, chapters, and sections are stored in Supabase when configured. Without it, data lives in localStorage only."
+              description="Metadata lives in the books table; full book content goes to Supabase Storage (S3). Without Supabase, data stays in localStorage only."
             >
               <StatusBadge ok={supabaseOk} labels={['Connected', 'Not configured']} />
             </SettingCard>

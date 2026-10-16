@@ -106,4 +106,6 @@ export interface Book {
   publishedYear?: string;
   popularity?: number;
   addedDate?: string;
+  /** Supabase list entry whose chapter text is still in Storage (load via fetchPublishedBookBySlug) */
+  contentPending?: boolean;
 }

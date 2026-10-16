@@ -5,6 +5,7 @@ import { getFeaturedBooks } from '@/data/books';
 import { BookCover } from '@/components/book/BookCover';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { Stagger, StaggerItem } from '@/components/motion/Reveal';
 
 export function NotFoundPage() {
   const { pathname } = useLocation();
@@ -69,10 +70,10 @@ export function NotFoundPage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {featured.map((book) => (
+                <StaggerItem key={book.id}>
                 <Link
-                  key={book.id}
                   to={`/books/${book.slug}`}
                   className="group flex items-center gap-4 rounded-2xl border border-line bg-cream p-4 text-left transition-all duration-200 hover:border-accent/50 hover:shadow-md sm:flex-col sm:items-start sm:gap-3"
                 >
@@ -92,8 +93,9 @@ export function NotFoundPage() {
                     )}
                   </div>
                 </Link>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </div>
         )}
 

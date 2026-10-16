@@ -13,6 +13,25 @@ export function pageHasUsableText(text: string): boolean {
   return letters.length >= 20;
 }
 
+/**
+ * Text drawn with fonts that have no character map comes out of PDF.js as
+ * private-use codes (U+E000–U+F8FF) or U+FFFD — the letters cannot be
+ * decoded, so such pages must be read with OCR.
+ */
+const UNDECODABLE = /[\uE000-\uF8FF\uFFFD]/g;
+
+export function pageTextIsGarbled(text: string): boolean {
+  const bad = (text.match(UNDECODABLE) || []).length;
+  if (bad < 10) return false;
+  const letters = (text.match(/\p{L}/gu) || []).length;
+  return bad / Math.max(1, letters + bad) > 0.03;
+}
+
+/** Drop undecodable glyph codes so they never reach the book text. */
+export function stripUndecodable(text: string): string {
+  return text.replace(UNDECODABLE, '');
+}
+
 export interface DocumentTypeResult {
   documentType: DocumentType;
   textPageCount: number;

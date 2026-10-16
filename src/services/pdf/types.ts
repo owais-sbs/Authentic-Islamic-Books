@@ -10,6 +10,10 @@ export interface NormalizedBlock {
   text: string;
   type: BlockType;
   confidence?: 'high' | 'medium' | 'low';
+  /** Set when the line was larger than body text in the PDF (1 = much larger) */
+  headingLevel?: 1 | 2;
+  /** Footnote text from the bottom of a PDF page */
+  footnote?: boolean;
   language?: BookLanguage;
   direction?: TextDirection;
 }
