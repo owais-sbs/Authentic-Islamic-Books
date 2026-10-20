@@ -4,9 +4,9 @@
  * PDFs are processed in the browser (pdf.js). Only the converted content is
  * saved (Supabase Storage, book-content bucket) — the PDF itself is not stored.
  * Cap is file size (bytes), not page count: a multi-hundred-page scholarly
- * PDF under 50 MB is allowed.
+ * PDF under 150 MB is allowed.
  */
-export const MAX_BOOK_PDF_SIZE_MB = 50;
+export const MAX_BOOK_PDF_SIZE_MB = 150;
 
 export const MAX_PDF_SIZE = MAX_BOOK_PDF_SIZE_MB * 1024 * 1024;
 

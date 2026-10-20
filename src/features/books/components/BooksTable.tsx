@@ -17,33 +17,66 @@ interface BooksTableProps {
   onActionComplete?: () => void;
 }
 
-const TH = 'px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] whitespace-nowrap';
+const TH =
+  'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] whitespace-nowrap';
 
 export function BooksTable({
-  books, totalItems, currentPage, pageSize, isLoading = false,
-  hasFilters, onPageChange, onClearFilters, onActionComplete,
+  books,
+  totalItems,
+  currentPage,
+  pageSize,
+  isLoading = false,
+  hasFilters,
+  onPageChange,
+  onClearFilters,
+  onActionComplete,
 }: BooksTableProps) {
   return (
-    <div className="rounded-xl border border-[#E5E1D8] bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-[#E5E1D8] bg-white shadow-sm">
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse">
+        <table className="w-full min-w-[720px] table-fixed border-collapse">
+          <colgroup>
+            <col className="w-14" />
+            <col />
+            <col className="w-[140px]" />
+            <col className="w-[160px]" />
+            <col className="w-[120px]" />
+            <col className="w-[100px]" />
+            <col className="w-12" />
+          </colgroup>
           <thead>
             <tr className="border-b border-[#E5E1D8] bg-[#F7F6F2]">
-              <th className="pl-5 pr-3 py-3 w-12" />
-              <th className={TH}>Book</th>
-              <th className={TH}>Author</th>
-              <th className={TH}>Categories</th>
-              <th className={TH}>Hijri Period</th>
-              <th className={TH}>Structure</th>
-              <th className={TH}>Status</th>
-              <th className={TH}>Updated</th>
-              <th className="pl-3 pr-5 py-3 w-10" />
+              <th className="py-2.5 pl-5 pr-3" scope="col">
+                <span className="sr-only">Cover</span>
+              </th>
+              <th className={TH} scope="col">
+                Book
+              </th>
+              <th className={TH} scope="col">
+                Author
+              </th>
+              <th className={TH} scope="col">
+                Categories
+              </th>
+              <th className={TH} scope="col">
+                Status
+              </th>
+              <th className={TH} scope="col">
+                Updated
+              </th>
+              <th className="py-2.5 pl-2 pr-4 text-right" scope="col">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="[&>tr]:border-b [&>tr]:border-[#E5E1D8] [&>tr:last-child]:border-b-0">
+          <tbody>
             {!isLoading &&
               books.map((book) => (
-                <BookTableRow key={book.id} book={book} onActionComplete={onActionComplete} />
+                <BookTableRow
+                  key={book.id}
+                  book={book}
+                  onActionComplete={onActionComplete}
+                />
               ))}
           </tbody>
         </table>

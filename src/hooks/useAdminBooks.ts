@@ -3,7 +3,7 @@ import { getAllImportedBooks } from '@/hooks/useBookStore';
 import { publicBookToAdminBook } from '@/lib/bookTransform';
 import { fetchAllBooksFromSupabase } from '@/lib/bookApi';
 import { isSupabaseConfigured, getSupabase } from '@/lib/supabase';
-import { applyAdminMeta } from '@/lib/adminBookMeta';
+import { applyAdminMeta, clearDeletedForExisting } from '@/lib/adminBookMeta';
 import {
   applyFiltersAndSort,
   PAGE_SIZE,
@@ -56,6 +56,8 @@ export function useAdminBooks(filters: BooksFilters, sort: BooksSortKey) {
       setHasAuthSession(authed);
 
       const books = await fetchAllBooksFromSupabase();
+      // Stale local "deleted" markers must not hide books still in Supabase.
+      clearDeletedForExisting(books.map((b) => b.id));
       setRemoteBooks(books);
 
       if (!authed) {
@@ -103,7 +105,9 @@ export function useAdminBooks(filters: BooksFilters, sort: BooksSortKey) {
       });
     }
 
-    return applyAdminMeta(Array.from(byId.values())).sort(
+    return applyAdminMeta(Array.from(byId.values()), {
+      cloudSource: isSupabaseConfigured(),
+    }).sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
   }, [storedVersion, remoteBooks, hasAuthSession, remoteLoading]);

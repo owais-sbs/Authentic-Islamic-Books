@@ -73,7 +73,7 @@ export function AdminImportPage() {
         const sIdx = STEPS.findIndex((x) => x.id === s.id);
         if (sIdx < idx) return { ...s, status: 'done' };
         return s;
-      })
+      }),
     );
   }
 
@@ -167,7 +167,7 @@ export function AdminImportPage() {
             JSON.stringify(bookWithStatus.extractionInfo),
           );
         } catch {
-          /* ignore quota */
+          /* ignore */
         }
       }
 
@@ -202,7 +202,7 @@ export function AdminImportPage() {
       setErrorMsg(
         needsAuth
           ? `${msg} — Sign in with a Supabase admin account (not local-only mode) so books sync for the whole team.`
-          : msg
+          : msg,
       );
       setPhase('error');
     }
@@ -222,11 +222,12 @@ export function AdminImportPage() {
           </Link>
           <h2 className="text-xl font-bold text-[#0B1B2B] sm:text-2xl">Import Book</h2>
           <p className="mt-0.5 text-sm text-[#64748B]">
-            Upload a PDF — we extract text, detect structure, and save it to the shared Supabase library so every team member can see it.
+            Upload a PDF — we extract text, detect chapters, and publish it to the homepage library.
           </p>
+
           {!isSupabaseConfigured() && (
             <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
-              Supabase is not configured. Books will stay on this device only. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for team-wide sharing.
+              Supabase is not configured. Books will stay on this device only.
             </p>
           )}
         </div>
@@ -243,7 +244,9 @@ export function AdminImportPage() {
             </div>
             <p className="text-[15px] font-semibold text-[#0B1B2B]">Drag &amp; drop your PDF here</p>
             <p className="mt-1 text-[13px] text-[#94A3B8]">or click to browse</p>
-            <p className="mt-3 text-[12px] text-[#CBD5E1]">Supported: PDF · Max {formatMaxBookPdfSize()}</p>
+            <p className="mt-3 text-[12px] text-[#CBD5E1]">
+              Supported: PDF · Max {formatMaxBookPdfSize()}
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -265,10 +268,11 @@ export function AdminImportPage() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-semibold text-[#0B1B2B]">{file.name}</p>
               <p className="mt-0.5 text-[13px] text-[#64748B]">
-                {(file.size / 1024 / 1024).toFixed(1)} MB · PDF Document
+                {(file.size / 1024 / 1024).toFixed(1)} MB · PDF
               </p>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setFile(null);
                 setPhase('idle');
@@ -285,7 +289,7 @@ export function AdminImportPage() {
         {file && phase === 'idle' && (
           <button
             type="button"
-            onClick={startImport}
+            onClick={() => void startImport()}
             className="w-full rounded-lg bg-[#0B1B2B] py-3 text-[14px] font-semibold text-white transition-colors hover:bg-[#162A42]"
           >
             Start Import
@@ -309,7 +313,7 @@ export function AdminImportPage() {
                       style={{ width: `${Math.min(100, progressPercent)}%` }}
                     />
                   </div>
-                  <p className="mt-1 text-[11px] text-[#64748B] tabular-nums">
+                  <p className="mt-1 text-[11px] tabular-nums text-[#64748B]">
                     {Math.round(progressPercent)}%
                   </p>
                 </div>
@@ -325,18 +329,24 @@ export function AdminImportPage() {
                         step.status === 'done' && 'bg-emerald-100',
                         step.status === 'active' && 'bg-[#C9A646]/10',
                         step.status === 'error' && 'bg-red-100',
-                        step.status === 'pending' && 'border-2 border-[#E5E1D8]'
+                        step.status === 'pending' && 'border-2 border-[#E5E1D8]',
                       )}
                     >
-                      {step.status === 'done' && <Check size={12} className="text-emerald-600" strokeWidth={2.5} />}
-                      {step.status === 'active' && <Loader2 size={12} className="animate-spin text-[#C9A646]" />}
-                      {step.status === 'error' && <AlertCircle size={12} className="text-red-500" />}
+                      {step.status === 'done' && (
+                        <Check size={12} className="text-emerald-600" strokeWidth={2.5} />
+                      )}
+                      {step.status === 'active' && (
+                        <Loader2 size={12} className="animate-spin text-[#C9A646]" />
+                      )}
+                      {step.status === 'error' && (
+                        <AlertCircle size={12} className="text-red-500" />
+                      )}
                     </span>
                     {i < steps.length - 1 && (
                       <div
                         className={cn(
                           'mt-0.5 h-4 w-0.5 rounded-full',
-                          step.status === 'done' ? 'bg-emerald-200' : 'bg-[#E5E1D8]'
+                          step.status === 'done' ? 'bg-emerald-200' : 'bg-[#E5E1D8]',
                         )}
                       />
                     )}
@@ -347,7 +357,7 @@ export function AdminImportPage() {
                       step.status === 'active' && 'font-medium text-[#0B1B2B]',
                       step.status === 'done' && 'text-[#64748B]',
                       step.status === 'error' && 'font-medium text-red-600',
-                      step.status === 'pending' && 'text-[#94A3B8]'
+                      step.status === 'pending' && 'text-[#94A3B8]',
                     )}
                   >
                     {step.label}
@@ -368,6 +378,7 @@ export function AdminImportPage() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setPhase('idle');
                 setSteps([]);
@@ -402,55 +413,36 @@ export function AdminImportPage() {
                 { label: `${result.pages} pages processed`, ok: true },
                 {
                   label: result.syncedToCloud
-                    ? 'Saved to shared Supabase library (visible to all team members)'
-                    : 'Saved on this device only (configure Supabase for team sharing)',
+                    ? 'Saved to shared Supabase library'
+                    : 'Saved on this device only',
                   ok: result.syncedToCloud,
                 },
               ].map(({ label, ok }) => (
                 <li key={label} className="flex items-center gap-2">
-                  <Check size={13} className={ok ? 'shrink-0 text-emerald-600' : 'shrink-0 text-amber-500'} />
-                  <span className={cn('text-[13px]', ok ? 'text-emerald-700' : 'text-amber-700')}>{label}</span>
+                  <Check
+                    size={13}
+                    className={ok ? 'shrink-0 text-emerald-600' : 'shrink-0 text-amber-500'}
+                  />
+                  <span className={cn('text-[13px]', ok ? 'text-emerald-700' : 'text-amber-700')}>
+                    {label}
+                  </span>
                 </li>
               ))}
             </ul>
 
-            {result.outline.length > 0 && (
-              <div className="mb-5 max-h-56 overflow-y-auto rounded-lg border border-emerald-200/80 bg-white/70 p-4">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
-                  Structure preview
-                </p>
-                <ul className="space-y-3 text-[12px] text-emerald-900">
-                  {result.outline.slice(0, 8).map((ch) => (
-                    <li key={ch.chapter}>
-                      <p className="font-semibold">{ch.chapter}</p>
-                      <ul className="mt-1 space-y-0.5 pl-3">
-                        {ch.sections.slice(0, 6).map((sec) => (
-                          <li key={sec} className="text-emerald-800/90">
-                            {sec}
-                          </li>
-                        ))}
-                        {ch.sections.length > 6 && (
-                          <li className="text-emerald-700/70">+{ch.sections.length - 6} more sections</li>
-                        )}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
+                type="button"
                 onClick={() => navigate(`/admin/books/${result.bookId}/review`)}
                 className="flex-1 rounded-lg bg-[#0B1B2B] py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#162A42]"
               >
                 Review &amp; Edit Book →
               </button>
               <Link
-                to="/admin/books"
+                to="/"
                 className="flex-1 rounded-lg border border-emerald-300 bg-white py-2.5 text-center text-[13px] font-medium text-emerald-700 transition-colors hover:bg-emerald-50"
               >
-                View all team books
+                View on Homepage
               </Link>
             </div>
           </div>

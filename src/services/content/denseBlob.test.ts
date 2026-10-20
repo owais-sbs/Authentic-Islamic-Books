@@ -37,8 +37,8 @@ describe('dense PDF blob parsing (real import failure mode)', () => {
 });
 
 describe('upload limits', () => {
-  it('exposes a single max size of 50 MB', () => {
-    expect(MAX_BOOK_PDF_SIZE_MB).toBe(50);
+  it('exposes a single max size of 150 MB', () => {
+    expect(MAX_BOOK_PDF_SIZE_MB).toBe(150);
   });
 
   it('rejects oversized PDFs with a clear message', () => {
@@ -50,7 +50,7 @@ describe('upload limits', () => {
     const result = validateBookPdfFile(big);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).toMatch(/50 MB/);
+      expect(result.message).toMatch(/150 MB/);
     }
   });
 

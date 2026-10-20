@@ -1229,7 +1229,7 @@ const bookStyles = `
   background: linear-gradient(90deg, transparent, var(--qob-gold), transparent);
 }
 .qob-closed-arabic {
-  font-family: Amiri, serif;
+  font-family: 'Noto Naskh Arabic', 'Amiri Quran', serif;
   font-size: 1.35rem;
   line-height: 1.8;
   opacity: 0.92;
@@ -1563,7 +1563,7 @@ const bookStyles = `
 }
 .qob-arabic-text {
   margin-top: 0.45rem;
-  font-family: Amiri, 'Traditional Arabic', serif;
+  font-family: 'Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', serif;
   font-size: 1.28em;
   line-height: 2.05;
   direction: rtl;
@@ -1729,7 +1729,7 @@ const bookStyles = `
   font-size: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }
-.font-arabic { font-family: Amiri, 'Traditional Arabic', serif; }
+.font-arabic { font-family: 'Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', serif; }
 
 /* Mobile — one page at a time; same gutter-style paper turn as desktop */
 @media (max-width: 900px) {

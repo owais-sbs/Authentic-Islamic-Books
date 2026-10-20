@@ -291,15 +291,15 @@ export function parseBookContent(raw: string): ContentBlock[] {
           confidence += 0.2;
           consumed.add(look);
 
-          // Multi-line translation: join short English continuations
+          // Multi-line translation: join English continuations (do not truncate ayahs)
           let tLook = look + 1;
           while (tLook < lines.length && !consumed.has(tLook)) {
             const cont = lines[tLook].text;
             if (isPrimarilyArabic(cont)) break;
             if (parseQuranReferenceLine(cont)) break;
             if (isHadithSourceLine(cont) || looksLikeBookReference(cont)) break;
-            if (cont.length > 180) break;
-            if (!/^[a-z(]/.test(cont) && cont.split(/\s+/).length > 12) break;
+            if (cont.length > 400) break;
+            if (!/^[a-z(]/.test(cont) && cont.split(/\s+/).length > 22) break;
             translation = `${translation} ${cont}`;
             consumed.add(tLook);
             tLook += 1;

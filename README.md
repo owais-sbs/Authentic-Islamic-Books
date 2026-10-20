@@ -78,8 +78,8 @@ Library filters are managed by the `useLibraryFilters` hook, which syncs filter 
 Admins can upload scholarly PDFs from **Import Book** / the review document upload flow.
 
 - **Format:** PDF only
-- **Maximum file size:** **50 MB** (configured in `src/lib/uploadLimits.ts`)
-- **Page count:** not capped by page number — large multi-chapter / multi-hundred-page books are allowed as long as the file stays under 50 MB
+- **Maximum file size:** **150 MB** (configured in `src/lib/uploadLimits.ts`)
+- **Page count:** not capped by page number — large multi-chapter / multi-hundred-page books are allowed as long as the file stays under 150 MB
 - Processing runs in the browser (pdf.js + optional OCR). Extracted text is converted through a controlled Markdown IR (`src/services/pdf/markdown.ts`) that preserves chapter numbers (including 10, 11, 50+) and full body text before review and publish
 
 ## How to Add Demo Books

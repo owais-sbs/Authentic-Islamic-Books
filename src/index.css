@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri+Quran&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -175,29 +175,34 @@
     font-style: italic;
   }
 
-  /* Arabic body text */
+  /* Arabic body — clean Noto Naskh (publication-quality RTL) */
   .reader-prose .reader-arabic {
-    font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
-    text-align: right;
+    font-family: 'Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', 'Scheherazade New', serif;
+    text-align: center;
     direction: rtl;
     unicode-bidi: isolate;
-    margin: 1.5em 0;
+    margin: 1.75em auto;
+    max-width: 42rem;
     overflow-wrap: anywhere;
     word-break: normal;
-    line-height: 2;
-    color: var(--ink-800, #1e293b);
+    white-space: normal;
+    line-height: 2.35;
+    letter-spacing: 0;
+    color: var(--ink-900, #0f172a);
+    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1;
+    font-weight: 500;
   }
 
-  /* Urdu body text — Amiri covers Arabic script; slightly tighter tracking */
+  /* Urdu body */
   .reader-prose .reader-urdu {
-    font-family: 'Amiri', 'Noto Nastaliq Urdu', 'Traditional Arabic', serif;
+    font-family: 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', 'Traditional Arabic', serif;
     text-align: right;
     direction: rtl;
     unicode-bidi: isolate;
     margin: 1.5em 0;
-    overflow-wrap: anywhere;
-    word-break: normal;
-    line-height: 2.15;
+    overflow-wrap: break-word;
+    word-break: keep-all;
+    line-height: 2.25;
     color: var(--ink-800, #1e293b);
   }
 
@@ -215,32 +220,46 @@
     border: none;
   }
   .reader-prose .reader-quran-arabic {
-    font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
+    font-family: 'Amiri Quran', 'Noto Naskh Arabic', 'Traditional Arabic', 'Scheherazade New', serif;
     text-align: center;
     direction: rtl;
     unicode-bidi: isolate;
-    margin: 0 0 0.85em;
+    margin: 0 auto 1em;
+    max-width: 42rem;
     overflow-wrap: anywhere;
     word-break: normal;
-    line-height: 2.05;
+    white-space: normal;
+    line-height: 2.45;
     color: var(--ink-900, #0f172a);
+    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1;
+    font-weight: 400;
   }
   .reader-prose .reader-quran-translation {
     text-align: left;
     direction: ltr;
-    margin: 0 0 0.5em;
+    margin: 0 auto 0.65em;
     font-style: italic;
     max-width: 40rem;
-    margin-left: auto;
-    margin-right: auto;
+    line-height: 1.75;
   }
   .reader-prose .reader-quran-reference {
     text-align: center;
     font-family: Inter, system-ui, sans-serif;
-    font-size: 0.85em;
+    font-size: 0.88em;
+    font-weight: 500;
     letter-spacing: 0.02em;
     color: var(--accent, #9a7b2f);
-    margin: 0;
+    margin: 0.15em 0 0;
+  }
+  /* Never apply drop-cap to citation / reference lines */
+  .reader-prose .reader-reference-line::first-letter,
+  .reader-prose .reader-quran-reference::first-letter {
+    float: none !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    padding: 0 !important;
+    font-weight: inherit !important;
+    color: inherit !important;
   }
 
   /* Hadith */

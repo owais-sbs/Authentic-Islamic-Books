@@ -319,15 +319,21 @@ export function normalizePages(pages: RawPage[]): NormalizedPage[] {
     }
     const pageText = stripped[idx] ?? page.text;
     const requiresOcr = !pageHasUsableText(pageText);
-    const hash = pageText.slice(0, 120);
-    if (seenPageHashes.has(hash) && pageText.length < 400 && !requiresOcr) {
+    // Only skip exact full-page duplicates (running headers), never drop unique short pages
+    const exactKey = pageText.replace(/\s+/g, ' ').trim();
+    if (
+      exactKey.length > 0 &&
+      exactKey.length < 180 &&
+      seenPageHashes.has(exactKey) &&
+      !requiresOcr
+    ) {
       return {
         pageNumber: page.pageNum,
         blocks: [],
         requiresOcr,
       };
     }
-    seenPageHashes.add(hash);
+    if (exactKey) seenPageHashes.add(exactKey);
     const headingLevels = new Map<string, 1 | 2>();
     for (const h of page.headingLines ?? []) {
       headingLevels.set(headingKey(h.text), h.size ? tierOf(h.size) : h.level);
@@ -345,7 +351,8 @@ export function normalizePages(pages: RawPage[]): NormalizedPage[] {
 
 export function normalizedPagesToPlainText(pages: NormalizedPage[]): string {
   return pages
-    .flatMap((p) => p.blocks.map((b) => b.text))
-    .filter(Boolean)
-    .join('\n');
+    .slice()
+    .sort((a, b) => a.pageNumber - b.pageNumber)
+    .flatMap((p) => p.blocks.map((b) => b.text.trim()).filter(Boolean))
+    .join('\n\n');
 }

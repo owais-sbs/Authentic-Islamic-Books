@@ -46,7 +46,7 @@ VALUES (
   'book-content',
   'book-content',
   true,
-  52428800, -- 50 MB JSON cap
+  157286400, -- 150 MB JSON cap
   ARRAY['application/json', 'text/plain']
 )
 ON CONFLICT (id) DO UPDATE SET

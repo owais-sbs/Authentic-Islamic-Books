@@ -5,9 +5,8 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 
 /**
- * /library — card catalog of static demo formats.
- * Click a card to open that book’s full layout at /library/:slug.
- * Demo content is frontend-only; Supabase library is unchanged.
+ * /library — demo presentation formats only.
+ * Uploaded / published books appear on the homepage collection, not here.
  */
 export function LibraryPage() {
   usePageMeta({
@@ -24,8 +23,8 @@ export function LibraryPage() {
       <Reveal className="container-page py-6 sm:py-8">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Library' }]} />
         <p className="mt-4 max-w-2xl font-serif text-[15px] leading-relaxed text-ink-600">
-          Open a card to preview that format’s full reading layout. Each work is separate — Book
-          07 is a fullscreen Quiet Reading Room for long-form study.
+          Open a card to preview that format’s full reading layout. Uploaded books are
+          available from the homepage collection.
         </p>
       </Reveal>
 
@@ -44,12 +43,12 @@ export function LibraryPage() {
               body="Each card opens one professional layout. The catalogue stays scannable while preserving long-form scholarly reading inside each work."
             />
             <InfoBlock
-              title="References & integrity"
-              body="Demo quotations and attributions are illustrative. Production content should cite verified editions. Your live Supabase catalogue is not modified by these demos."
+              title="Uploaded books"
+              body="Books you import or add in the dashboard appear on the homepage library — not in this demo formats catalogue."
             />
             <InfoBlock
               title="Book 07 — Quiet Reading Room"
-              body="An immersive open-book environment: cover, title, contents, chapters, Arabic sources, Aa settings, and night reading — less UI, more reading."
+              body="An immersive open-book environment: cover, title, contents, chapters, Arabic sources, Aa settings, and night reading."
             />
           </Stagger>
         </div>

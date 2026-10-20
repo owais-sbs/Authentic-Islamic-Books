@@ -59,7 +59,7 @@ function renumberSections(sections: DetectedSection[], chapterIndex: number): De
  */
 export function applyAutomaticNumbering(chapters: DetectedChapter[]): DetectedChapter[] {
   return chapters.map((ch, ci) => {
-    if (ch.title === 'Unstructured Content') {
+    if (ch.title === 'Unstructured Content' || ch.title === 'Complete Text') {
       return {
         ...ch,
         number: '1',

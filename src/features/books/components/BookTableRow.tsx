@@ -1,21 +1,21 @@
 import { Link } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
 import { BookStatusBadge } from './BookStatusBadge';
 import { BookCategoryBadges } from './BookCategoryBadges';
 import { BookActions } from './BookActions';
+import { resolveAuthorName } from './resolveAuthorName';
 import { formatDate } from '@/lib/utils';
 import type { Book } from '../types';
 
 function CoverThumb({ book }: { book: Book }) {
   return (
     <div
-      className="h-12 w-9 shrink-0 rounded-md shadow-sm overflow-hidden"
+      className="h-11 w-8 shrink-0 overflow-hidden rounded shadow-sm ring-1 ring-black/5"
       style={{ backgroundColor: book.coverColor }}
       aria-label={`Cover: ${book.title}`}
     >
-      {book.coverUrl && (
+      {book.coverUrl ? (
         <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -27,69 +27,52 @@ interface BookTableRowProps {
 
 export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
   const reviewHref = `/admin/books/${book.id}/review`;
-  const structureLabel =
-    book.chapterCount != null
-      ? `${book.chapterCount} Ch.${book.sectionCount != null ? ` / ${book.sectionCount} Sec.` : ''}`
-      : '—';
+  const author = resolveAuthorName(book.authorName, book.authorId);
+  const title = book.title?.trim() || 'Untitled';
 
   return (
-    <tr
-      className="group transition-colors hover:bg-[#FAFAF8]"
-    >
-      <td className="pl-5 pr-3 py-3.5"><CoverThumb book={book} /></td>
+    <tr className="group border-b border-[#E5E1D8] last:border-b-0 transition-colors hover:bg-[#FAFAF8]">
+      <td className="py-3 pl-5 pr-3">
+        <CoverThumb book={book} />
+      </td>
 
-      <td className="px-3 py-3.5 max-w-[200px]">
+      <td className="max-w-[280px] px-3 py-3">
         <Link
           to={reviewHref}
-          className="block text-[13px] font-medium text-[#0B1B2B] hover:text-[#C9A646] leading-snug transition-colors"
+          className="line-clamp-2 text-[13px] font-medium leading-snug text-[#0B1B2B] transition-colors hover:text-[#C9A646]"
+          title={title}
         >
-          {book.title}
+          {title}
         </Link>
-        {book.subtitle && (
-          <p className="mt-0.5 text-[11px] text-[#94A3B8] leading-snug line-clamp-1">{book.subtitle}</p>
+        {book.subtitle?.trim() ? (
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-[#94A3B8]">
+            {book.subtitle}
+          </p>
+        ) : null}
+      </td>
+
+      <td className="whitespace-nowrap px-3 py-3 text-[13px] text-[#475569]">
+        {author}
+      </td>
+
+      <td className="px-3 py-3">
+        {book.categories.length > 0 ? (
+          <BookCategoryBadges categories={book.categories} max={2} />
+        ) : (
+          <span className="text-[12px] text-[#CBD5E1]">—</span>
         )}
       </td>
 
-      <td className="px-3 py-3.5 whitespace-nowrap text-[13px] text-[#64748B]">
-        {book.authorName ?? '—'}
-      </td>
-
-      <td className="px-3 py-3.5">
-        {book.categories.length > 0
-          ? <BookCategoryBadges categories={book.categories} max={2} />
-          : <span className="text-[12px] text-[#CBD5E1]">—</span>
-        }
-      </td>
-
-      <td className="px-3 py-3.5 whitespace-nowrap text-[13px] text-[#64748B]">
-        {book.hijriStartYear && book.hijriEndYear
-          ? `${book.hijriStartYear}–${book.hijriEndYear} AH`
-          : '—'}
-      </td>
-
-      <td className="px-3 py-3.5 whitespace-nowrap text-[13px] text-[#64748B]">
-        {structureLabel}
-      </td>
-
-      <td className="px-3 py-3.5">
+      <td className="px-3 py-3">
         <BookStatusBadge status={book.status} />
       </td>
 
-      <td className="px-3 py-3.5 whitespace-nowrap text-[13px] text-[#94A3B8]">
+      <td className="whitespace-nowrap px-3 py-3 text-[12px] text-[#94A3B8]">
         {formatDate(book.updatedAt)}
       </td>
 
-      {/* Actions — visible Edit button + ⋮ menu */}
-      <td className="pl-3 pr-4 py-3.5">
-        <div className="flex items-center gap-1.5">
-          <Link
-            to={reviewHref}
-            className="flex items-center gap-1 rounded-md border border-[#E5E1D8] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#0B1B2B] opacity-0 transition-all group-hover:opacity-100 hover:border-[#C9A646]/40 hover:text-[#C9A646]"
-            title="Edit book"
-          >
-            <Pencil size={12} />
-            Edit
-          </Link>
+      <td className="py-3 pl-2 pr-4 text-right">
+        <div className="flex justify-end">
           <BookActions book={book} onActionComplete={onActionComplete} />
         </div>
       </td>

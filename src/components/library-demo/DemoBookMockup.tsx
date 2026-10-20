@@ -67,7 +67,7 @@ export function DemoBookMockup({ book }: DemoBookMockupProps) {
                   dir="rtl"
                   lang="ar"
                   className="text-[11px] leading-relaxed opacity-90 sm:text-[12px]"
-                  style={{ fontFamily: "Amiri, 'Traditional Arabic', serif" }}
+                  style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', serif" }}
                 >
                   {book.coverArabic}
                 </p>

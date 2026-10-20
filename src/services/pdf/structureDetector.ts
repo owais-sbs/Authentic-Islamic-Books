@@ -4,6 +4,7 @@
  */
 
 import type { DetectedChapter, DetectedMeta, DetectedSection } from '@/lib/pdfExtractor';
+import { cleanChapterTitle } from '@/lib/chapterTitle';
 import { detectLanguage } from './language';
 import type { NormalizedBlock, NormalizedPage, StructureNode } from './types';
 
@@ -246,38 +247,58 @@ export function matchHeadingLine(line: string): DetectedHeading | null {
   return null;
 }
 
+/** Flatten a weak chapter node into body paragraphs (keeps all text). */
+function demoteChapterToParagraphs(n: StructureNode): StructureNode[] {
+  const heading =
+    n.title || n.content
+      ? [{ kind: 'paragraph' as const, content: [n.title, n.content].filter(Boolean).join(' ').trim(), confidence: 'low' as const }]
+      : [];
+  return [...heading, ...(n.children ?? [])];
+}
+
 /** Boost confidence when the same heading pattern repeats across the document. */
 function reinforceConfidence(nodes: StructureNode[]): StructureNode[] {
-  // Explicit chapters ("Chapter 3", "الباب …") are matched with high confidence
+  // Explicit chapters ("Chapter 3", "الباب …", Surah headings) only
   const explicitCount = nodes.filter((n) => n.kind === 'chapter' && n.confidence === 'high').length;
 
   if (explicitCount >= 2) {
-    return nodes.map((n) =>
-      n.kind === 'chapter' && n.confidence === 'low'
-        ? { ...n, confidence: 'medium' as const }
-        : n,
-    );
-  }
-
-  // Drop isolated low-confidence "chapters" that look like body sentences
-  if (explicitCount === 0) {
+    // Keep high-confidence chapters; demote invented medium/low so TOC stays real
     const filtered: StructureNode[] = [];
     for (const n of nodes) {
-      if (n.kind === 'chapter' && n.confidence === 'low') {
-        // Convert to paragraph — do not invent structure. Keep its text inside
-        // the previous chapter / introduction so it is not dropped later.
-        const demoted: StructureNode[] = [
-          { kind: 'paragraph', content: n.title || n.content, confidence: 'low' },
-          ...(n.children ?? []),
-        ];
+      if (n.kind === 'chapter' && n.confidence !== 'high') {
+        const demoted = demoteChapterToParagraphs(n);
         const host = filtered[filtered.length - 1];
         if (host && (host.kind === 'chapter' || host.kind === 'introduction')) {
-          const lastSection = [...(host.children ?? [])].reverse().find((c) => c.kind === 'section');
-          const target = lastSection ?? host;
-          target.children = [...(target.children ?? []), ...demoted];
+          host.children = [...(host.children ?? []), ...demoted];
         } else {
           filtered.push(...demoted);
         }
+      } else {
+        filtered.push(n);
+      }
+    }
+    return filtered;
+  }
+
+  // No (or only one) genuine chapter heading in the PDF → do not invent a TOC.
+  // Demote every chapter node so content stays continuous page order.
+  if (explicitCount < 2) {
+    const filtered: StructureNode[] = [];
+    for (const n of nodes) {
+      if (n.kind === 'chapter' && n.confidence !== 'high') {
+        const demoted = demoteChapterToParagraphs(n);
+        const host = filtered[filtered.length - 1];
+        if (host && (host.kind === 'chapter' || host.kind === 'introduction')) {
+          host.children = [...(host.children ?? []), ...demoted];
+        } else {
+          filtered.push(...demoted);
+        }
+      } else if (n.kind === 'chapter' && explicitCount === 0) {
+        // Should not happen (high with count 0), but keep text
+        filtered.push(...demoteChapterToParagraphs(n));
+      } else if (n.kind === 'chapter' && n.confidence === 'high' && explicitCount === 1) {
+        // A single real chapter is fine — keep it
+        filtered.push(n);
       } else {
         filtered.push(n);
       }
@@ -489,8 +510,31 @@ export function detectStructureFromPages(pages: NormalizedPage[], toc: TocHint[]
         const chapter = awaitingSubtitle;
         awaitingSubtitle = null;
         const own = matchHeadingLine(line);
-        if (block.type === 'possible-heading' && block.headingLevel === 2 && !own && (chapter.children ?? []).length === 0) {
-          chapter.title = `${cleanHeadingTitle(chapter.title ?? '')} — ${cleanHeadingTitle(line)}`;
+        // Never glue two chapter-like headings: "Chapter 10 — Chapter Two"
+        const lineLooksLikeChapter = /^(?:chapter|part|book)\s+/i.test(line.trim());
+        const existingLooksLikeChapter = /^(?:chapter|part|book)\s+/i.test(
+          (chapter.title ?? '').trim(),
+        );
+        if (
+          block.type === 'possible-heading' &&
+          block.headingLevel === 2 &&
+          !own &&
+          !lineLooksLikeChapter &&
+          (chapter.children ?? []).length === 0
+        ) {
+          const base = cleanHeadingTitle(chapter.title ?? '');
+          const next = cleanHeadingTitle(line);
+          // Replace a bare "Chapter N" title with the real subtitle
+          if (existingLooksLikeChapter && !/^(?:chapter|part|book)\s+/i.test(next)) {
+            chapter.title = next;
+          } else if (!existingLooksLikeChapter) {
+            chapter.title = next ? `${base} — ${next}` : base;
+          }
+          return;
+        }
+        if (lineLooksLikeChapter && own?.kind === 'chapter') {
+          // Fall through — treat as a new chapter heading
+        } else if (lineLooksLikeChapter) {
           return;
         }
       }
@@ -530,19 +574,28 @@ export function detectStructureFromPages(pages: NormalizedPage[], toc: TocHint[]
         pushParagraph(line, block.type === 'possible-heading' ? 'text' : block.type);
         return;
       }
-      // Larger-font line in the PDF: a heading even without a "Chapter N" pattern
+      // Larger-font line: only a section under a real chapter — never invent chapters from font size alone
       if (block.headingLevel && pageIdx > 0 && block.type === 'possible-heading') {
         if (!heading) {
-          heading = {
-            kind: block.headingLevel === 1 || !currentChapter ? 'chapter' : 'section',
-            number: '',
-            title: line,
-            confidence: 'medium',
-            language: 'en',
-            raw: line,
-          };
-        } else if (heading.confidence === 'low') {
+          if (currentChapter) {
+            heading = {
+              kind: block.headingLevel === 1 ? 'section' : 'subsection',
+              number: '',
+              title: line,
+              confidence: 'medium',
+              language: 'en',
+              raw: line,
+            };
+          } else {
+            pushParagraph(line, 'text');
+            return;
+          }
+        } else if (heading.confidence === 'low' && heading.kind !== 'chapter') {
           heading = { ...heading, confidence: 'medium' };
+        } else if (heading.confidence === 'low' && heading.kind === 'chapter' && !currentChapter) {
+          // Lone ALL-CAPS without a real chapter pattern — keep as body
+          pushParagraph(line, 'text');
+          return;
         }
       }
 
@@ -593,7 +646,7 @@ function collectText(nodes: StructureNode[]): string {
 
 /**
  * Convert structure nodes to DetectedChapter[].
- * If no genuine chapters: one "Unstructured Content" chapter — NEVER fake page-based chapters.
+ * If no genuine chapters: one "Complete Text" chapter — NEVER fake page-based chapters.
  * If a chapter has no real sections: one "Content" section holding body text — NEVER word-count sections.
  */
 export function structureToDetectedChapters(
@@ -607,13 +660,13 @@ export function structureToDetectedChapters(
     if (!body.trim()) return [];
     return [
       {
-        number: '',
-        title: 'Unstructured Content',
+        number: '1',
+        title: 'Complete Text',
         description: '',
         rawText: '',
         sections: [
           {
-            number: '',
+            number: '1',
             title: 'Content',
             rawText: body,
           },
@@ -622,12 +675,32 @@ export function structureToDetectedChapters(
     ];
   }
 
+  // Keep page-order text that sits outside chapter nodes (never drop it)
+  const firstChapterIdx = nodes.findIndex((n) => n.kind === 'chapter');
+  const lastChapterIdx = nodes.length - 1 - [...nodes].reverse().findIndex((n) => n.kind === 'chapter');
+  const leadingRaw =
+    firstChapterIdx > 0
+      ? collectText(nodes.slice(0, firstChapterIdx).filter((n) => n.kind !== 'introduction'))
+      : '';
+  // Long leading matter is stored as Introduction; keep short leading so it is not lost
+  const leadingOrphans = leadingRaw.trim().length >= 200 ? '' : leadingRaw;
+  const trailingOrphans =
+    lastChapterIdx >= 0 && lastChapterIdx < nodes.length - 1
+      ? collectText(nodes.slice(lastChapterIdx + 1).filter((n) => n.kind !== 'introduction'))
+      : '';
+
   return chapterNodes.map((ch, ci) => {
     const sectionNodes = (ch.children ?? []).filter((c) => c.kind === 'section');
     const bodyParagraphs = (ch.children ?? []).filter(
       (c) => c.kind === 'paragraph' || c.kind === 'quote' || c.kind === 'list',
     );
-    const chapterBody = collectText(bodyParagraphs);
+    let chapterBody = collectText(bodyParagraphs);
+    if (ci === 0 && leadingOrphans.trim()) {
+      chapterBody = `${leadingOrphans.trim()}\n\n${chapterBody}`.trim();
+    }
+    if (ci === chapterNodes.length - 1 && trailingOrphans.trim()) {
+      chapterBody = `${chapterBody}\n\n${trailingOrphans.trim()}`.trim();
+    }
 
     const sections: DetectedSection[] = sectionNodes.map((sec, si) => {
       const subText = collectText(
@@ -654,7 +727,7 @@ export function structureToDetectedChapters(
     if (sections.length === 0) {
       return {
         number: ch.content || String(ci + 1),
-        title: ch.title || `Chapter ${ci + 1}`,
+        title: cleanChapterTitle(ch.title || `Chapter ${ci + 1}`),
         description: '',
         rawText: '',
         sections: [
@@ -677,7 +750,7 @@ export function structureToDetectedChapters(
 
     return {
       number: ch.content || String(ci + 1),
-      title: ch.title || `Chapter ${ci + 1}`,
+      title: cleanChapterTitle(ch.title || `Chapter ${ci + 1}`),
       description: '',
       rawText: '',
       sections,

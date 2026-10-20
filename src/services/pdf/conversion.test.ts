@@ -169,7 +169,7 @@ describe('structure detection', () => {
     expect(extractIntroductionText(nodes)).toContain('Opening words of the author.');
   });
 
-  it('turns a large-font line into a chapter without a "Chapter N" pattern', () => {
+  it('does not invent a chapter from a large-font line alone (needs real Chapter/Surah/باب pattern)', () => {
     const nodes = detectStructureFromPages([
       page(1, [{ text: 'Title page', type: 'text', confidence: 'high' }]),
       page(2, [
@@ -177,8 +177,12 @@ describe('structure detection', () => {
         { text: 'Body.', type: 'text', confidence: 'high' },
       ]),
     ]);
-    const chapter = nodes.find((n) => n.kind === 'chapter');
-    expect(chapter?.title).toBe('The Virtues of Patience');
+    expect(nodes.find((n) => n.kind === 'chapter')).toBeUndefined();
+    const chapters = structureToDetectedChapters(nodes, []);
+    expect(chapters).toHaveLength(1);
+    expect(chapters[0].title).toBe('Complete Text');
+    expect(chapters[0].sections[0].rawText).toContain('The Virtues of Patience');
+    expect(chapters[0].sections[0].rawText).toContain('Body.');
   });
 });
 

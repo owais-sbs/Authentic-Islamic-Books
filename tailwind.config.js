@@ -40,7 +40,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'Geist', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         serif: ['Source Serif 4', 'Literata', 'Lora', 'Georgia', 'serif'],
-        arabic: ['Amiri', 'Traditional Arabic', 'Scheherazade New', 'serif'],
+        arabic: ['Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', 'serif'],
         cinzel: ['Cinzel', 'Georgia', 'serif'],
         'cinzel-decorative': ['Cinzel Decorative', 'Georgia', 'serif'],
       },

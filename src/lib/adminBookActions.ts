@@ -1,6 +1,11 @@
 import { getAllImportedBooks } from '@/hooks/useBookStore';
 import { removeBookFromStore } from '@/lib/bookStoreHelpers';
-import { markBookDeleted, setStatusOverride } from '@/lib/adminBookMeta';
+import {
+  clearBookDeleted,
+  clearStatusOverride,
+  markBookDeleted,
+  setStatusOverride,
+} from '@/lib/adminBookMeta';
 import { deleteBookFromSupabase, updateBookStatusInSupabase } from '@/lib/bookApi';
 import { generateSlug } from '@/lib/bookTransform';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -9,8 +14,11 @@ export async function archiveAdminBook(bookId: string): Promise<void> {
   if (isSupabaseConfigured()) {
     try {
       await updateBookStatusInSupabase(bookId, 'archived');
+      clearStatusOverride(bookId);
+      window.dispatchEvent(new Event('storage'));
+      return;
     } catch {
-      // fall through to local override
+      // fall through to local override when cloud update fails
     }
   }
   setStatusOverride(bookId, 'archived');
@@ -21,6 +29,9 @@ export async function restoreAdminBook(bookId: string): Promise<void> {
   if (isSupabaseConfigured()) {
     try {
       await updateBookStatusInSupabase(bookId, 'draft');
+      clearStatusOverride(bookId);
+      window.dispatchEvent(new Event('storage'));
+      return;
     } catch {
       // fall through
     }
@@ -35,8 +46,15 @@ export async function deleteAdminBook(bookId: string): Promise<void> {
   if (isSupabaseConfigured()) {
     try {
       await deleteBookFromSupabase(bookId);
+      clearBookDeleted(bookId);
+      clearStatusOverride(bookId);
+      window.dispatchEvent(new Event('storage'));
+      return;
     } catch {
-      // still mark locally deleted
+      // Cloud delete failed — hide from this browser only as a last resort.
+      markBookDeleted(bookId);
+      window.dispatchEvent(new Event('storage'));
+      return;
     }
   }
 

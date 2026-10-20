@@ -44,8 +44,59 @@ function highlightText(text: string, query?: string): ReactNode {
 
 function formatQuranCaption(reference?: string): string {
   if (!reference) return '';
-  if (/^Qur['’]?an/i.test(reference)) return reference;
-  return `Qur’an — ${reference}`;
+  const cleaned = reference
+    .replace(/^\[|\]$/g, '')
+    .replace(/\bA\s+l-/i, 'Al-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Prefer clean bracket style: [Al-Nahl: aya 97]
+  const aya = cleaned.match(/^(.+?)\s+(\d{1,3})(?:\s*[-–—:]\s*(\d{1,3}))?$/i);
+  if (aya && !/^Qur/i.test(aya[1])) {
+    const surah = aya[1].replace(/^Qur['’]?an\s*[—–-]?\s*/i, '').trim();
+    return `[${surah}: aya ${aya[2]}]`;
+  }
+  if (/^Qur['’]?an/i.test(cleaned)) return cleaned;
+  return `[${cleaned}]`;
+}
+
+/** Skip drop-cap / lead styling on short citations and bracket refs. */
+function looksLikeCitationLine(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 80 && /^\[/.test(t)) return true;
+  if (/^(?:Qur['’]?an|Surah|Soorah)\b/i.test(t) && t.length < 80) return true;
+  if (/\baya[h]?\s+\d+/i.test(t) && t.length < 80) return true;
+  return false;
+}
+
+/** Discard clear OCR/font garbage — never hide readable Arabic ayahs. */
+function isGarbledMixedLine(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 6) return false;
+
+  const arabic = (t.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
+  const latin = (t.match(/[A-Za-z]/g) || []).length;
+  const symbols = (t.match(/[%€&<>$#@^*_=+|\\]/g) || []).length;
+  const words = t.split(/\s+/).filter(Boolean);
+
+  // Substantial Arabic (ayah / quotation) — always keep, even with a few Latin OCR nicks
+  if (arabic >= 10 && arabic >= latin) return false;
+  if (arabic >= 18) return false;
+
+  // Clear mixed corruption with symbols ("Zong 5% € سس")
+  if (symbols >= 2 && arabic > 0 && latin > 0 && arabic < 12) return true;
+
+  if (arabic > 0 && latin > 0 && arabic < 10) {
+    const shortJunk = words.filter((w) => /^[A-Za-z]{1,3}$/.test(w) || w.length <= 2).length;
+    if (shortJunk / Math.max(words.length, 1) > 0.45) return true;
+  }
+
+  // Mostly disconnected single Arabic glyphs with almost no continuous words
+  if (arabic >= 10 && arabic <= 30 && words.length >= 8) {
+    const singleGlyphs = words.filter((w) => /^[\u0600-\u06FF]{1,2}$/.test(w)).length;
+    if (singleGlyphs / words.length > 0.55) return true;
+  }
+
+  return false;
 }
 
 function resolveDir(
@@ -103,14 +154,22 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
       {enriched.map((block, i) => {
         switch (block.type) {
           case 'paragraph': {
+            if (isGarbledMixedLine(block.text)) return null;
             const dir = resolveDir(block.language, block.direction);
             const isRtlScript = block.language === 'ar' || block.language === 'ur';
+            const citation = looksLikeCitationLine(block.text);
+            const useLead =
+              i === firstParagraphIndex &&
+              !citation &&
+              !isRtlScript &&
+              block.text.trim().length > 40;
             return (
               <p
                 key={i}
                 className={cn(
                   'reader-muted',
-                  i === firstParagraphIndex && 'reader-lead',
+                  useLead && 'reader-lead',
+                  citation && 'reader-reference-line',
                   NARRATION_RE.test(block.text) && 'reader-narration',
                   blockClass(block.language, block.direction),
                   isRtlScript && (block.language === 'ur' ? 'reader-urdu' : 'reader-arabic'),
@@ -121,7 +180,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                   block.language,
                   block.direction,
                   isRtlScript
-                    ? { fontSize: `${arabicSize}px`, lineHeight: 2 }
+                    ? { fontSize: `${arabicSize}px`, lineHeight: 2.1 }
                     : undefined,
                 )}
               >
@@ -158,19 +217,26 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
           }
 
           case 'arabic':
+            if (isGarbledMixedLine(block.text)) return null;
             return (
               <p
                 key={i}
-                className={cn('reader-arabic', blockClass(block.language ?? 'ar', block.direction ?? 'rtl'))}
+                className={cn(
+                  'reader-arabic',
+                  blockClass(block.language ?? 'ar', block.direction ?? 'rtl'),
+                )}
                 dir="rtl"
                 lang={block.language === 'ur' ? 'ur' : 'ar'}
-                style={{ fontSize: `${arabicSize}px`, lineHeight: 2 }}
+                style={{ fontSize: `${arabicSize}px`, lineHeight: 2.35 }}
               >
                 {highlightText(block.text, highlightQuery)}
               </p>
             );
 
           case 'quran':
+            if (block.arabic && isGarbledMixedLine(block.arabic) && !block.translation && !block.reference) {
+              return null;
+            }
             return (
               <figure key={i} className="reader-quran">
                 {block.arabic && (
@@ -178,7 +244,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                     className="reader-quran-arabic"
                     dir="rtl"
                     lang="ar"
-                    style={{ fontSize: `${arabicSize + 2}px`, lineHeight: 2.05 }}
+                    style={{ fontSize: `${arabicSize + 6}px`, lineHeight: 2.45 }}
                   >
                     {highlightText(block.arabic, highlightQuery)}
                   </p>
@@ -190,7 +256,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                     lang="en"
                     style={{ fontSize: `${fontSize}px` }}
                   >
-                    {highlightText(block.translation, highlightQuery)}
+                    &ldquo;{highlightText(block.translation, highlightQuery)}&rdquo;
                   </p>
                 )}
                 {block.reference && (
@@ -301,19 +367,22 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
           }
 
           case 'reference': {
-            const dir = resolveDir(block.language, block.direction);
+            const caption =
+              block.source === 'quran' || /aya|surah|qur/i.test(block.text)
+                ? formatQuranCaption(block.text)
+                : block.text;
             return (
               <p
                 key={i}
-                className={cn('reader-reference-line', blockClass(block.language, block.direction))}
-                dir={dir}
-                lang={langAttr(block.language)}
-                style={blockStyle(block.language, block.direction, {
-                  fontSize: `${Math.max(fontSize - 1, 13)}px`,
-                })}
+                className="reader-quran-reference reader-reference-line"
+                dir="ltr"
+                lang="en"
+                style={{ fontSize: `${Math.max(fontSize - 1, 13)}px` }}
               >
-                {highlightText(block.text, highlightQuery)}
-                {block.source && <span className="reader-accent"> — {block.source}</span>}
+                {highlightText(caption, highlightQuery)}
+                {block.source && block.source !== 'quran' && (
+                  <span className="reader-accent"> — {block.source}</span>
+                )}
               </p>
             );
           }

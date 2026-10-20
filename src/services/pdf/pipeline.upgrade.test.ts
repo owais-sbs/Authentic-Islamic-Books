@@ -8,11 +8,11 @@ import type { NormalizedPage } from './types';
 import { detectStructureFromPages } from './structureDetector';
 
 describe('upload limit', () => {
-  it('enforces 50 MB in bytes', () => {
-    expect(MAX_PDF_SIZE).toBe(50 * 1024 * 1024);
+  it('enforces 150 MB in bytes', () => {
+    expect(MAX_PDF_SIZE).toBe(150 * 1024 * 1024);
   });
 
-  it('rejects files over 50 MB', () => {
+  it('rejects files over 150 MB', () => {
     const big = {
       name: 'big.pdf',
       type: 'application/pdf',
@@ -21,15 +21,15 @@ describe('upload limit', () => {
     const result = validateBookPdfFile(big);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).toContain('50 MB');
+      expect(result.message).toContain('150 MB');
     }
   });
 
-  it('accepts files at or under 50 MB', () => {
+  it('accepts files at or under 150 MB', () => {
     const ok = {
       name: 'ok.pdf',
       type: 'application/pdf',
-      size: 40 * 1024 * 1024,
+      size: 120 * 1024 * 1024,
     } as File;
     expect(validateBookPdfFile(ok).ok).toBe(true);
   });
@@ -83,7 +83,7 @@ describe('structure detection', () => {
     const nodes = detectStructureFromPages(pages);
     const chapters = structureToDetectedChapters(nodes, pages);
     expect(chapters.length).toBe(1);
-    expect(chapters[0].title).toBe('Unstructured Content');
+    expect(chapters[0].title).toBe('Complete Text');
     expect(chapters[0].sections.length).toBe(1);
     expect(chapters[0].sections[0].title).toBe('Content');
   });

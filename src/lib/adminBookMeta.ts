@@ -38,6 +38,18 @@ export function markBookDeleted(id: string): void {
   if (!ids.includes(id)) writeDeleted([...ids, id]);
 }
 
+/** Remove a soft-delete marker (e.g. after a successful cloud delete, or when the book still exists remotely). */
+export function clearBookDeleted(id: string): void {
+  writeDeleted(readDeleted().filter((x) => x !== id));
+}
+
+/** Drop soft-delete markers for ids that are still present in the shared library. */
+export function clearDeletedForExisting(ids: string[]): void {
+  if (ids.length === 0) return;
+  const existing = new Set(ids);
+  writeDeleted(readDeleted().filter((id) => !existing.has(id)));
+}
+
 export function getStatusOverride(id: string): BookStatus | undefined {
   return readStatusOverrides()[id];
 }
@@ -54,7 +66,24 @@ export function clearStatusOverride(id: string): void {
   writeStatusOverrides(map);
 }
 
-export function applyAdminMeta<T extends { id: string; status: BookStatus }>(books: T[]): T[] {
+export interface ApplyAdminMetaOptions {
+  /**
+   * When true (Supabase shared library), local soft-deletes and status overrides
+   * must not hide books that still exist in the cloud. The public site never
+   * reads these keys — that mismatch was emptying the admin Books page.
+   */
+  cloudSource?: boolean;
+}
+
+export function applyAdminMeta<T extends { id: string; status: BookStatus }>(
+  books: T[],
+  options?: ApplyAdminMetaOptions,
+): T[] {
+  if (options?.cloudSource) {
+    // Trust Supabase as source of truth for the team list.
+    return books;
+  }
+
   const deleted = getDeletedBookIds();
   const overrides = readStatusOverrides();
 

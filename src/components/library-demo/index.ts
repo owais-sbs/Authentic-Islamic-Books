@@ -4,6 +4,8 @@ export { DemoBookShell } from './DemoBookShell';
 export { DemoBookCard } from './DemoBookCard';
 export { DemoBookMockup } from './DemoBookMockup';
 export { LibraryCatalog } from './LibraryCatalog';
+export { Format06BookCard } from './Format06BookCard';
+export { ScholarlyEditionBook } from './ScholarlyEditionBook';
 export { ClassicBookReader } from './ClassicBookReader';
 export { ScholarlyArticle } from './ScholarlyArticle';
 export { NumberedRefutation } from './NumberedRefutation';

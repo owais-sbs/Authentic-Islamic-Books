@@ -38,6 +38,9 @@ const SURAH_NAMES = [
   'Ibrahim',
   'Al-Hijr',
   'An-Nahl',
+  'Al-Nahl',
+  'Al Nahl',
+  'A l-Nahl',
   'Al-Isra',
   'Al-Kahf',
   'Maryam',
@@ -280,18 +283,51 @@ export function formatQuranReference(parts: {
   return range;
 }
 
+/** Bracket citation: [Al-Nahl: aya 97] / [An-Nahl: ayah 97] / [النحل: ٩٧] */
+const BRACKET_AYA_REF = new RegExp(
+  String.raw`^\[?\s*(${SURAH_ALT})\s*[:\-–—,]\s*(?:aya[h]?|verse|ayat)?\s*(\d{1,3})\s*\]?\.?$`,
+  'i',
+);
+
+const BRACKET_SURAH_VERSE = new RegExp(
+  String.raw`^\[?\s*(${SURAH_ALT})\s*[:\-–—,]\s*(\d{1,3})\s*\]?\.?$`,
+  'i',
+);
+
 export function parseQuranReferenceLine(line: string): {
   reference: string;
   confidence: number;
 } | null {
-  const t = line.trim();
+  // Normalize OCR quirks: "[A l-Nahl: aya 94]" → "[Al-Nahl: aya 94]"
+  const t = line
+    .trim()
+    .replace(/\[\s*A\s+l-/i, '[Al-')
+    .replace(/\bA\s+l-/i, 'Al-')
+    .replace(/\s+/g, ' ');
   if (!t || t.length > 120) return null;
 
-  if (FALSE_VERSE_CONTEXT.test(t) && !/Qur['’]?an|Surah/i.test(t)) {
+  if (FALSE_VERSE_CONTEXT.test(t) && !/Qur['’]?an|Surah|aya/i.test(t)) {
     return null;
   }
 
-  let m = QURAN_LABEL_RE.exec(t);
+  let m = BRACKET_AYA_REF.exec(t.replace(/^\[/, '').replace(/\]$/, ''));
+  if (!m) m = BRACKET_AYA_REF.exec(t);
+  if (m) {
+    return {
+      reference: `${m[1].replace(/\s+/g, '-')} ${m[2]}`,
+      confidence: 0.93,
+    };
+  }
+
+  m = BRACKET_SURAH_VERSE.exec(t.replace(/^\[/, '').replace(/\]$/, ''));
+  if (m) {
+    return {
+      reference: `${m[1].replace(/\s+/g, '-')} ${m[2]}`,
+      confidence: 0.9,
+    };
+  }
+
+  m = QURAN_LABEL_RE.exec(t);
   if (m) {
     return { reference: normalizeRefLabel(t), confidence: 0.92 };
   }

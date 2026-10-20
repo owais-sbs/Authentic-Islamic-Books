@@ -9,15 +9,21 @@ interface DemoBookShellProps {
   title: string;
   children: ReactNode;
   surface?: 'paper' | 'parchment' | 'cream' | 'forest-soft';
+  backHref?: string;
+  backLabel?: string;
+  badge?: string;
 }
 
-/** Clean professional wrapper for a single opened demo book — consistent on mobile. */
+/** Clean professional wrapper for a single opened demo / Format 06 book. */
 export function DemoBookShell({
   number,
   formatName,
   title,
   children,
   surface = 'parchment',
+  backHref = '/library',
+  backLabel = 'Back to Library',
+  badge = 'Static demonstration',
 }: DemoBookShellProps) {
   const surfaces = {
     paper: 'bg-paper',
@@ -31,11 +37,11 @@ export function DemoBookShell({
       <div className="border-b border-line bg-cream/90">
         <div className="container-page py-3.5 sm:py-5">
           <Link
-            to="/library"
+            to={backHref}
             className="inline-flex items-center gap-2 font-sans text-sm font-medium text-ink-600 transition-colors hover:text-accent-dark"
           >
             <ArrowLeft size={16} />
-            Back to Library
+            {backLabel}
           </Link>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-2 sm:mt-4 sm:gap-3">
             <div className="min-w-0">
@@ -46,9 +52,11 @@ export function DemoBookShell({
                 {title}
               </h1>
             </div>
-            <span className="hidden font-sans text-[11px] uppercase tracking-[0.14em] text-ink-400 sm:inline">
-              Static demonstration
-            </span>
+            {badge ? (
+              <span className="hidden font-sans text-[11px] uppercase tracking-[0.14em] text-ink-400 sm:inline">
+                {badge}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

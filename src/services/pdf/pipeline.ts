@@ -77,15 +77,34 @@ export function runPipeline(
     );
   }
 
-  // Guarantee reviewable content when we have words but empty structure
-  if (chapters.length === 0 && fullText.trim()) {
+  // Prefer continuous page-ordered text when the PDF has no real chapter headings
+  const genuineChapterCount = structure.filter(
+    (n) => n.kind === 'chapter' && n.confidence === 'high',
+  ).length;
+  const continuousBody = normalized
+    .slice()
+    .sort((a, b) => a.pageNumber - b.pageNumber)
+    .flatMap((p) => p.blocks.map((b) => b.text.trim()).filter(Boolean))
+    .join('\n\n');
+
+  if (genuineChapterCount === 0 && continuousBody.trim()) {
     chapters = [
       {
         number: '1',
-        title: 'Unstructured Content',
+        title: meta.title?.trim() || 'Complete Text',
         description: '',
         rawText: '',
-        sections: [{ number: '1', title: 'Content', rawText: fullText }],
+        sections: [{ number: '1', title: 'Content', rawText: continuousBody }],
+      },
+    ];
+  } else if (chapters.length === 0 && fullText.trim()) {
+    chapters = [
+      {
+        number: '1',
+        title: meta.title?.trim() || 'Complete Text',
+        description: '',
+        rawText: '',
+        sections: [{ number: '1', title: 'Content', rawText: continuousBody || fullText }],
       },
     ];
   }
@@ -111,14 +130,14 @@ export function runPipeline(
   if (fromMd.meta.description) meta.description = fromMd.meta.description;
 
   // Final safety: never leave a book with words but zero chapters
-  if (chapters.length === 0 && fullText.trim()) {
+  if (chapters.length === 0 && (continuousBody.trim() || fullText.trim())) {
     chapters = [
       {
         number: '1',
-        title: 'Unstructured Content',
+        title: meta.title?.trim() || 'Complete Text',
         description: '',
         rawText: '',
-        sections: [{ number: '1', title: 'Content', rawText: fullText }],
+        sections: [{ number: '1', title: 'Content', rawText: continuousBody || fullText }],
       },
     ];
   }
@@ -132,9 +151,13 @@ export function runPipeline(
       `⚠ ${formatLanguagesLabel(languages.filter((l) => l === 'ar' || l === 'ur'))} content detected — verify RTL rendering in review.`,
     );
   }
-  if (chapters.length === 1 && chapters[0].title === 'Unstructured Content') {
+  if (
+    chapters.length === 1 &&
+    (chapters[0].title === 'Complete Text' || chapters[0].title === meta.title) &&
+    genuineChapterCount === 0
+  ) {
     warnings.push(
-      '⚠ No reliable chapter headings were detected. Content stored as Unstructured Content — please review.',
+      '⚠ No chapter headings found in the PDF. Full text kept in page order (first → last) as continuous content.',
     );
   }
   if (wordCount === 0) {

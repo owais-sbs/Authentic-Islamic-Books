@@ -2,7 +2,6 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
   catNameToId,
   generateSlug,
-  publicBookToAdminBook,
   reviewBookToPublicBook,
 } from '@/lib/bookTransform';
 import type { BookWithStructure, BookStatus } from '@/features/books/types';
@@ -306,6 +305,92 @@ export async function updateBookStatusInSupabase(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * List columns only — never select introduction / full chapter bodies.
+ * Legacy rows may still store full text in `chapters`; for the admin table we
+ * only need jsonb_array_length via a light select of chapters when present.
+ * Prefer content_path-backed books (index-sized chapters).
+ */
+const ADMIN_LIST_COLUMNS = [
+  'id',
+  'slug',
+  'title',
+  'subtitle',
+  'author_name',
+  'author_id',
+  'cover_color',
+  'cover_url',
+  'hijri_start',
+  'hijri_end',
+  'category_ids',
+  'status',
+  'language',
+  'featured',
+  'content_path',
+  'created_at',
+  'updated_at',
+].join(', ');
+
+function rowToAdminListBook(
+  row: Pick<
+    DbBookRow,
+    | 'id'
+    | 'title'
+    | 'subtitle'
+    | 'author_name'
+    | 'author_id'
+    | 'cover_color'
+    | 'cover_url'
+    | 'hijri_start'
+    | 'hijri_end'
+    | 'category_ids'
+    | 'status'
+    | 'language'
+    | 'featured'
+    | 'created_at'
+    | 'updated_at'
+  >,
+): import('@/features/books/types').Book {
+  const catMap: Record<string, string> = {
+    'cat-aqeedah': 'Aqeedah',
+    'cat-hadith': 'Hadith',
+    'cat-tafsir': 'Tafsir',
+    'cat-fiqh': 'Fiqh',
+    'cat-seerah': 'Seerah',
+    'cat-history': 'History',
+    'cat-ethics': 'Ethics',
+    'cat-spirituality': 'Spirituality',
+    'cat-thought': 'Islamic Thought',
+    'cat-biography': 'Biography',
+  };
+
+  // Prefer a real display name; never leave a raw scholar-* id as authorName.
+  // The table resolves IDs via resolveAuthorName as a second pass.
+  const rawAuthor = (row.author_name || '').trim();
+  const authorIsId = !rawAuthor || rawAuthor.startsWith('scholar-');
+
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle ?? undefined,
+    authorName: authorIsId ? undefined : rawAuthor,
+    authorId: row.author_id ?? (authorIsId ? rawAuthor || undefined : undefined),
+    coverColor: row.cover_color || '#18231F',
+    coverUrl: row.cover_url ?? undefined,
+    categories: (row.category_ids ?? []).map((id) => catMap[id] ?? 'Islamic Thought'),
+    hijriStartYear: row.hijri_start ?? undefined,
+    hijriEndYear: row.hijri_end ?? undefined,
+    language: row.language || 'English',
+    // Counts load on the review page — omitted here so we never pull full chapter JSON.
+    chapterCount: undefined,
+    sectionCount: undefined,
+    status: row.status || 'published',
+    featured: row.featured ?? false,
+    createdAt: (row.created_at || new Date().toISOString()).slice(0, 10),
+    updatedAt: (row.updated_at || new Date().toISOString()).slice(0, 10),
+  };
+}
+
 export async function fetchAllBooksFromSupabase(): Promise<
   import('@/features/books/types').Book[]
 > {
@@ -320,9 +405,12 @@ export async function fetchAllBooksFromSupabase(): Promise<
     );
   }
 
+  // Metadata + chapter index only. Do NOT run htmlToContentBlocks here — that
+  // path is for the reader/review UI and can throw/timeout on large books,
+  // emptying the entire admin Books table while the public site still works.
   const { data, error } = await supabase
     .from('books')
-    .select('*')
+    .select(ADMIN_LIST_COLUMNS)
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -330,11 +418,7 @@ export async function fetchAllBooksFromSupabase(): Promise<
     throw new Error(error.message);
   }
 
-  return (data as DbBookRow[]).map((row) => {
-    const review = rowToReviewBook(row);
-    const publicBook = reviewBookToPublicBook(review);
-    return publicBookToAdminBook(publicBook, row.status);
-  });
+  return (data as DbBookRow[]).map(rowToAdminListBook);
 }
 
 export async function fetchPublishedBooksFromSupabase(): Promise<Book[]> {

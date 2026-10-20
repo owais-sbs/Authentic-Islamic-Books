@@ -112,18 +112,48 @@ async function renderPageToCanvas(
 }
 
 const EXTRACT_BATCH_SIZE = 50;
-/** Pages are rendered at 2× for OCR */
+/** Pages are rendered at 2× for OCR (1.5× on large books for speed) */
 const OCR_SCALE = 2;
+const OCR_SCALE_LARGE = 1.5;
 /** Max pages OCR'd to learn a damaged font's letters */
 const MAX_LEARNING_PAGES = 8;
+/**
+ * Full-page OCR budget. Arabic / custom-font PDFs often need OCR on many pages
+ * because the text layer is private-use garbage — do not leave those blank.
+ */
+const MAX_FULL_OCR_PAGES = 500;
+/** Parallel PDF.js text-layer reads */
+const TEXT_EXTRACT_CONCURRENCY = 6;
 
 /** Yield more often on large books so the UI stays responsive. */
 function adaptiveBatchSize(totalPages: number, requested?: number): number {
   if (requested != null) return requested;
-  if (totalPages > 400) return 8;
-  if (totalPages > 200) return 15;
-  if (totalPages > 80) return 25;
+  if (totalPages > 400) return 40;
+  if (totalPages > 200) return 50;
+  if (totalPages > 80) return 50;
   return EXTRACT_BATCH_SIZE;
+}
+
+function ocrScaleForBook(totalPages: number): number {
+  return totalPages >= 100 ? OCR_SCALE_LARGE : OCR_SCALE;
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function run() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await worker(items[i], i);
+    }
+  }
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => run());
+  await Promise.all(runners);
+  return results;
 }
 
 export interface ExtractPagesOptions {
@@ -185,53 +215,81 @@ export async function extractPagesFromFileDetailed(
     percent: 2,
   });
 
-  // ── Pass 1: text items of every page ───────────────────────────────────────
-  const pageItems: PdfTextItem[][] = [];
-  const pageHeights: number[] = [];
-  for (let i = 1; i <= totalPages; i++) {
-    const page = await pdf.getPage(i);
+  const scale = ocrScaleForBook(totalPages);
+
+  // ── Pass 1: parallel text-layer extraction (big win on 100+ page books) ─────
+  const pageIndexes = Array.from({ length: totalPages }, (_, i) => i + 1);
+  let extractedCount = 0;
+  const extracted = await mapPool(pageIndexes, TEXT_EXTRACT_CONCURRENCY, async (pageNum) => {
+    const page = await pdf.getPage(pageNum);
     try {
       const content = await page.getTextContent();
-      pageItems.push(content.items as PdfTextItem[]);
-      pageHeights.push(page.view[3] - page.view[1]);
+      return {
+        items: content.items as PdfTextItem[],
+        height: page.view[3] - page.view[1],
+      };
     } finally {
       try {
         page.cleanup();
       } catch {
         /* ignore */
       }
+      extractedCount += 1;
+      if (
+        extractedCount === 1 ||
+        extractedCount === totalPages ||
+        extractedCount % 10 === 0
+      ) {
+        onProgress?.('extract', `Extracting text… Page ${extractedCount} / ${totalPages}`, {
+          page: extractedCount,
+          totalPages,
+          percent: Math.min(20, Math.round((extractedCount / totalPages) * 18) + 2),
+        });
+      }
+      if (extractedCount % batchSize === 0) await yieldToUi();
     }
-    if (i === 1 || i === totalPages || i % 5 === 0) {
-      onProgress?.('extract', `Extracting text… Page ${i} / ${totalPages}`, {
-        page: i,
-        totalPages,
-        percent: Math.min(20, Math.round((i / totalPages) * 18) + 2),
-      });
-    }
-    if (i % batchSize === 0) await yieldToUi();
+  });
+
+  const pageItems: PdfTextItem[][] = extracted.map((e) => e.items);
+  const pageHeights: number[] = extracted.map((e) => e.height);
+
+  // Fonts without ToUnicode maps → private-use garbage (common in Arabic PDFs)
+  const garbledIdx = pageItems
+    .map((items, i) => (pageTextIsGarbled(items.map((it) => it.str ?? '').join(' ')) ? i : -1))
+    .filter((i) => i >= 0);
+  const heavilyGarbled = garbledIdx.length / Math.max(totalPages, 1) >= 0.25;
+
+  // Only skip OCR on pages that already have clean selectable text.
+  // Never disable OCR entirely when garbled/Arabic custom fonts are present.
+  const sampleSize = Math.min(20, totalPages);
+  let sampleClean = 0;
+  for (let i = 0; i < sampleSize; i++) {
+    const sampleText = pageItems[i].map((it) => it.str ?? '').join(' ');
+    if (pageHasUsableText(sampleText) && !pageTextIsGarbled(sampleText)) sampleClean += 1;
   }
+  const mostlyCleanTextPdf = !heavilyGarbled && sampleClean / sampleSize >= 0.75;
 
   const ocr = getOcrProvider();
   const canOcr = enableOcr && ocr.isAvailable();
   let ocrReady = false;
   const ensureOcr = async () => {
     if (ocrReady) return;
-    onProgress?.('ocr', 'Preparing OCR…', { percent: 21 });
+    onProgress?.('ocr', 'Preparing OCR (English + Arabic)…', { percent: 21 });
     await ocr.init?.((msg) => onProgress?.('ocr', msg, { percent: 22 }));
     ocrReady = true;
   };
-  const renderPage = async (index: number) => renderPageToCanvas(await pdf.getPage(index + 1), OCR_SCALE);
+  const renderPage = async (index: number) =>
+    renderPageToCanvas(await pdf.getPage(index + 1), scale);
 
-  // ── Fonts without a character map: learn their letters from a few OCR'd pages ──
-  const garbledIdx = pageItems
-    .map((items, i) => (pageTextIsGarbled(items.map((it) => it.str ?? '').join(' ')) ? i : -1))
-    .filter((i) => i >= 0);
   const decoder = new GlyphDecoder();
-  if (garbledIdx.length > 0 && canOcr) {
+  // Glyph learning helps Latin damaged fonts; for heavily garbled Arabic books
+  // prefer full-page Arabic OCR instead of English-only banner learning.
+  if (garbledIdx.length > 0 && canOcr && !heavilyGarbled) {
     try {
       await ensureOcr();
       const learned = new Set<number>();
-      for (let round = 0; round < MAX_LEARNING_PAGES; round++) {
+      const learnLimit = Math.min(MAX_LEARNING_PAGES, 6);
+      for (let round = 0; round < learnLimit; round++) {
         const idx = decoder.pickLearningPage(pageItems, learned);
         if (idx === null) break;
         onProgress?.('ocr', `Repairing damaged font text… (sample ${round + 1}, page ${idx + 1})`, {
@@ -242,19 +300,21 @@ export async function extractPagesFromFileDetailed(
         canvas.width = 0;
         canvas.height = 0;
         const toPdf = (w: { text: string; bbox: { x0: number; y0: number; x1: number; y1: number } }) =>
-          canvasWordToPdfSpace(w, OCR_SCALE, pageHeights[idx]);
+          canvasWordToPdfSpace(w, scale, pageHeights[idx]);
         decoder.learn(pageItems[idx], (result.words ?? []).map(toPdf));
         decoder.markAttempted(pageItems[idx]);
         learned.add(idx);
       }
 
-      // Letters OCR never saw: solve them from the book's own readable vocabulary
       decoder.learnFromVocabulary(pageItems);
 
-      // Chapter banners whose rare letters were never learned: OCR just those strips
+      const headingCap = Math.min(garbledIdx.length, 20);
+      let headingDone = 0;
       for (const idx of garbledIdx) {
+        if (headingDone >= headingCap) break;
         const regions = headingRegionsToOcr(pageItems[idx], decoder);
         if (!regions.length || !ocr.recognizeRegion) continue;
+        headingDone += 1;
         onProgress?.('ocr', `Reading chapter headings… Page ${idx + 1} / ${totalPages}`, {
           percent: 40 + Math.round((idx / totalPages) * 10),
         });
@@ -264,30 +324,33 @@ export async function extractPagesFromFileDetailed(
           const pad = 4;
           const h = pageHeights[idx];
           const text = await ocr.recognizeRegion(canvas, {
-            left: Math.max(0, (r.x0 - pad) * OCR_SCALE),
-            top: Math.max(0, (h - r.y1 - pad) * OCR_SCALE),
-            width: (r.x1 - r.x0 + pad * 2) * OCR_SCALE,
-            height: (r.y1 - r.y0 + pad * 2) * OCR_SCALE,
+            left: Math.max(0, (r.x0 - pad) * scale),
+            top: Math.max(0, (h - r.y1 - pad) * scale),
+            width: (r.x1 - r.x0 + pad * 2) * scale,
+            height: (r.y1 - r.y0 + pad * 2) * scale,
           });
           if (regionTextIsPlausible(text, r, pageItems[idx])) replacements.push({ region: r, text });
         }
         canvas.width = 0;
         canvas.height = 0;
-        // Region item indexes refer to the original items, so replace before decoding
         pageItems[idx] = applyRegionTexts(pageItems[idx], replacements);
       }
     } catch {
       /* OCR unavailable — undecodable glyphs are dropped below */
     }
+  } else if (heavilyGarbled && canOcr) {
+    onProgress?.('ocr', 'Arabic/custom fonts detected — OCR every needed page…', { percent: 35 });
+  } else if (mostlyCleanTextPdf) {
+    onProgress?.('ocr', 'Clean text PDF — OCR only for empty pages…', { percent: 45 });
   }
 
-  // ── Pass 2: layout every page; OCR pages that still have no usable text ────
+  // ── Pass 2: layout every page (1…N). OCR garbled/empty pages so nothing is lost. ─
   const pages: RawPage[] = [];
   const ocrPageNums: number[] = [];
   const ocrFailedPageNums: number[] = [];
+  let fullOcrUsed = 0;
 
   for (let i = 0; i < totalPages; i++) {
-    // Mostly decoded pages keep their text layer; only badly damaged ones are fully OCR'd
     const decodable = decoder.coverage(pageItems[i]) >= 0.4;
     const layout = layoutTextItems(decoder.decode(pageItems[i]));
     let text = stripUndecodable(layout.text);
@@ -295,42 +358,50 @@ export async function extractPagesFromFileDetailed(
     let fromOcr = false;
     let requiresOcr = false;
 
-    const garbled = garbledIdx.includes(i) && !decodable;
-    if (garbled || !pageHasUsableText(text)) {
-      requiresOcr = !garbled;
-      if (canOcr) {
-        onProgress?.('ocr', `Running OCR… Page ${i + 1} / ${totalPages}`, {
-          page: i + 1,
-          totalPages,
-          percent: 50 + Math.round(((i + 1) / totalPages) * 8),
-        });
-        try {
-          await ensureOcr();
-          const canvas = await renderPage(i);
-          const result = await ocr.recognizePage({ pageNum: i + 1, image: canvas, scale: OCR_SCALE });
-          canvas.width = 0;
-          canvas.height = 0;
-          if (ocrTextIsUsable(result.text)) {
-            if (result.items?.length) {
-              const ocrLayout = layoutTextItems(result.items);
-              text = ocrLayout.text;
-              headingLines = ocrLayout.headingLines;
-            } else {
-              text = result.text;
-              headingLines = [];
-            }
-            fromOcr = true;
-            requiresOcr = false;
-            ocrPageNums.push(i + 1);
+    const stillGarbled = pageTextIsGarbled(pageItems[i].map((it) => it.str ?? '').join(' ')) && !decodable;
+    const emptyAfterStrip = !pageHasUsableText(text);
+    // Always OCR when the text layer is garbage or empty — this recovers Arabic ayahs
+    const needsOcr = stillGarbled || emptyAfterStrip || (heavilyGarbled && emptyAfterStrip);
+    const ocrBudgetLeft = fullOcrUsed < MAX_FULL_OCR_PAGES;
+
+    if (needsOcr && canOcr && ocrBudgetLeft) {
+      requiresOcr = true;
+      onProgress?.('ocr', `Reading page ${i + 1} / ${totalPages} (OCR)…`, {
+        page: i + 1,
+        totalPages,
+        percent: 48 + Math.round(((i + 1) / totalPages) * 10),
+      });
+      try {
+        await ensureOcr();
+        const canvas = await renderPage(i);
+        // eng+ara+urd — never englishOnly for full page (Arabic verses need ara pack)
+        const result = await ocr.recognizePage({ pageNum: i + 1, image: canvas, scale });
+        canvas.width = 0;
+        canvas.height = 0;
+        fullOcrUsed += 1;
+        if (ocrTextIsUsable(result.text)) {
+          if (result.items?.length) {
+            const ocrLayout = layoutTextItems(result.items);
+            text = ocrLayout.text;
+            headingLines = ocrLayout.headingLines;
           } else {
-            ocrFailedPageNums.push(i + 1);
+            text = result.text;
+            headingLines = [];
           }
-        } catch {
+          fromOcr = true;
+          requiresOcr = false;
+          ocrPageNums.push(i + 1);
+        } else {
           ocrFailedPageNums.push(i + 1);
         }
+      } catch {
+        ocrFailedPageNums.push(i + 1);
       }
+    } else if (needsOcr && !ocrBudgetLeft) {
+      requiresOcr = true;
     }
 
+    // Keep every page in order (blank pages stay as empty placeholders)
     pages.push({ pageNum: i + 1, text, fromOcr, requiresOcr, headingLines });
     if ((i + 1) % batchSize === 0) await yieldToUi();
   }
