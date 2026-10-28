@@ -9,6 +9,10 @@ import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 const LibraryPage       = lazy(() => import('@/pages/LibraryPage').then((m)       => ({ default: m.LibraryPage })));
+const DemoIslamicBookPage = lazy(() => import('@/pages/DemoIslamicBookPage').then((m) => ({ default: m.DemoIslamicBookPage })));
+const DemoIslamicBookReaderPage = lazy(() =>
+  import('@/pages/DemoIslamicBookReaderPage').then((m) => ({ default: m.DemoIslamicBookReaderPage })),
+);
 const LibraryDemoDetailPage = lazy(() => import('@/pages/LibraryDemoDetailPage').then((m) => ({ default: m.LibraryDemoDetailPage })));
 const ScholarsPage      = lazy(() => import('@/pages/ScholarsPage').then((m)      => ({ default: m.ScholarsPage })));
 const ScholarDetailPage = lazy(() => import('@/pages/ScholarDetailPage').then((m) => ({ default: m.ScholarDetailPage })));
@@ -48,6 +52,8 @@ export default function App() {
             <Routes>
               <Route path="/"                 element={<HomePage />} />
               <Route path="/library"          element={<LibraryPage />} />
+              <Route path="/library/demo-islamic-book/read/:pageNumber" element={<DemoIslamicBookReaderPage />} />
+              <Route path="/library/demo-islamic-book" element={<DemoIslamicBookPage />} />
               <Route path="/library/:slug"    element={<LibraryDemoDetailPage />} />
               <Route path="/scholars"         element={<ScholarsPage />} />
               <Route path="/scholars/:slug"   element={<ScholarDetailPage />} />

@@ -14,7 +14,7 @@ export function ContinueDailySection({ continueBook, progressHint }: ContinueDai
   const benefit = getDailyBenefit();
 
   return (
-    <section className="py-12 sm:py-16">
+    <section className="py-8 sm:py-10">
       <div className="container-page grid gap-6 lg:grid-cols-2">
         <Reveal>
           <article className="flex h-full flex-col rounded-2xl border border-line bg-white/92 p-5 shadow-soft backdrop-blur-sm transition-transform duration-500 hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#141414] sm:p-7">

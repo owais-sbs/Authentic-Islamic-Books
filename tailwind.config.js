@@ -5,29 +5,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#FAF7F0',
-        parchment: '#FAF7F0',
-        ivory: '#FAF7F0',
+        paper: 'rgb(var(--c-paper) / <alpha-value>)',
+        parchment: 'rgb(var(--c-paper) / <alpha-value>)',
+        ivory: 'rgb(var(--c-paper) / <alpha-value>)',
         ink: {
-          900: '#18251F',
-          800: '#1E2E27',
-          700: '#2A3B33',
-          600: '#3D4F46',
-          500: '#6C756E',
-          400: '#8A928B',
-          300: '#B0B6B1',
+          900: 'rgb(var(--c-ink-900) / <alpha-value>)',
+          800: 'rgb(var(--c-ink-800) / <alpha-value>)',
+          700: 'rgb(var(--c-ink-700) / <alpha-value>)',
+          600: 'rgb(var(--c-ink-600) / <alpha-value>)',
+          500: 'rgb(var(--c-ink-500) / <alpha-value>)',
+          400: 'rgb(var(--c-ink-400) / <alpha-value>)',
+          300: 'rgb(var(--c-ink-300) / <alpha-value>)',
         },
         line: {
-          DEFAULT: '#E9E2D5',
-          strong: '#D9D0C0',
+          DEFAULT: 'rgb(var(--c-line) / <alpha-value>)',
+          strong: 'rgb(var(--c-line-strong) / <alpha-value>)',
         },
         accent: {
           DEFAULT: '#C9A227',
           light: '#D4B445',
           dark: '#A8881F',
-          subtle: '#F5EFD8',
+          subtle: 'rgb(var(--c-accent-subtle) / <alpha-value>)',
         },
-        cream: '#FFFFFF',
+        cream: 'rgb(var(--c-cream) / <alpha-value>)',
         islamic: {
           green: '#104C3B',
           forest: '#0A352A',
@@ -37,12 +37,12 @@ export default {
         burgundy: {
           DEFAULT: '#8B2E2E',
           soft: '#A84848',
-          muted: '#F5E8E8',
+          muted: 'rgb(var(--c-burgundy-muted) / <alpha-value>)',
         },
         forest: {
           DEFAULT: '#104C3B',
           mid: '#347F77',
-          soft: '#E8F0EB',
+          soft: 'rgb(var(--c-forest-soft) / <alpha-value>)',
         },
       },
       fontFamily: {

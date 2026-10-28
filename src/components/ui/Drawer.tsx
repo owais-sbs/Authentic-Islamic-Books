@@ -57,7 +57,7 @@ export function Drawer({ open, onClose, children, side = 'left', title, width = 
             animate={{ x: 0 }}
             exit={{ x: side === 'left' ? '-100%' : '100%' }}
             transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
-            className={`fixed top-0 ${side === 'left' ? 'left-0' : 'right-0'} z-50 h-full ${width} max-w-[85vw] bg-cream shadow-xl overflow-y-auto`}
+            className={`fixed top-0 ${side === 'left' ? 'left-0' : 'right-0'} z-50 h-full ${width} max-w-[85vw] overflow-y-auto bg-cream shadow-xl dark:bg-[#141414]`}
             role="dialog"
             aria-modal="true"
           >

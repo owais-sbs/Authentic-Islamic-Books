@@ -125,8 +125,8 @@ export function LibraryShelves({
   startMocks,
 }: LibraryShelvesProps) {
   return (
-    <section className="bg-ivory py-12 dark:bg-black sm:py-16">
-      <div className="container-page space-y-10 sm:space-y-12">
+    <section className="bg-ivory py-8 dark:bg-black sm:py-10">
+      <div className="container-page space-y-8 sm:space-y-10">
         <Reveal className="max-w-2xl">
           <h2 className="font-sans text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl md:text-4xl dark:text-white">
             Explore the Library

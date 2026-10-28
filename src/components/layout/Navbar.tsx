@@ -109,8 +109,8 @@ export function Navbar() {
             : 'border-line/80 bg-ivory dark:border-white/10 dark:bg-black',
         )}
       >
-        <div className="container-page flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-4">
-          <BrandLogo className="min-w-0 max-w-[58%] sm:max-w-none" />
+        <div className="container-page flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
+          <BrandLogo className="min-w-0" />
 
           <nav className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => {
@@ -269,11 +269,6 @@ export function Navbar() {
               </div>
             </div>
           )}
-
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-white/10">
-            <span className="text-sm font-medium text-ink-600 dark:text-white/70">Theme</span>
-            <ThemeToggle />
-          </div>
 
           <Link
             to="/library"

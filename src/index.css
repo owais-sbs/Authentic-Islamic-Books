@@ -5,6 +5,41 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --c-paper: 250 247 240;
+    --c-cream: 255 255 255;
+    --c-ink-900: 24 37 31;
+    --c-ink-800: 30 46 39;
+    --c-ink-700: 42 59 51;
+    --c-ink-600: 61 79 70;
+    --c-ink-500: 108 117 110;
+    --c-ink-400: 138 146 139;
+    --c-ink-300: 176 182 177;
+    --c-line: 233 226 213;
+    --c-line-strong: 217 208 192;
+    --c-accent-subtle: 245 239 216;
+    --c-burgundy-muted: 245 232 232;
+    --c-forest-soft: 232 240 235;
+  }
+
+  /* Dark = black / charcoal surfaces — not green */
+  html.dark {
+    --c-paper: 0 0 0;
+    --c-cream: 20 20 20;
+    --c-ink-900: 250 250 250;
+    --c-ink-800: 245 245 245;
+    --c-ink-700: 229 229 229;
+    --c-ink-600: 212 212 212;
+    --c-ink-500: 163 163 163;
+    --c-ink-400: 115 115 115;
+    --c-ink-300: 82 82 82;
+    --c-line: 38 38 38;
+    --c-line-strong: 55 55 55;
+    --c-accent-subtle: 40 35 20;
+    --c-burgundy-muted: 40 20 20;
+    --c-forest-soft: 20 20 20;
+  }
+
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
@@ -17,6 +52,20 @@
 
   html.dark body {
     @apply bg-black text-white/90;
+  }
+
+  /* Plain Tailwind white surfaces → charcoal in dark mode */
+  html.dark .bg-white {
+    background-color: #141414 !important;
+  }
+  html.dark .bg-white\/95,
+  html.dark .bg-white\/92,
+  html.dark .bg-white\/90 {
+    background-color: rgba(20, 20, 20, 0.95) !important;
+  }
+  html.dark .bg-white\/80,
+  html.dark .bg-white\/70 {
+    background-color: rgba(20, 20, 20, 0.85) !important;
   }
 
   html.dark ::-webkit-scrollbar-track {

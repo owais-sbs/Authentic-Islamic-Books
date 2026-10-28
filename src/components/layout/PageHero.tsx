@@ -11,8 +11,8 @@ interface PageHeroProps {
 }
 
 /**
- * Shared public-page hero: full-bleed image (optional) or soft paper band,
- * brand-consistent typography, light overlay so imagery stays visible.
+ * Shared public-page hero — always dark charcoal/black under white type
+ * (does not use theme ink tokens, which invert in dark mode).
  */
 export function PageHero({
   eyebrow,
@@ -29,31 +29,31 @@ export function PageHero({
       {imageUrl ? (
         <div className="absolute inset-0">
           <img src={imageUrl} alt="" className="h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-ink-900/35" />
-          <div className="absolute inset-0 bg-gradient-to-r from-ink-900/75 via-ink-900/45 to-ink-900/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-900/50 via-transparent to-ink-900/20" />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/25" />
         </div>
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-ink-900 via-ink-800 to-ink-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-[#141414] to-black" />
       )}
 
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
 
-      <div className="relative z-10 container-page">
+      <div className="container-page relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <p className="mb-3 font-serif text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          <p className="mb-4 font-sans text-xs font-medium uppercase tracking-[0.2em] text-accent">
             {eyebrow}
           </p>
-          <h1 className="font-cinzel text-3xl sm:text-4xl lg:text-[2.75rem] font-semibold leading-[1.15] tracking-wide text-white">
+          <h1 className="font-sans text-3xl font-semibold leading-[1.3] tracking-tight text-white sm:text-4xl sm:leading-[1.28] lg:text-[2.75rem] lg:leading-[1.25]">
             {title}
           </h1>
           {description && (
-            <p className="mt-4 max-w-xl text-[15px] sm:text-base leading-relaxed text-white/80">
+            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/80 sm:text-base">
               {description}
             </p>
           )}
@@ -61,7 +61,7 @@ export function PageHero({
         </motion.div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-paper to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-paper to-transparent dark:from-black" />
     </section>
   );
 }

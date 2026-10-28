@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DEMO_BOOK_SLUG } from '@/data/demoIslamicBook';
 
 export interface MockBookSpec {
   id: string;
@@ -13,6 +14,8 @@ export interface MockBookSpec {
   pages?: string;
   badge?: string;
 }
+
+const DEMO_HREF = `/library/${DEMO_BOOK_SLUG}`;
 
 /** Clean front-facing cover — matches professional library carousel layouts. */
 export function IslamicBookMockup({
@@ -46,7 +49,6 @@ export function IslamicBookMockup({
           background: `linear-gradient(160deg, rgba(255,255,255,0.12), transparent 38%), linear-gradient(180deg, ${book.color}, ${edge})`,
         }}
       />
-      {/* Spine edge hint */}
       <div className="absolute inset-y-0 left-0 w-[5px] bg-gradient-to-r from-black/35 to-transparent" />
       <div className="absolute inset-[9px] flex flex-col items-center border border-accent/40 px-2 py-3 text-center text-[#F7F1E4]">
         <span className="h-1.5 w-1.5 rotate-45 bg-accent" aria-hidden />
@@ -66,9 +68,8 @@ export function IslamicBookMockup({
           {book.author}
         </p>
       </div>
-      {/* Page edge */}
       <div
-        className="absolute right-0 top-[6px] bottom-[6px] w-[5px] rounded-r-sm"
+        className="absolute bottom-[6px] right-0 top-[6px] w-[5px] rounded-r-sm"
         style={{
           background:
             'repeating-linear-gradient(to right, #F3ECDD 0px, #F3ECDD 1px, #D9CFBE 1px, #D9CFBE 2px)',
@@ -105,168 +106,166 @@ export function IslamicBookMockup({
     </div>
   );
 
-  if (book.href) {
-    return (
-      <Link to={book.href} className="block shrink-0 snap-start">
-        {body}
-      </Link>
-    );
-  }
-  return body;
+  // All homepage mock shelves open the Kutub-style demo reading experience
+  return (
+    <Link to={book.href ?? DEMO_HREF} className="block shrink-0 snap-start">
+      {body}
+    </Link>
+  );
 }
 
 export const FEATURED_MOCK_BOOKS: MockBookSpec[] = [
   {
     id: 'mock-quran',
-    title: 'The Noble Qur’an',
-    arabic: 'القرآن الكريم',
-    author: 'With English Commentary',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#104C3B',
-    pages: 'Complete edition',
-    badge: 'Featured',
-    href: '/library',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-bukhari',
-    title: 'Sahih al-Bukhari',
-    arabic: 'صحيح البخاري',
-    author: 'Imam al-Bukhari',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#5C1F1F',
-    pages: 'Hadith collection',
-    badge: 'Classic',
-    href: '/library?category=hadith',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-seerah',
-    title: 'The Seerah of the Prophet',
-    arabic: 'السيرة النبوية',
-    author: 'Ibn Kathir',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#1E3A5F',
-    pages: 'Biography',
-    badge: 'Classic',
-    href: '/library?category=seerah',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-riyad',
-    title: 'Riyad as-Salihin',
-    arabic: 'رياض الصالحين',
-    author: 'Imam an-Nawawi',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#347F77',
-    pages: 'Hadith & manners',
-    badge: 'Ready',
-    href: '/library?category=hadith',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-40',
-    title: 'Forty Hadith',
-    arabic: 'الأربعون النووية',
-    author: 'Imam an-Nawawi',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#3D2B1F',
-    pages: '40 narrations',
-    badge: 'Start here',
-    href: '/library?category=hadith',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-aqeedah',
-    title: 'Foundations of Faith',
-    arabic: 'العقيدة',
-    author: 'Classical Collection',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#0A352A',
-    pages: 'Aqeedah',
-    badge: 'Ready',
-    href: '/library?category=aqeedah',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-adab',
-    title: 'The Book of Manners',
-    arabic: 'الآداب',
-    author: 'Adab Collection',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#2B4C3E',
-    pages: 'Character',
-    badge: 'Featured',
-    href: '/library?category=ethics',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
 ];
 
 export const ARRIVAL_MOCK_BOOKS: MockBookSpec[] = [
   {
     id: 'mock-fiqh',
-    title: 'Fiqh Essentials',
-    arabic: 'الفقه',
-    author: 'Introductory Series',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#2F5D55',
-    pages: 'New addition',
-    badge: 'New',
-    href: '/library?category=fiqh',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-tazkiyah',
-    title: 'Purification of the Heart',
-    arabic: 'تزكية',
-    author: 'Spiritual Classics',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#6B3A22',
-    pages: 'Tazkiyah',
-    badge: 'New',
-    href: '/library?category=spirituality',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-tafsir',
-    title: 'Tafsir Reflections',
-    arabic: 'تفسير',
-    author: 'Qur’an Studies',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#1A4A3A',
-    pages: 'Tafsir',
-    badge: 'New',
-    href: '/library?category=tafsir',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-history',
-    title: 'Islamic History',
-    arabic: 'التاريخ',
-    author: 'Civilisation Series',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#2A1D14',
-    pages: 'History',
-    badge: 'Ready',
-    href: '/library?category=history',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-character',
-    title: 'Family & Character',
-    arabic: 'الأخلاق',
-    author: 'Ethics Collection',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#104C3B',
-    pages: 'Character',
-    badge: 'Ready',
-    href: '/library?category=ethics',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-nawawi-2',
-    title: 'Gardens of the Righteous',
-    arabic: 'رياض الصالحين',
-    author: 'Imam an-Nawawi',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#1E3A5F',
-    pages: 'Hadith',
-    badge: 'Classic',
-    href: '/library',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
   {
     id: 'mock-duas',
-    title: 'Daily Supplications',
-    arabic: 'الأدعية',
-    author: 'Worship Series',
+    title: 'Foundations of Islamic Knowledge',
+    arabic: 'أصول العلم الإسلامي',
+    author: 'Abdullah Ahmad (demo)',
     color: '#3A5A48',
-    pages: 'New addition',
-    badge: 'New',
-    href: '/library',
+    pages: '10 pages · 3 chapters',
+    badge: 'Demo',
+    href: DEMO_HREF,
   },
 ];
 
 export const START_HERE_MOCK_BOOKS: MockBookSpec[] = [
   FEATURED_MOCK_BOOKS[0],
-  FEATURED_MOCK_BOOKS[4],
+  FEATURED_MOCK_BOOKS[1],
   FEATURED_MOCK_BOOKS[2],
   ARRIVAL_MOCK_BOOKS[0],
   ARRIVAL_MOCK_BOOKS[1],
-  FEATURED_MOCK_BOOKS[5],
-  FEATURED_MOCK_BOOKS[6],
+  FEATURED_MOCK_BOOKS[3],
+  FEATURED_MOCK_BOOKS[4],
 ];

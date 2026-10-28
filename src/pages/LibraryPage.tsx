@@ -22,7 +22,7 @@ export function LibraryPage() {
 
       <Reveal className="container-page py-6 sm:py-8">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Library' }]} />
-        <p className="mt-4 max-w-2xl font-serif text-[15px] leading-relaxed text-ink-600">
+        <p className="mt-4 max-w-2xl font-sans text-[15px] leading-relaxed text-ink-600">
           Open a card to preview that format’s full reading layout. Uploaded books are
           available from the homepage collection.
         </p>
@@ -30,10 +30,10 @@ export function LibraryPage() {
 
       <LibraryCatalog />
 
-      <section className="border-t border-line bg-ink-900">
+      <section className="border-t border-line bg-[#F3EDE2] dark:border-white/10 dark:bg-black">
         <div className="container-page py-12 sm:py-14">
           <Reveal as="div">
-            <h2 className="font-cinzel text-xl font-semibold tracking-wide text-white sm:text-2xl">
+            <h2 className="font-sans text-xl font-semibold leading-snug tracking-tight text-ink-900 dark:text-white sm:text-2xl">
               Library Information
             </h2>
           </Reveal>
@@ -60,10 +60,10 @@ export function LibraryPage() {
 function InfoBlock({ title, body }: { title: string; body: string }) {
   return (
     <StaggerItem>
-      <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+      <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-dark dark:text-accent">
         {title}
       </h3>
-      <p className="mt-3 font-serif text-[14px] leading-relaxed text-white/70">{body}</p>
+      <p className="mt-3 font-sans text-[14px] leading-relaxed text-ink-600 dark:text-white/70">{body}</p>
     </StaggerItem>
   );
 }

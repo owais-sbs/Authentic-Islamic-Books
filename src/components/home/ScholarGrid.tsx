@@ -37,7 +37,7 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
   }, []);
 
   return (
-    <section className="relative overflow-hidden py-16 sm:py-20">
+    <section className="relative overflow-hidden py-8 sm:py-10">
       {/* Autoplay background video */}
       <div className="absolute inset-0">
         <video
@@ -53,17 +53,17 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
         >
           <source src="/scholars%20bg.mp4" type="video/mp4" />
         </video>
-        {/* Soft white overlay so video stays visible but readable */}
-        <div className="absolute inset-0 bg-white/45" />
-        <div className="absolute inset-0 bg-gradient-to-b from-ivory/50 via-transparent to-ivory/55" />
+        {/* Soft overlay so video stays visible but readable */}
+        <div className="absolute inset-0 bg-white/45 dark:bg-black/55" />
+        <div className="absolute inset-0 bg-gradient-to-b from-ivory/50 via-transparent to-ivory/55 dark:from-black/50 dark:to-black/60" />
       </div>
 
       <div className="container-page relative z-10">
         <Reveal className="mx-auto max-w-3xl text-center">
-          <h2 className="font-sans text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+          <h2 className="font-sans text-3xl font-semibold leading-[1.35] tracking-tight text-ink-900 dark:text-white sm:text-4xl sm:leading-[1.32]">
             Learn From Trusted Scholars and Authors All Around the World
           </h2>
-          <p className="mt-3 font-sans text-ink-600">
+          <p className="mt-5 font-sans leading-relaxed text-ink-600 dark:text-white/65">
             Explore beneficial works from scholars, authors, and contributors represented in our
             collection — across eras, regions, and traditions.
           </p>
@@ -74,13 +74,13 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
             Scholar profiles will appear here as they are added to the library.
           </p>
         ) : (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((scholar, i) => (
               <Reveal key={scholar.id} delay={(i % 3) * 0.05}>
-                <article className="flex h-full flex-col rounded-2xl border border-white/70 bg-white/90 p-5 shadow-soft backdrop-blur-md transition-transform duration-500 hover:-translate-y-1">
+                <article className="flex h-full flex-col rounded-2xl border border-white/70 bg-white/90 p-5 shadow-soft backdrop-blur-md transition-transform duration-500 hover:-translate-y-1 dark:border-white/10 dark:bg-[#141414]/95">
                   <div className="flex items-start gap-4">
                     <div
-                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-accent/45 bg-ivory font-sans text-sm font-bold text-islamic-green"
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-accent/45 bg-ivory font-sans text-sm font-bold text-islamic-green dark:bg-black dark:text-accent"
                       aria-hidden
                     >
                       {initials(scholar.name)}

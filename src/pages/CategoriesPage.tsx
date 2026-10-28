@@ -67,7 +67,7 @@ export function CategoriesPage() {
                   </span>
 
                   <div className="relative flex items-start justify-between gap-3">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ink-900 text-accent shadow-md transition-all duration-300 group-hover:bg-accent group-hover:text-ink-900 group-hover:scale-105">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-accent shadow-md transition-all duration-300 group-hover:scale-105 group-hover:bg-accent group-hover:text-ink-900">
                       <Icon size={22} strokeWidth={1.5} />
                     </div>
                     <span className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-500 transition-colors group-hover:border-accent/30 group-hover:text-accent-dark">

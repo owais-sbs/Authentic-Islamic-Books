@@ -22,8 +22,8 @@ const principles = [
 
 export function WhyAuthenticSection() {
   return (
-    <section className="py-14 sm:py-16">
-      <div className="container-page grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+    <section className="py-8 sm:py-10">
+      <div className="container-page grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
         <Reveal>
           <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-accent-dark">
             Why Authentic Islamic Books

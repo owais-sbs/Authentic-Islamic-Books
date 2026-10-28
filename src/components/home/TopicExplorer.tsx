@@ -14,7 +14,7 @@ export function TopicExplorer({ categories, bookCounts }: TopicExplorerProps) {
   const topics = categories.slice(0, 8);
 
   return (
-    <section className="bg-ivory py-12 sm:py-16 dark:bg-black">
+    <section className="bg-ivory py-8 sm:py-10 dark:bg-black">
       <div className="container-page">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.24em] text-accent-dark">
@@ -28,7 +28,7 @@ export function TopicExplorer({ categories, bookCounts }: TopicExplorerProps) {
           </p>
         </Reveal>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:mt-10 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+        <div className="mt-6 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:mt-8 sm:gap-5 lg:grid-cols-4 lg:gap-6">
           {topics.map((cat, i) => {
             const count = bookCounts[cat.id] ?? 0;
             const Icon = getCategoryIcon(cat.slug);

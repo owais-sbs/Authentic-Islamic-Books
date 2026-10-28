@@ -30,7 +30,7 @@ const paths = [
 
 export function ReadingPathsSection() {
   return (
-    <section className="bg-ivory py-12 sm:py-16 dark:bg-black">
+    <section className="bg-ivory py-8 sm:py-10 dark:bg-black">
       <div className="container-page">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="font-sans text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl md:text-4xl dark:text-white">
@@ -42,7 +42,7 @@ export function ReadingPathsSection() {
           </p>
         </Reveal>
 
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:mt-10 sm:gap-6 md:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:mt-8 sm:gap-6 md:grid-cols-3">
           {paths.map((path, i) => (
             <Reveal key={path.title} delay={i * 0.06}>
               <div className="topic-card-border h-full rounded-2xl p-[2px] shadow-soft transition-transform duration-300 hover:-translate-y-1 hover:shadow-book">

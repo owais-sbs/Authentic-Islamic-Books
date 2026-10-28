@@ -17,10 +17,10 @@ export function NewsletterSection() {
   }
 
   return (
-    <section className="bg-ivory pb-14 pt-6 dark:bg-black sm:pb-20 sm:pt-8">
+    <section className="bg-ivory pb-10 pt-4 dark:bg-black sm:pb-14 sm:pt-6">
       <div className="container-page">
         <Reveal>
-          <div className="w-full rounded-2xl border border-line bg-white px-5 py-8 text-center shadow-soft dark:border-white/10 dark:bg-[#141414] sm:px-12 sm:py-12 lg:px-16 lg:py-14">
+          <div className="w-full rounded-2xl border border-line bg-white px-5 py-8 text-center shadow-soft dark:border-white/10 dark:bg-[#141414] sm:px-12 sm:py-10 lg:px-16 lg:py-12">
             <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-islamic-green/10 text-islamic-green dark:bg-accent/15 dark:text-accent">
               <Mail size={22} />
             </div>

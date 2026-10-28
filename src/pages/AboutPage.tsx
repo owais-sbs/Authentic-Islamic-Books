@@ -120,9 +120,9 @@ export function AboutPage() {
             alt="Islamic architecture"
             className="h-full w-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-ink-900/30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-ink-900/80 via-ink-900/45 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink-900/25 to-ink-900/55" />
+          <div className="absolute inset-0 bg-black/35" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/25 to-black/55" />
         </div>
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-accent/60 via-accent/30 to-transparent" />
 
@@ -487,95 +487,47 @@ export function AboutPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          9. READING EXPERIENCE  (light)
+          9. READING EXPERIENCE
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="bg-cream py-16 sm:py-20">
         <div className="container-page">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, x: -20, filter: 'blur(8px)' }}
-              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
+          <motion.div
+            initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="mx-auto max-w-2xl"
+          >
+            <p className="mb-3 font-serif text-xs font-semibold uppercase tracking-widest text-accent">
+              The Reader
+            </p>
+            <h2 className="font-serif text-3xl font-semibold text-ink-900">Read Without Distraction</h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-600">
+              Books are presented in a structured digital format — organized by chapters, sections
+              and topics for a focused reading experience.
+            </p>
+            <ul className="mt-6 space-y-3.5">
+              {[
+                { icon: Type, text: 'Adjustable font size, line spacing, and reading width' },
+                { icon: BookOpen, text: 'Hierarchical table of contents with smooth navigation' },
+                { icon: Search, text: 'Search inside any book and jump to results instantly' },
+                { icon: Bookmark, text: 'Bookmark sections and track your reading progress' },
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-accent/20 bg-accent/10">
+                    <item.icon size={13} className="text-accent" />
+                  </div>
+                  <span className="text-sm text-ink-600">{item.text}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/library"
+              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-ink-900 shadow-lg shadow-accent/20 transition-all hover:bg-accent-light"
             >
-              <p className="mb-3 font-serif text-xs font-semibold uppercase tracking-widest text-accent">The Reader</p>
-              <h2 className="font-serif text-3xl font-semibold text-ink-900">Read Without Distractions</h2>
-              <p className="mt-4 text-base leading-relaxed text-ink-600">
-                Books are presented in a structured digital format — organized by chapters, sections
-                and topics for a focused reading experience.
-              </p>
-              <ul className="mt-6 space-y-3.5">
-                {[
-                  { icon: Type,     text: 'Adjustable font size, line spacing, and reading width' },
-                  { icon: BookOpen, text: 'Hierarchical table of contents with smooth navigation' },
-                  { icon: Search,   text: 'Search inside any book and jump to results instantly' },
-                  { icon: Bookmark, text: 'Bookmark sections and track your reading progress' },
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-accent/20 bg-accent/10">
-                      <item.icon size={13} className="text-accent" />
-                    </div>
-                    <span className="text-sm text-ink-600">{item.text}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/books/foundations-of-knowledge"
-                className="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-ink-900 transition-all hover:bg-accent-light shadow-lg shadow-accent/20"
-              >
-                <BookOpen size={15} /> Explore the Reader
-              </Link>
-            </motion.div>
-
-            {/* Mock reader UI — light themed */}
-            <motion.div
-              initial={{ opacity: 0, x: 20, filter: 'blur(8px)' }}
-              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-              className="relative"
-            >
-              <div className="overflow-hidden rounded-2xl border border-line bg-cream shadow-xl shadow-ink-900/10">
-                <div className="flex items-center gap-2 border-b border-line bg-paper px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-full bg-line" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-line" />
-                    <div className="h-2.5 w-2.5 rounded-full bg-line" />
-                  </div>
-                  <span className="ml-2 text-xs text-ink-500">Foundations of Knowledge</span>
-                </div>
-                <div className="flex">
-                  <div className="hidden w-40 border-r border-line bg-paper p-4 sm:block">
-                    <p className="mb-3 text-xs font-semibold text-ink-500">Contents</p>
-                    <div className="space-y-1.5">
-                      {['Introduction', '1. Foundations', '2. Principles', '3. Applications', '4. Reflections', '5. Conclusion'].map((s, j) => (
-                        <div
-                          key={j}
-                          className={`rounded px-2 py-1 text-xs ${
-                            j === 2
-                              ? 'border border-accent/20 bg-accent/10 font-medium text-accent'
-                              : 'text-ink-500'
-                          }`}
-                        >
-                          {s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex-1 p-6">
-                    <p className="font-serif text-xs uppercase tracking-wider text-accent">Chapter 2</p>
-                    <h3 className="mt-1 font-serif text-lg font-semibold text-ink-900">Principles</h3>
-                    <div className="mt-4 space-y-2.5">
-                      {[1, 5/6, 4/5, 1, 3/4, 5/6, 2/3].map((w, j) => (
-                        <div key={j} className="h-2 rounded-full bg-line" style={{ width: `${w * 100}%` }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute -inset-2 -z-10 rounded-2xl bg-accent/5 blur-2xl opacity-50" />
-            </motion.div>
-          </div>
+              <BookOpen size={15} /> Explore the Library
+            </Link>
+          </motion.div>
         </div>
       </section>
 
@@ -640,7 +592,7 @@ export function AboutPage() {
                   className="group relative overflow-hidden rounded-2xl border border-line bg-cream p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-lg hover:shadow-ink-900/5"
                 >
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-light to-transparent opacity-80" />
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-900 text-accent transition-colors duration-300 group-hover:bg-accent group-hover:text-ink-900">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-accent transition-colors duration-300 group-hover:bg-accent group-hover:text-ink-900 dark:bg-[#141414]">
                     <feature.icon size={20} strokeWidth={1.5} />
                   </div>
                   <h3 className="font-serif text-lg font-semibold text-ink-900">{feature.title}</h3>
