@@ -1,4 +1,4 @@
-﻿import { BookTableRow } from './BookTableRow';
+import { BookTableRow } from './BookTableRow';
 import { BooksMobileList } from './BooksMobileList';
 import { BooksEmptyState } from './BooksEmptyState';
 import { BooksTableSkeleton } from './BooksTableSkeleton';

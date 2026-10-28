@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AdminRoute, AdminLoginRoute } from '@/components/admin/AdminRoute';
 import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -38,6 +39,7 @@ function PageLoader() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         {/* Respect the OS "reduce motion" setting for every framer-motion animation */}
         <MotionConfig reducedMotion="user">
@@ -78,6 +80,7 @@ export default function App() {
           </Suspense>
         </MotionConfig>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

@@ -6,6 +6,17 @@
     <link rel="shortcut icon" href="/favicon.svg?v=3" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon.svg?v=3" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('idl-theme');
+          if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>Islamic Digital Library — Explore Centuries of Scholarship</title>
     <meta name="description" content="Discover a growing collection of Islamic books and scholarly works, presented in a clean, structured English reading experience." />
 

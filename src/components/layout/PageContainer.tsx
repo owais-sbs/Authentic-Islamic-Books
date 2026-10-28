@@ -13,7 +13,7 @@ interface PageContainerProps {
 export function PageContainer({ children, hideFooter, hideNav }: PageContainerProps) {
   const { pathname } = useLocation();
   return (
-    <div className="flex min-h-screen flex-col bg-paper">
+    <div className="flex min-h-screen flex-col bg-ivory dark:bg-black">
       {!hideNav && <Navbar />}
       {/* Opacity only — transforms here would break fixed/sticky children */}
       <motion.main

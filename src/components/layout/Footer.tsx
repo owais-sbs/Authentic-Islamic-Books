@@ -1,62 +1,60 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Github, Twitter, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { Reveal } from '@/components/motion/Reveal';
 
 const footerSections = [
   {
-    title: 'Library',
+    title: 'Explore',
     links: [
-      { label: 'Explore Books', href: '/library' },
-      { label: 'Scholars', href: '/scholars' },
-      { label: 'Hijri Timeline', href: '/timeline' },
+      { label: 'Browse Books', href: '/library' },
       { label: 'Categories', href: '/categories' },
+      { label: 'Authors', href: '/scholars' },
+      { label: 'Collections', href: '/library?sort=popular' },
+    ],
+  },
+  {
+    title: 'About',
+    links: [
+      { label: 'About Us', href: '/about' },
+      { label: 'Our Approach', href: '/about' },
+      { label: 'Hijri Timeline', href: '/timeline' },
+      { label: 'Bookmarks', href: '/bookmarks' },
     ],
   },
   {
     title: 'Resources',
     links: [
-      { label: 'About', href: '/about' },
-      { label: 'Bookmarks', href: '/bookmarks' },
-      { label: 'Reading Guide', href: '/about' },
+      { label: 'Reading Guides', href: '/about' },
+      { label: 'Categories Guide', href: '/categories' },
+      { label: 'Help & Bookmarks', href: '/bookmarks' },
     ],
   },
 ];
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-ink-700 bg-ink-900">
+    <footer className="mt-auto bg-islamic-green text-white dark:bg-black dark:border-t dark:border-white/10">
       <div className="container-page py-12 sm:py-14">
-        <Reveal className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-ink-900">
-                <BookOpen size={18} strokeWidth={1.5} />
-              </div>
-              <span className="font-cinzel text-sm font-semibold tracking-wide text-white">
-                Islamic Digital Library
-              </span>
-            </Link>
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-300">
-              A digital platform exploring centuries of Islamic scholarship through a clean,
-              structured reading experience. Built for students, researchers, and general readers.
+        <Reveal className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <BrandLogo variant="onGreen" />
+            <p className="mt-4 max-w-sm font-sans text-sm leading-relaxed text-white/80">
+              A peaceful digital library for discovering and reading authentic Islamic books —
+              curated for students, seekers, and everyday readers.
             </p>
-            <div className="mt-5 flex items-center gap-3">
-              {[Github, Twitter, Mail].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-600 text-ink-300 transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent"
-                  aria-label="Social link"
-                >
-                  <Icon size={15} />
-                </a>
-              ))}
-            </div>
+            <a
+              href="mailto:hello@authenticislamicbooks.local"
+              className="mt-5 inline-flex items-center gap-2 font-sans text-sm font-medium text-white transition-colors hover:text-white/85"
+            >
+              <Mail size={15} />
+              Contact
+            </a>
           </div>
 
           {footerSections.map((section) => (
             <div key={section.title}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-accent">
+              <h3 className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-white">
                 {section.title}
               </h3>
               <ul className="mt-4 space-y-2.5">
@@ -64,7 +62,7 @@ export function Footer() {
                   <li key={link.label}>
                     <Link
                       to={link.href}
-                      className="text-sm text-ink-300 transition-colors hover:text-accent"
+                      className="font-sans text-sm text-white/75 transition-colors hover:text-white"
                     >
                       {link.label}
                     </Link>
@@ -75,12 +73,18 @@ export function Footer() {
           ))}
         </Reveal>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-ink-700 pt-6 text-center sm:flex-row sm:text-left">
-          <p className="text-xs text-ink-400">
-            © {new Date().getFullYear()} Islamic Digital Library. All sample content is for demonstration
-            purposes.
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/20 pt-6 text-center sm:flex-row sm:text-left">
+          <p className="font-sans text-xs text-white/60">
+            © {new Date().getFullYear()} Authentic Islamic Books. All rights reserved.
           </p>
-          <p className="text-xs text-ink-400">Built for exploration and study.</p>
+          <div className="flex flex-wrap items-center justify-center gap-4 font-sans text-xs text-white/60">
+            <Link to="/about" className="transition-colors hover:text-white">
+              Privacy Policy
+            </Link>
+            <Link to="/about" className="transition-colors hover:text-white">
+              Terms of Use
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

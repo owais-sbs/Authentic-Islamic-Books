@@ -1,4 +1,4 @@
-ï»¿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -210,7 +210,7 @@ export function AdminDashboardPage() {
         .map((b) => ({
           id: b.id,
           title: b.title,
-          authorName: b.authorName ?? b.authorId ?? 'â€”',
+          authorName: b.authorName ?? b.authorId ?? '—',
           status: (b.status as import('@/features/books/types').BookStatus) || 'published',
           updatedAt: b.addedDate ?? new Date().toISOString().slice(0, 10),
         }));
@@ -288,7 +288,7 @@ export function AdminDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <AdminPageHeader
               title="Dashboard"
-              description="Live overview of your library â€” stats update when books, scholars, or categories change."
+              description="Live overview of your library — stats update when books, scholars, or categories change."
             />
             <div className="mt-1 flex shrink-0 items-center gap-2">
               <a
@@ -370,7 +370,7 @@ export function AdminDashboardPage() {
               <Archive size={14} className="text-[#94A3B8]" />
               <span>
                 <span className="font-semibold text-[#0B1B2B]">{s.archived}</span> archived book
-                {s.archived !== 1 ? 's' : ''} â€” view or restore them
+                {s.archived !== 1 ? 's' : ''} — view or restore them
               </span>
               <ArrowRight size={13} className="ml-auto" />
             </Link>

@@ -1,41 +1,16 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  ArrowRight,
-  BookOpen,
-  Scale,
-  ScrollText,
-  Landmark,
-  Heart,
-  Sparkles,
-  Brain,
-  UserRound,
-  BookMarked,
-  History,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHero } from '@/components/layout/PageHero';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { getCategoryIcon } from '@/lib/categoryIcons';
 import { useCategories } from '@/hooks/useCategories';
 import { useLibraryFilters } from '@/hooks/useLibraryFilters';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
 const HERO_IMG =
   'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=1600&h=700&fit=crop';
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  aqeedah: Landmark,
-  hadith: ScrollText,
-  tafsir: BookMarked,
-  fiqh: Scale,
-  seerah: BookOpen,
-  history: History,
-  ethics: Heart,
-  spirituality: Sparkles,
-  'islamic-thought': Brain,
-  biography: UserRound,
-};
 
 export function CategoriesPage() {
   usePageMeta({
@@ -63,7 +38,7 @@ export function CategoriesPage() {
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((cat, i) => {
             const count = allBooks.filter((b) => b.categoryIds.includes(cat.id)).length;
-            const Icon = CATEGORY_ICONS[cat.slug] ?? BookOpen;
+            const Icon = getCategoryIcon(cat.slug);
 
             return (
               <motion.div

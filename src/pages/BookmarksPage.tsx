@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bookmark, BookOpen, ArrowRight, X, Heart } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -12,7 +12,7 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 
 export function BookmarksPage() {
   usePageMeta({
-    title: 'Bookmarks  Islamic Digital Library',
+    title: 'Bookmarks ? Islamic Digital Library',
     description: 'Your saved books and reading bookmarks in the Islamic Digital Library.',
     path: '/bookmarks',
   });

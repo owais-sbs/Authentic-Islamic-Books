@@ -1,4 +1,4 @@
-﻿import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Search, Library, ArrowRight } from 'lucide-react';
 import { getFeaturedBooks } from '@/data/books';
