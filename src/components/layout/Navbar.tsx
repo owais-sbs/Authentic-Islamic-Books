@@ -180,12 +180,12 @@ export function Navbar() {
             </div>
           </nav>
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <ThemeToggle />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <ThemeToggle className="h-9 w-9 sm:h-10 sm:w-10" />
 
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="rounded-full p-2.5 text-ink-600 transition-colors hover:bg-islamic-green/10 hover:text-islamic-green dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
+              className="hidden rounded-full p-2.5 text-ink-600 transition-colors hover:bg-islamic-green/10 hover:text-islamic-green sm:inline-flex dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label="Search"
             >
               {searchOpen ? <X size={18} /> : <Search size={18} />}
@@ -237,6 +237,17 @@ export function Navbar() {
 
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} title="Menu">
         <nav className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileOpen(false);
+              setSearchOpen(true);
+            }}
+            className="mb-1 flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-ink-600 hover:bg-paper/60 sm:hidden"
+          >
+            <Search size={16} />
+            Search
+          </button>
           {navLinks.map((link) => {
             const pathOnly = link.href.split('?')[0];
             const active = location.pathname === pathOnly;

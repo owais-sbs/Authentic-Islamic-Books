@@ -7,19 +7,46 @@ const items = [
   { icon: Sparkles, label: 'Free Forever' },
 ];
 
+function TrustItem({
+  icon: Icon,
+  label,
+}: {
+  icon: (typeof items)[number]['icon'];
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 font-sans text-[12px] font-medium text-islamic-green dark:text-white/85 sm:gap-2 sm:text-sm">
+      <Icon size={15} className="shrink-0 text-accent-dark dark:text-accent" strokeWidth={1.75} />
+      {label}
+    </span>
+  );
+}
+
 export function TrustStrip() {
   return (
-    <section className="border-y border-line/80 bg-white/70 backdrop-blur-sm dark:border-white/10 dark:bg-[#141414]/80">
-      <div className="container-page">
-        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-3.5 sm:py-4">
+    <section className="bg-[#F4F1EA] dark:bg-black">
+      <div className="container-page py-5 sm:py-4">
+        {/* Mobile: diamond — 1 / 2 / 1 */}
+        <ul className="flex flex-col items-center gap-3 sm:hidden">
+          <li>
+            <TrustItem {...items[0]} />
+          </li>
+          <li className="flex w-full items-center justify-center gap-6 px-1">
+            <TrustItem {...items[1]} />
+            <TrustItem {...items[2]} />
+          </li>
+          <li>
+            <TrustItem {...items[3]} />
+          </li>
+        </ul>
+
+        {/* sm+: single row */}
+        <ul className="hidden flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:flex">
           {items.map((item, i) => (
             <li key={item.label} className="flex items-center gap-6">
-              <span className="inline-flex items-center gap-2 font-sans text-[12px] font-medium text-islamic-green dark:text-white/85 sm:text-sm">
-                <item.icon size={16} className="shrink-0 text-accent-dark dark:text-accent" strokeWidth={1.75} />
-                {item.label}
-              </span>
+              <TrustItem {...item} />
               {i < items.length - 1 && (
-                <span className="hidden h-4 w-px bg-line-strong dark:bg-white/15 sm:block" aria-hidden />
+                <span className="hidden h-4 w-px bg-line-strong dark:bg-white/15 md:block" aria-hidden />
               )}
             </li>
           ))}

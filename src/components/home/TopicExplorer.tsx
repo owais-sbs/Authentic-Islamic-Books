@@ -20,7 +20,7 @@ export function TopicExplorer({ categories, bookCounts }: TopicExplorerProps) {
           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.24em] text-accent-dark">
             Browse by Subject
           </p>
-          <h2 className="mt-2 font-sans text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl md:text-4xl">
+          <h2 className="mt-2 whitespace-nowrap font-sans text-[1.05rem] font-bold tracking-tight text-ink-900 dark:text-white min-[380px]:text-[1.15rem] sm:text-3xl md:text-4xl">
             Explore Islamic Knowledge by Topic
           </h2>
           <p className="mt-3 font-sans text-sm text-ink-500 dark:text-white/65 sm:text-base">
