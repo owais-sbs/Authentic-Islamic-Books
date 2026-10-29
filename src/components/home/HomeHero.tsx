@@ -45,7 +45,7 @@ export function HomeHero() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="relative w-full max-w-lg lg:max-w-xl"
+          className="relative mx-auto w-full max-w-lg text-center sm:mx-0 sm:max-w-lg sm:text-left lg:max-w-xl"
         >
           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent-dark dark:text-accent sm:text-xs">
             Discover · Read · Learn
@@ -55,15 +55,15 @@ export function HomeHero() {
             Authentic Islamic Knowledge for a Better Tomorrow
           </h1>
 
-          <p className="mt-3.5 max-w-md font-sans text-[14px] leading-relaxed text-ink-700 dark:text-white/75 sm:mt-5 sm:text-[15px] sm:text-ink-600">
+          <p className="mx-auto mt-3.5 max-w-md font-sans text-[14px] leading-relaxed text-ink-700 dark:text-white/75 sm:mx-0 sm:mt-5 sm:text-[15px] sm:text-ink-600">
             Explore a timeless collection of authentic Islamic books, from the Qur&apos;an and Hadith
             to classical works, tafsir, and more — all in one place.
           </p>
 
-          <div className="mt-6 sm:mt-8">
+          <div className="mt-6 flex justify-center sm:mt-8 sm:justify-start">
             <Link
               to="/library"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-islamic-green px-5 py-3.5 font-sans text-sm font-semibold text-white shadow-sm transition-colors hover:bg-islamic-forest sm:w-auto sm:py-3 dark:bg-accent dark:text-ink-900 dark:hover:bg-accent-light"
+              className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-lg bg-islamic-green px-5 py-3.5 font-sans text-sm font-semibold text-white shadow-sm transition-colors hover:bg-islamic-forest sm:w-auto sm:max-w-none sm:py-3 dark:bg-accent dark:text-ink-900 dark:hover:bg-accent-light"
             >
               Explore Our Library
               <ArrowRight size={16} strokeWidth={2} />
