@@ -4,6 +4,7 @@ import {
   HomeHero,
   TrustStrip,
   ContinueDailySection,
+  ContinueReadingBar,
   TopicExplorer,
   LibraryShelves,
   ReadingPathsSection,
@@ -19,8 +20,7 @@ import {
 import { useLibraryFilters } from '@/hooks/useLibraryFilters';
 import { useScholars } from '@/hooks/useScholars';
 import { useCategories } from '@/hooks/useCategories';
-import { useSavedBooks } from '@/hooks/useSavedBooks';
-import { useBookmarks } from '@/hooks/useBookmarks';
+import { useContinueReading } from '@/hooks/useContinueReading';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import type { Book } from '@/types';
 
@@ -49,10 +49,9 @@ export function HomePage() {
   const { filteredBooks, totalBooks } = useLibraryFilters();
   const { scholars } = useScholars();
   const { categories } = useCategories();
-  const { savedBooks } = useSavedBooks();
-  const { bookmarks } = useBookmarks();
 
   const allBooks = filteredBooks.length ? filteredBooks : [];
+  const continueReading = useContinueReading(allBooks);
 
   const featured = useMemo(() => {
     const marked = allBooks.filter((b) => b.featured);
@@ -78,29 +77,13 @@ export function HomePage() {
     return counts;
   }, [allBooks]);
 
-  const continueBook = useMemo(() => {
-    const slug =
-      savedBooks[0]?.slug ??
-      bookmarks.sort((a, b) => b.createdAt - a.createdAt)[0]?.bookSlug ??
-      null;
-    if (!slug) return null;
-    return allBooks.find((b) => b.slug === slug) ?? null;
-  }, [savedBooks, bookmarks, allBooks]);
-
-  const progressHint = continueBook
-    ? bookmarks.some((b) => b.bookSlug === continueBook.slug)
-      ? 'From your bookmarks'
-      : 'From your saved books'
-    : undefined;
-
   return (
     <PageContainer>
       <HomeHero />
 
-      {/* Clean cream mid-page — no geometric / photo patterns */}
       <div className="bg-ivory dark:bg-black">
         <TrustStrip />
-        <ContinueDailySection continueBook={continueBook} progressHint={progressHint} />
+        <ContinueDailySection />
         <TopicExplorer categories={categories} bookCounts={bookCounts} />
         <LibraryShelves
           featured={featured}
@@ -113,6 +96,7 @@ export function HomePage() {
         <ReadingPathsSection />
         <ScholarGrid scholars={scholars} />
         <WhyAuthenticSection />
+        <ContinueReadingBar entry={continueReading} />
         <NewsletterSection />
       </div>
 

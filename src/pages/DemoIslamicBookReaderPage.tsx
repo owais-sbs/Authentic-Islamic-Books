@@ -30,6 +30,9 @@ export function DemoIslamicBookReaderPage() {
 
   const [fontSize, setFontSize] = useLocalStorage('idl-demo-reader-font', 17);
   const [tocOpen, setTocOpen] = useState(false);
+  const [, setReadingProgress] = useLocalStorage<
+    Record<string, { scrollPercent: number; activeSectionId: string | null; updatedAt: number; pageNumber?: number }>
+  >('idl-reading-progress', {});
 
   usePageMeta({
     title: page
@@ -47,6 +50,18 @@ export function DemoIslamicBookReaderPage() {
     () => Math.round((pageNumber / demoIslamicBook.totalPages) * 100),
     [pageNumber],
   );
+
+  useEffect(() => {
+    setReadingProgress((prev) => ({
+      ...prev,
+      [demoIslamicBook.slug]: {
+        scrollPercent: progress,
+        activeSectionId: chapter?.id ?? null,
+        updatedAt: Date.now(),
+        pageNumber,
+      },
+    }));
+  }, [progress, pageNumber, chapter?.id, setReadingProgress]);
 
   if (invalid) {
     return <Navigate to={`${BASE}/${pageNumber}`} replace />;

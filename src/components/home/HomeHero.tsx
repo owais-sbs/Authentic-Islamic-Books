@@ -1,68 +1,60 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Library } from 'lucide-react';
-import { GoldStarDivider } from '@/components/home/GoldStarDivider';
+import { ArrowRight } from 'lucide-react';
 
-/** Cream studio hero — mobile matches reference; desktop keeps left copy / right books. */
+/** Clean professional hero — mobile uses dedicated bg image; desktop keeps studio books. */
 export function HomeHero() {
   return (
-    <section className="relative overflow-hidden bg-[#F4F1EA] dark:bg-black">
+    <section className="relative overflow-hidden bg-[#F7F4EE] dark:bg-black">
       <div className="absolute inset-0">
+        {/* Mobile-only background */}
+        <img
+          src="/brand/hero-mobile.jpg"
+          alt=""
+          className="h-full w-full object-cover object-[center_28%] sm:hidden"
+        />
+        {/* Desktop / tablet background */}
         <img
           src="/brand/hero-books.jpg"
           alt=""
-          className="h-full w-full object-cover object-[72%_center] sm:object-[68%_center] lg:object-right"
+          className="hidden h-full w-full object-cover object-[65%_center] sm:block lg:object-right"
         />
-        {/* Mobile: soft cream veil so copy stays readable over books */}
-        <div className="absolute inset-0 bg-[#F4F1EA]/55 dark:bg-black/60 sm:hidden" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#F4F1EA]/90 via-[#F4F1EA]/55 to-[#F4F1EA]/92 dark:from-black/90 dark:via-black/55 dark:to-black/92 sm:hidden" />
-        {/* sm+: side fade for left-aligned copy */}
-        <div className="absolute inset-0 hidden bg-gradient-to-r from-[#F4F1EA] via-[#F4F1EA]/92 to-transparent sm:block sm:via-[#F4F1EA]/75 lg:from-[#F4F1EA]/95 lg:via-[#F4F1EA]/55 dark:from-black dark:via-black/85 dark:to-transparent sm:dark:via-black/70 lg:dark:from-black/95 lg:dark:via-black/55" />
+        {/* Mobile: soft top veil for copy; image still visible */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#F7F4EE]/92 via-[#F7F4EE]/55 to-[#F7F4EE]/25 dark:from-black/90 dark:via-black/55 dark:to-black/30 sm:hidden" />
+        {/* Desktop: left cream fade */}
+        <div className="absolute inset-0 hidden bg-gradient-to-r from-[#F7F4EE] via-[#F7F4EE]/85 to-transparent dark:from-black dark:via-black/80 dark:to-transparent sm:block" />
       </div>
 
-      <div className="container-page relative z-10 flex min-h-[78vh] flex-col pt-10 pb-8 sm:min-h-[80vh] sm:justify-center sm:py-24 lg:min-h-[86vh]">
+      <div className="container-page relative z-10 flex min-h-[78vh] items-start pt-10 pb-14 sm:min-h-[76vh] sm:items-center sm:py-20 lg:min-h-[82vh]">
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: 'easeOut' }}
-          className="flex w-full max-w-xl flex-col sm:max-w-xl lg:max-w-[34rem]"
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="w-full max-w-lg lg:max-w-xl"
         >
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-islamic-green dark:text-accent sm:text-[11px] sm:tracking-[0.28em]">
-            Your Gateway to Authentic Islamic Knowledge
+          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent-dark dark:text-accent sm:text-xs">
+            Discover · Read · Learn
           </p>
 
-          <GoldStarDivider className="mt-4 max-w-[11rem] sm:mt-5 sm:max-w-[13rem]" />
-
-          <h1 className="mt-5 font-sans text-[1.85rem] font-bold leading-[1.15] tracking-tight text-islamic-green dark:text-white sm:mt-6 sm:text-5xl lg:text-[3.15rem]">
-            Discover Authentic Islamic Knowledge
+          <h1 className="mt-4 font-serif text-[1.9rem] font-semibold leading-[1.18] tracking-tight text-islamic-green dark:text-white min-[380px]:text-[2.1rem] sm:mt-5 sm:text-5xl lg:text-[3.35rem]">
+            Authentic Islamic Knowledge for a Better Tomorrow
           </h1>
 
-          <p className="mt-4 max-w-md font-sans text-[14px] leading-relaxed text-ink-600 dark:text-white/70 sm:mt-5 sm:text-base">
-            Explore trusted books and deepen your understanding, one page at a time.
+          <p className="mt-4 max-w-md font-sans text-[14px] leading-relaxed text-ink-600 dark:text-white/70 sm:mt-5 sm:text-[15px]">
+            Explore a timeless collection of authentic Islamic books, from the Qur&apos;an and Hadith
+            to classical works, tafsir, and more — all in one place.
           </p>
 
-          <div className="mt-8 flex w-full flex-col gap-3 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap">
+          <div className="mt-7 sm:mt-8">
             <Link
               to="/library"
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-5 py-3.5 font-sans text-[15px] font-semibold text-islamic-green shadow-sm transition-all hover:bg-accent-light hover:shadow-md sm:w-auto sm:rounded-lg sm:py-3 sm:text-sm"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-islamic-green px-5 py-3.5 font-sans text-sm font-semibold text-white shadow-sm transition-colors hover:bg-islamic-forest sm:w-auto sm:py-3 dark:bg-accent dark:text-ink-900 dark:hover:bg-accent-light"
             >
-              <BookOpen size={18} strokeWidth={1.75} className="shrink-0" />
-              Start Reading Free
-            </Link>
-            <Link
-              to="/library"
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-islamic-green/35 bg-white/80 px-5 py-3.5 font-sans text-[15px] font-semibold text-islamic-green backdrop-blur-sm transition-colors hover:border-islamic-green hover:bg-white sm:w-auto sm:rounded-lg sm:py-3 sm:text-sm dark:border-white/25 dark:bg-white/10 dark:text-white dark:hover:border-white/50 dark:hover:bg-white/15"
-            >
-              <Library size={18} strokeWidth={1.75} className="shrink-0" />
-              Browse the Library
+              Explore Our Library
+              <ArrowRight size={16} strokeWidth={2} />
             </Link>
           </div>
         </motion.div>
-
-        {/* Bottom ornament — mobile reference transition into trust strip */}
-        <div className="mt-auto pt-10 sm:hidden">
-          <GoldStarDivider className="mx-auto max-w-[10rem] opacity-90" />
-        </div>
       </div>
     </section>
   );

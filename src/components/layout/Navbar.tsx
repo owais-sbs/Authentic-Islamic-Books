@@ -109,8 +109,17 @@ export function Navbar() {
             : 'border-line/80 bg-ivory dark:border-white/10 dark:bg-black',
         )}
       >
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
-          <BrandLogo className="min-w-0" />
+        <div className="container-page relative flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
+          {/* Mobile: menu left — matches reference */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden rounded-full p-2.5 text-ink-700 transition-colors hover:bg-islamic-green/10 dark:text-white/85 dark:hover:bg-white/10"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          <BrandLogo className="absolute left-1/2 min-w-0 -translate-x-1/2 lg:static lg:translate-x-0" />
 
           <nav className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => {
@@ -180,16 +189,16 @@ export function Navbar() {
             </div>
           </nav>
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-            <ThemeToggle className="h-9 w-9 sm:h-10 sm:w-10" />
-
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="hidden rounded-full p-2.5 text-ink-600 transition-colors hover:bg-islamic-green/10 hover:text-islamic-green sm:inline-flex dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
+              className="rounded-full p-2.5 text-ink-600 transition-colors hover:bg-islamic-green/10 hover:text-islamic-green dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label="Search"
             >
               {searchOpen ? <X size={18} /> : <Search size={18} />}
             </button>
+
+            <ThemeToggle className="h-9 w-9 border-0 bg-transparent sm:h-10 sm:w-10 sm:border sm:bg-white dark:sm:bg-white/5" />
 
             <Link
               to="/library"
@@ -197,14 +206,6 @@ export function Navbar() {
             >
               Start Reading
             </Link>
-
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden rounded-full p-2.5 text-ink-700 transition-colors hover:bg-islamic-green/10 dark:text-white/85 dark:hover:bg-white/10"
-              aria-label="Open menu"
-            >
-              <Menu size={20} />
-            </button>
           </div>
         </div>
 
@@ -237,17 +238,6 @@ export function Navbar() {
 
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} title="Menu">
         <nav className="flex flex-col gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setMobileOpen(false);
-              setSearchOpen(true);
-            }}
-            className="mb-1 flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-ink-600 hover:bg-paper/60 sm:hidden"
-          >
-            <Search size={16} />
-            Search
-          </button>
           {navLinks.map((link) => {
             const pathOnly = link.href.split('?')[0];
             const active = location.pathname === pathOnly;

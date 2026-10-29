@@ -1,53 +1,52 @@
-import { BookMarked, CheckCircle2, Library, Sparkles } from 'lucide-react';
+import { BookOpen, Heart, Library, Users } from 'lucide-react';
 
-const items = [
-  { icon: BookMarked, label: 'Authentic Sources & References' },
-  { icon: Library, label: 'Carefully Curated Books' },
-  { icon: CheckCircle2, label: 'No Sign-Up Required' },
-  { icon: Sparkles, label: 'Free Forever' },
+const features = [
+  {
+    icon: BookOpen,
+    title: 'Authentic Sources',
+    description: 'Based on the Qur’an, Sunnah and trusted scholars.',
+  },
+  {
+    icon: Library,
+    title: 'Wide Collection',
+    description: 'From Hadith to Tafsir, Fiqh to Islamic history and more.',
+  },
+  {
+    icon: Users,
+    title: 'Trusted Scholars',
+    description: 'Carefully selected and verified works from renowned scholars.',
+  },
+  {
+    icon: Heart,
+    title: 'For Every Seeker',
+    description: 'Whether you are a beginner or a lifelong student, there is something for you.',
+  },
 ];
-
-function TrustItem({
-  icon: Icon,
-  label,
-}: {
-  icon: (typeof items)[number]['icon'];
-  label: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 font-sans text-[12px] font-medium text-islamic-green dark:text-white/85 sm:gap-2 sm:text-sm">
-      <Icon size={15} className="shrink-0 text-accent-dark dark:text-accent" strokeWidth={1.75} />
-      {label}
-    </span>
-  );
-}
 
 export function TrustStrip() {
   return (
-    <section className="bg-[#F4F1EA] dark:bg-black">
-      <div className="container-page py-5 sm:py-4">
-        {/* Mobile: diamond — 1 / 2 / 1 */}
-        <ul className="flex flex-col items-center gap-3 sm:hidden">
-          <li>
-            <TrustItem {...items[0]} />
-          </li>
-          <li className="flex w-full items-center justify-center gap-6 px-1">
-            <TrustItem {...items[1]} />
-            <TrustItem {...items[2]} />
-          </li>
-          <li>
-            <TrustItem {...items[3]} />
-          </li>
-        </ul>
-
-        {/* sm+: single row */}
-        <ul className="hidden flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:flex">
-          {items.map((item, i) => (
-            <li key={item.label} className="flex items-center gap-6">
-              <TrustItem {...item} />
-              {i < items.length - 1 && (
-                <span className="hidden h-4 w-px bg-line-strong dark:bg-white/15 md:block" aria-hidden />
-              )}
+    <section className="border-y border-line/70 bg-[#F7F4EE] dark:border-white/10 dark:bg-[#0A0A0A]">
+      <div className="container-page py-6 sm:py-7">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-4 lg:gap-0">
+          {features.map((item, i) => (
+            <li
+              key={item.title}
+              className={`flex flex-col items-center px-2 text-center sm:px-4 ${
+                i < features.length - 1 ? 'lg:border-r lg:border-line/80 dark:lg:border-white/10' : ''
+              }`}
+            >
+              <item.icon
+                size={22}
+                strokeWidth={1.5}
+                className="text-accent-dark dark:text-accent"
+                aria-hidden
+              />
+              <h3 className="mt-2.5 font-sans text-[13px] font-bold text-islamic-green dark:text-white sm:text-sm">
+                {item.title}
+              </h3>
+              <p className="mt-1 max-w-[16rem] font-sans text-[11px] leading-snug text-ink-500 dark:text-white/55 sm:text-xs">
+                {item.description}
+              </p>
             </li>
           ))}
         </ul>

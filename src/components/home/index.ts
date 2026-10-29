@@ -1,6 +1,7 @@
 export { HomeHero } from './HomeHero';
 export { TrustStrip } from './TrustStrip';
 export { ContinueDailySection } from './ContinueDailySection';
+export { ContinueReadingBar } from './ContinueReadingBar';
 export { TopicExplorer } from './TopicExplorer';
 export { LibraryShelves, BookShelf } from './BookShelf';
 export { ReadingPathsSection } from './ReadingPathsSection';
