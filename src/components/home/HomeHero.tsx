@@ -25,14 +25,14 @@ export function HomeHero() {
           className="absolute inset-0 sm:hidden dark:hidden"
           style={{
             background:
-              'linear-gradient(180deg, rgba(247,244,238,0.55) 0%, rgba(247,244,238,0.82) 28%, rgba(247,244,238,0.96) 48%, rgba(247,244,238,0.94) 68%, rgba(247,244,238,0.45) 88%, rgba(247,244,238,0.15) 100%)',
+              'linear-gradient(180deg, rgba(247,244,238,0.7) 0%, rgba(247,244,238,0.9) 22%, rgba(247,244,238,0.96) 50%, rgba(247,244,238,0.88) 72%, rgba(247,244,238,0.4) 100%)',
           }}
         />
         <div
           className="absolute inset-0 hidden dark:block sm:!hidden"
           style={{
             background:
-              'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.78) 28%, rgba(0,0,0,0.94) 48%, rgba(0,0,0,0.9) 68%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0.2) 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.88) 22%, rgba(0,0,0,0.94) 50%, rgba(0,0,0,0.82) 72%, rgba(0,0,0,0.35) 100%)',
           }}
         />
 
@@ -40,12 +40,12 @@ export function HomeHero() {
         <div className="absolute inset-0 hidden bg-gradient-to-r from-[#F7F4EE] via-[#F7F4EE]/88 to-transparent dark:from-black dark:via-black/82 dark:to-transparent sm:block" />
       </div>
 
-      <div className="container-page relative z-10 flex min-h-[85vh] flex-col justify-end pb-16 pt-28 sm:min-h-[76vh] sm:justify-center sm:pb-20 sm:pt-20 lg:min-h-[82vh]">
+      <div className="container-page relative z-10 flex min-h-[85vh] flex-col items-center justify-center py-16 sm:min-h-[76vh] sm:items-stretch sm:py-20 lg:min-h-[82vh]">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="relative mx-auto mb-6 w-full max-w-lg text-center sm:mx-0 sm:mb-0 sm:max-w-lg sm:text-left lg:max-w-xl"
+          className="relative mx-auto w-full max-w-lg text-center sm:mx-0 sm:max-w-lg sm:text-left lg:max-w-xl"
         >
           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.28em] text-accent-dark dark:text-accent sm:text-xs">
             Discover · Read · Learn
