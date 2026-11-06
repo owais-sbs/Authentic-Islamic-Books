@@ -33,10 +33,21 @@ export const MANUAL_BLOCK_OPTIONS: { kind: ManualBlockKind; label: string }[] = 
   { kind: 'pdf', label: 'PDF attachment' },
 ];
 
+export type ImageAlignOption = 'left' | 'center' | 'right' | 'full' | 'wrap-left' | 'wrap-right';
+export type ImageWidthOption = 'small' | 'medium' | 'large' | 'full';
+
+const IMAGE_WIDTH_CSS: Record<ImageWidthOption, string> = {
+  small: 'max-width:min(100%,16rem)',
+  medium: 'max-width:min(100%,28rem)',
+  large: 'max-width:min(100%,36rem)',
+  full: 'max-width:100%',
+};
+
 export function snippetForBlock(
   kind: ManualBlockKind,
   imageUrl?: string,
-  imageAlign: 'left' | 'center' | 'right' = 'center',
+  imageAlign: ImageAlignOption = 'center',
+  imageWidth: ImageWidthOption = 'large',
 ): string {
   switch (kind) {
     case 'paragraph':
@@ -71,15 +82,21 @@ export function snippetForBlock(
       if (!imageUrl) {
         return `<p><em>[Insert an image using the Image button]</em></p>`;
       }
-      const alignStyle =
-        imageAlign === 'left'
-          ? 'text-align:left;margin-right:auto'
-          : imageAlign === 'right'
-            ? 'text-align:right;margin-left:auto'
-            : 'text-align:center;margin-left:auto;margin-right:auto';
-      const imgMax =
-        imageAlign === 'center' ? 'max-width:min(100%,36rem)' : 'max-width:min(100%,28rem)';
-      return `<figure class="content-image content-image-${imageAlign}" data-align="${imageAlign}" style="${alignStyle}"><img src="${imageUrl}" alt="" style="${imgMax};height:auto;border-radius:0.5rem;display:inline-block"/><figcaption>Image caption</figcaption></figure>`;
+      const width = imageAlign === 'full' ? 'full' : imageWidth;
+      const floatStyle =
+        imageAlign === 'wrap-left'
+          ? 'float:left;margin:0.5rem 1.25rem 0.75rem 0;max-width:min(100%,42%)'
+          : imageAlign === 'wrap-right'
+            ? 'float:right;margin:0.5rem 0 0.75rem 1.25rem;max-width:min(100%,42%)'
+            : imageAlign === 'left'
+              ? 'text-align:left;margin-right:auto'
+              : imageAlign === 'right'
+                ? 'text-align:right;margin-left:auto'
+                : imageAlign === 'full'
+                  ? 'text-align:center;margin-left:auto;margin-right:auto;width:100%'
+                  : 'text-align:center;margin-left:auto;margin-right:auto';
+      const imgMax = IMAGE_WIDTH_CSS[width];
+      return `<figure class="content-image content-image-${imageAlign}" data-align="${imageAlign}" data-width="${width}" style="${floatStyle}"><img src="${imageUrl}" alt="" style="${imgMax};height:auto;border-radius:0.5rem;display:inline-block"/><figcaption contenteditable="true">Image caption</figcaption></figure><p></p>`;
     }
     case 'audio':
       return `<p class="content-audio"><strong>Audio:</strong> Add audio URL or description for readers.</p>`;

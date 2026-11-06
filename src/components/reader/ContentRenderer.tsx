@@ -384,6 +384,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
 
           case 'image': {
             const align = block.align ?? 'center';
+            const width = block.width ?? (align === 'full' ? 'full' : 'large');
             return (
               <figure
                 key={i}
@@ -392,9 +393,25 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                   align === 'left' && 'reader-image-left',
                   align === 'center' && 'reader-image-center',
                   align === 'right' && 'reader-image-right',
+                  align === 'full' && 'reader-image-full',
+                  align === 'wrap-left' && 'reader-image-wrap-left',
+                  align === 'wrap-right' && 'reader-image-wrap-right',
+                  width === 'small' && 'reader-image-w-small',
+                  width === 'medium' && 'reader-image-w-medium',
+                  width === 'large' && 'reader-image-w-large',
+                  width === 'full' && 'reader-image-w-full',
                 )}
               >
-                <img src={block.url} alt={block.alt || block.caption || ''} loading="lazy" />
+                <img
+                  src={block.url}
+                  alt={block.alt || block.caption || ''}
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.opacity = '0.35';
+                    (e.currentTarget as HTMLImageElement).alt =
+                      block.alt || block.caption || 'Image unavailable';
+                  }}
+                />
                 {block.caption && (
                   <figcaption style={{ fontSize: `${small}px` }}>{block.caption}</figcaption>
                 )}

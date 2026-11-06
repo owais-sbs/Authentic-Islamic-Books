@@ -6,6 +6,7 @@ import type { BookChapter, BookSection } from '../types';
 
 interface BookChapterReviewProps {
   chapter: BookChapter;
+  bookId?: string;
   onChange: (patch: Partial<BookChapter>) => void;
 }
 
@@ -13,7 +14,7 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export function BookChapterReview({ chapter, onChange }: BookChapterReviewProps) {
+export function BookChapterReview({ chapter, bookId, onChange }: BookChapterReviewProps) {
   const [expanded, setExpanded] = useState(true);
 
   function updateSection(idx: number, patch: Partial<BookSection>) {
@@ -110,6 +111,7 @@ export function BookChapterReview({ chapter, onChange }: BookChapterReviewProps)
                 <BookSectionReview
                   key={sec.id}
                   section={sec}
+                  bookId={bookId}
                   onChange={(patch) => updateSection(i, patch)}
                 />
               ))}

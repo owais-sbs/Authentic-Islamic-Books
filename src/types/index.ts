@@ -74,7 +74,8 @@ export type ContentBlock =
       url: string;
       caption?: string;
       alt?: string;
-      align?: 'left' | 'center' | 'right';
+      align?: 'left' | 'center' | 'right' | 'full' | 'wrap-left' | 'wrap-right';
+      width?: 'small' | 'medium' | 'large' | 'full';
     } & ContentBlockLang)
   | ({
       type: 'callout';

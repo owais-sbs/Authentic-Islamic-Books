@@ -9,6 +9,8 @@ import type { Book } from '@/types';
 
 const COVER_BUCKET = 'book-covers';
 const CONTENT_BUCKET = 'book-content';
+const PDF_BUCKET = 'book-pdfs';
+const IMAGE_BUCKET = 'book-images';
 
 interface DbBookRow {
   id: string;
@@ -31,6 +33,11 @@ interface DbBookRow {
   introduction: BookWithStructure['introduction'] | null;
   chapters: BookWithStructure['chapters'];
   content_path?: string | null;
+  source_pdf_path?: string | null;
+  source_pdf_url?: string | null;
+  import_method?: string | null;
+  licence_note?: string | null;
+  imported_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +45,9 @@ interface DbBookRow {
 export interface UpsertBookOptions {
   /** Intermediate markdown from the PDF pipeline — kept in Storage for debugging / re-parsing */
   sourceMarkdown?: string;
+  /** Retain original PDF bytes in private book-pdfs bucket */
+  originalPdfFile?: File | Blob;
+  originalPdfFileName?: string;
 }
 
 interface StoredBookContent {
@@ -118,6 +128,14 @@ function rowToReviewBook(row: DbBookRow): BookWithStructure {
     description: row.description ?? undefined,
     coverColor: row.cover_color || '#18231F',
     coverUrl: row.cover_url ?? undefined,
+    sourcePdfPath: row.source_pdf_path ?? undefined,
+    sourcePdfUrl: row.source_pdf_url ?? undefined,
+    importMethod:
+      row.import_method === 'upload' || row.import_method === 'url' || row.import_method === 'manual'
+        ? row.import_method
+        : undefined,
+    licenceNote: row.licence_note ?? undefined,
+    importedAt: row.imported_at ?? undefined,
     categories: (row.category_ids ?? []).map((id) => catMap[id] ?? 'Islamic Thought'),
     hijriStartYear: row.hijri_start ?? undefined,
     hijriEndYear: row.hijri_end ?? undefined,
@@ -154,6 +172,228 @@ async function uploadCoverIfNeeded(bookId: string, coverUrl?: string): Promise<s
 
   const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(path);
   return data.publicUrl;
+}
+
+/** Upload original PDF to private book-pdfs bucket. Returns storage path. */
+export async function uploadOriginalPdf(
+  bookId: string,
+  file: File | Blob,
+  fileName = 'original.pdf',
+): Promise<string> {
+  const supabase = getSupabase();
+  const safeName = fileName.replace(/[^\w.\-]+/g, '_').slice(0, 80) || 'original.pdf';
+  const path = `${bookId}/${safeName.endsWith('.pdf') ? safeName : `${safeName}.pdf`}`;
+
+  const { error } = await supabase.storage.from(PDF_BUCKET).upload(path, file, {
+    contentType: 'application/pdf',
+    upsert: true,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('bucket') && msg.includes('not found')) {
+      throw new Error(
+        'Storage bucket "book-pdfs" missing — run supabase/book-enhancements.sql in the Supabase SQL Editor, then try again.',
+      );
+    }
+    throw new Error(`Original PDF upload failed: ${error.message}`);
+  }
+  return path;
+}
+
+/** Signed URL for admin to download a retained original PDF. */
+export async function getOriginalPdfSignedUrl(
+  sourcePdfPath: string,
+  expiresIn = 3600,
+): Promise<string> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.storage
+    .from(PDF_BUCKET)
+    .createSignedUrl(sourcePdfPath, expiresIn);
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'Could not create PDF download link');
+  }
+  return data.signedUrl;
+}
+
+/** Download original PDF bytes from private storage (for reprocess). */
+export async function downloadOriginalPdfBlob(sourcePdfPath: string): Promise<Blob> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.storage.from(PDF_BUCKET).download(sourcePdfPath);
+  if (error || !data) {
+    throw new Error(error?.message || 'Could not download original PDF from Storage');
+  }
+  return data;
+}
+
+// ─── Extraction job tracking (book_extraction_jobs) ───────────────────────────
+
+export interface ExtractionJobRow {
+  id: string;
+  bookId: string | null;
+  importMethod: string;
+  status: string;
+  stage: string | null;
+  progress: number;
+  totalPages: number | null;
+  completedPages: number | null;
+  ocrPages: number[];
+  failedPages: number[];
+  warnings: string[];
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export async function createExtractionJob(input: {
+  bookId?: string;
+  importMethod?: string;
+  totalPages?: number;
+}): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('book_extraction_jobs')
+      .insert({
+        book_id: input.bookId ?? null,
+        import_method: input.importMethod ?? 'upload',
+        status: 'processing',
+        stage: 'start',
+        progress: 0,
+        total_pages: input.totalPages ?? null,
+        started_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+    if (error || !data) {
+      console.warn('[bookApi] createExtractionJob skipped:', error?.message);
+      return null;
+    }
+    return (data as { id: string }).id;
+  } catch (err) {
+    console.warn('[bookApi] createExtractionJob failed:', err);
+    return null;
+  }
+}
+
+export async function updateExtractionJob(
+  jobId: string,
+  patch: {
+    bookId?: string;
+    status?: string;
+    stage?: string;
+    progress?: number;
+    totalPages?: number;
+    completedPages?: number;
+    ocrPages?: number[];
+    failedPages?: number[];
+    warnings?: string[];
+    errorMessage?: string | null;
+    completed?: boolean;
+  },
+): Promise<void> {
+  if (!isSupabaseConfigured() || !jobId) return;
+  try {
+    const supabase = getSupabase();
+    const payload: Record<string, unknown> = {};
+    if (patch.bookId !== undefined) payload.book_id = patch.bookId;
+    if (patch.status !== undefined) payload.status = patch.status;
+    if (patch.stage !== undefined) payload.stage = patch.stage;
+    if (patch.progress !== undefined) payload.progress = patch.progress;
+    if (patch.totalPages !== undefined) payload.total_pages = patch.totalPages;
+    if (patch.completedPages !== undefined) payload.completed_pages = patch.completedPages;
+    if (patch.ocrPages !== undefined) payload.ocr_pages = patch.ocrPages;
+    if (patch.failedPages !== undefined) payload.failed_pages = patch.failedPages;
+    if (patch.warnings !== undefined) payload.warnings = patch.warnings;
+    if (patch.errorMessage !== undefined) payload.error_message = patch.errorMessage;
+    if (patch.completed) payload.completed_at = new Date().toISOString();
+    const { error } = await supabase.from('book_extraction_jobs').update(payload).eq('id', jobId);
+    if (error) console.warn('[bookApi] updateExtractionJob:', error.message);
+  } catch (err) {
+    console.warn('[bookApi] updateExtractionJob failed:', err);
+  }
+}
+
+export async function fetchLatestExtractionJob(
+  bookId: string,
+): Promise<ExtractionJobRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('book_extraction_jobs')
+      .select('*')
+      .eq('book_id', bookId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as Record<string, unknown>;
+    return {
+      id: String(row.id),
+      bookId: (row.book_id as string) ?? null,
+      importMethod: String(row.import_method ?? 'upload'),
+      status: String(row.status ?? 'pending'),
+      stage: (row.stage as string) ?? null,
+      progress: Number(row.progress ?? 0),
+      totalPages: (row.total_pages as number) ?? null,
+      completedPages: (row.completed_pages as number) ?? null,
+      ocrPages: (row.ocr_pages as number[]) ?? [],
+      failedPages: (row.failed_pages as number[]) ?? [],
+      warnings: (row.warnings as string[]) ?? [],
+      errorMessage: (row.error_message as string) ?? null,
+      startedAt: (row.started_at as string) ?? null,
+      completedAt: (row.completed_at as string) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Upload a chapter/content image to book-images.
+ * Prefer this over embedding base64 in JSON.
+ */
+export async function uploadBookContentImage(
+  bookId: string,
+  file: File | Blob,
+  fileName?: string,
+): Promise<{ path: string; publicUrl: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured');
+  }
+  const supabase = getSupabase();
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    throw new Error('Sign in to upload content images to the shared library.');
+  }
+
+  const extFromName = fileName?.split('.').pop()?.toLowerCase();
+  const mime = (file as File).type || 'image/jpeg';
+  const ext =
+    extFromName && /^(jpe?g|png|webp|gif)$/i.test(extFromName)
+      ? extFromName.replace('jpeg', 'jpg')
+      : mime.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+  const path = `${bookId}/images/${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, file, {
+    contentType: mime,
+    upsert: false,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('bucket') && msg.includes('not found')) {
+      throw new Error(
+        'Storage bucket "book-images" missing — run supabase/book-enhancements.sql in the Supabase SQL Editor, then try again.',
+      );
+    }
+    throw new Error(`Image upload failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+  return { path, publicUrl: data.publicUrl };
 }
 
 /** Upload chapters + introduction JSON to Supabase Storage (S3). */
@@ -498,6 +738,20 @@ export async function upsertBookToSupabase(
   const coverUrl = await uploadCoverIfNeeded(book.id, book.coverUrl);
   const contentPath = await uploadBookContentToStorage(book.id, book, options?.sourceMarkdown);
 
+  let sourcePdfPath = book.sourcePdfPath;
+  if (options?.originalPdfFile) {
+    try {
+      sourcePdfPath = await uploadOriginalPdf(
+        book.id,
+        options.originalPdfFile,
+        options.originalPdfFileName,
+      );
+    } catch (err) {
+      // PDF retention is additive — don't fail the whole save if bucket missing
+      console.warn('[bookApi] Original PDF upload skipped:', err);
+    }
+  }
+
   const categoryIds =
     book.categories.length > 0 ? book.categories.map(catNameToId) : ['cat-thought'];
 
@@ -523,6 +777,11 @@ export async function upsertBookToSupabase(
     introduction: null,
     chapters,
     content_path: contentPath,
+    source_pdf_path: sourcePdfPath ?? null,
+    source_pdf_url: book.sourcePdfUrl ?? null,
+    import_method: book.importMethod ?? null,
+    licence_note: book.licenceNote ?? null,
+    imported_at: book.importedAt ?? (sourcePdfPath ? new Date().toISOString() : null),
     created_by: sessionData.session.user.id,
   };
 
@@ -535,8 +794,20 @@ export async function upsertBookToSupabase(
   if (error) {
     // Retry without newer columns if migration not applied yet
     const msg = error.message.toLowerCase();
-    if (msg.includes('created_by') || msg.includes('content_path')) {
+    const missingEnhancement =
+      msg.includes('source_pdf') ||
+      msg.includes('import_method') ||
+      msg.includes('licence_note') ||
+      msg.includes('imported_at');
+    if (msg.includes('created_by') || msg.includes('content_path') || missingEnhancement) {
       delete payload.created_by;
+      if (missingEnhancement) {
+        delete payload.source_pdf_path;
+        delete payload.source_pdf_url;
+        delete payload.import_method;
+        delete payload.licence_note;
+        delete payload.imported_at;
+      }
       if (msg.includes('content_path')) {
         // content_path column missing (book-storage.sql not run yet): keep the
         // full text in the row so the book stays readable.

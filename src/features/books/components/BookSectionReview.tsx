@@ -6,10 +6,11 @@ import type { BookSection } from '../types';
 
 interface BookSectionReviewProps {
   section: BookSection;
+  bookId?: string;
   onChange: (patch: Partial<BookSection>) => void;
 }
 
-export function BookSectionReview({ section, onChange }: BookSectionReviewProps) {
+export function BookSectionReview({ section, bookId, onChange }: BookSectionReviewProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -71,6 +72,7 @@ export function BookSectionReview({ section, onChange }: BookSectionReviewProps)
               onChange={(html) => onChange({ content: html })}
               placeholder="Section content extracted from PDF..."
               minHeight="160px"
+              bookId={bookId}
             />
           </div>
         </div>

@@ -1,9 +1,15 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Upload, X, Check, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Upload, X, Check, Loader2, AlertCircle, Link2 } from 'lucide-react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { importPdfFile } from '@/lib/pdfImportHelpers';
-import { upsertBookToSupabase, refreshSupabasePublishedCache } from '@/lib/bookApi';
+import {
+  createExtractionJob,
+  upsertBookToSupabase,
+  refreshSupabasePublishedCache,
+  updateExtractionJob,
+} from '@/lib/bookApi';
+import { downloadPdfFromUrl } from '@/lib/pdfUrlImport';
 import { reviewBookToPublicBook } from '@/lib/bookTransform';
 import { useBookStore } from '@/hooks/useBookStore';
 import { notifyBooksChanged } from '@/hooks/useAdminBooks';
@@ -40,6 +46,9 @@ export function AdminImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [importMethod, setImportMethod] = useState<'upload' | 'url'>('upload');
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [licenceNote, setLicenceNote] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [steps, setSteps] = useState<StepState[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -97,10 +106,12 @@ export function AdminImportPage() {
   }
 
   async function startImport() {
-    if (!file) return;
+    if (!file && importMethod !== 'url') return;
     setPhase('processing');
     setErrorMsg('');
     initSteps();
+
+    let jobId: string | null = null;
 
     try {
       const stageToStep: Record<string, string> = {
@@ -117,8 +128,26 @@ export function AdminImportPage() {
         build: 'build',
       };
 
+      let pdfFile = file;
+      let sourceUrl: string | undefined;
+
+      if (importMethod === 'url') {
+        advanceStep('read');
+        setProgressDetail('Downloading PDF from URL…');
+        setProgressPercent(5);
+        sourceUrl = pdfUrl.trim();
+        pdfFile = await downloadPdfFromUrl(sourceUrl);
+        setFile(pdfFile);
+      }
+
+      if (!pdfFile) throw new Error('No PDF file to import');
+
+      jobId = await createExtractionJob({
+        importMethod: importMethod === 'url' ? 'url' : 'upload',
+      });
+
       advanceStep('read');
-      const reviewBook = await importPdfFile(file, (stage, message, detail) => {
+      const reviewBook = await importPdfFile(pdfFile, (stage, message, detail) => {
         const stepId = stageToStep[stage];
         if (stepId) advanceStep(stepId);
         if (message) setProgressDetail(message);
@@ -126,7 +155,30 @@ export function AdminImportPage() {
         else if (detail?.page != null && detail?.totalPages) {
           setProgressPercent(Math.round((detail.page / detail.totalPages) * 55));
         }
+        if (jobId) {
+          void updateExtractionJob(jobId, {
+            stage,
+            progress: Math.round(
+              detail?.percent ??
+                (detail?.page && detail?.totalPages
+                  ? (detail.page / detail.totalPages) * 55
+                  : 0),
+            ),
+            completedPages: detail?.page,
+            totalPages: detail?.totalPages,
+          });
+        }
       });
+
+      if (jobId) {
+        await updateExtractionJob(jobId, {
+          bookId: reviewBook.id,
+          stage: 'build',
+          progress: 90,
+          totalPages: reviewBook.pageCount,
+          warnings: reviewBook.extractionInfo?.warnings,
+        });
+      }
 
       for (const step of [
         'read',
@@ -148,11 +200,25 @@ export function AdminImportPage() {
 
       let syncedToCloud = false;
       const status = 'needs_review' as const;
-      const bookWithStatus = { ...reviewBook, status };
+      const bookWithStatus = {
+        ...reviewBook,
+        status,
+        importMethod: importMethod === 'url' ? ('url' as const) : ('upload' as const),
+        sourcePdfUrl: sourceUrl,
+        licenceNote: licenceNote.trim() || undefined,
+        importedAt: new Date().toISOString(),
+        extractionInfo: {
+          ...reviewBook.extractionInfo,
+          importMethod: importMethod === 'url' ? ('url' as const) : ('upload' as const),
+          sourcePdfUrl: sourceUrl,
+        },
+      };
 
       if (isSupabaseConfigured()) {
         const saved = await upsertBookToSupabase(bookWithStatus, status, {
           sourceMarkdown: reviewBook.sourceMarkdown,
+          originalPdfFile: pdfFile,
+          originalPdfFileName: pdfFile.name,
         });
         bookWithStatus.id = saved.id;
         if (saved.coverUrl) bookWithStatus.coverUrl = saved.coverUrl;
@@ -175,6 +241,17 @@ export function AdminImportPage() {
       addBook(publicBook);
       notifyBooksChanged();
       setStep('save', 'done');
+
+      if (jobId) {
+        await updateExtractionJob(jobId, {
+          bookId: bookWithStatus.id,
+          status: 'completed',
+          stage: 'done',
+          progress: 100,
+          completed: true,
+          warnings: bookWithStatus.extractionInfo?.warnings,
+        });
+      }
 
       setResult({
         bookId: publicBook.id,
@@ -204,6 +281,13 @@ export function AdminImportPage() {
           ? `${msg} — Sign in with a Supabase admin account (not local-only mode) so books sync for the whole team.`
           : msg,
       );
+      if (jobId) {
+        void updateExtractionJob(jobId, {
+          status: 'failed',
+          errorMessage: msg,
+          completed: true,
+        });
+      }
       setPhase('error');
     }
   }
@@ -222,7 +306,8 @@ export function AdminImportPage() {
           </Link>
           <h2 className="text-xl font-bold text-[#0B1B2B] sm:text-2xl">Import Book</h2>
           <p className="mt-0.5 text-sm text-[#64748B]">
-            Upload a PDF — we extract text, detect chapters, and publish it to the homepage library.
+            Upload a PDF or import from an authorized URL — we extract text, detect chapters, retain
+            the original PDF when Storage is configured, then send it to review.
           </p>
 
           {!isSupabaseConfigured() && (
@@ -232,7 +317,36 @@ export function AdminImportPage() {
           )}
         </div>
 
-        {phase === 'idle' && !file && (
+        {phase === 'idle' && (
+          <div className="flex gap-2 rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] p-1">
+            <button
+              type="button"
+              onClick={() => setImportMethod('upload')}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-[13px] font-semibold transition-colors',
+                importMethod === 'upload'
+                  ? 'bg-white text-[#0B1B2B] shadow-sm'
+                  : 'text-[#64748B] hover:text-[#0B1B2B]',
+              )}
+            >
+              <Upload size={14} /> Upload PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportMethod('url')}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-[13px] font-semibold transition-colors',
+                importMethod === 'url'
+                  ? 'bg-white text-[#0B1B2B] shadow-sm'
+                  : 'text-[#64748B] hover:text-[#0B1B2B]',
+              )}
+            >
+              <Link2 size={14} /> Import from URL
+            </button>
+          </div>
+        )}
+
+        {phase === 'idle' && importMethod === 'upload' && !file && (
           <div
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
@@ -257,6 +371,44 @@ export function AdminImportPage() {
                 if (f) handleFileSelect(f);
               }}
             />
+          </div>
+        )}
+
+        {phase === 'idle' && importMethod === 'url' && !file && (
+          <div className="space-y-3 rounded-xl border border-[#E5E1D8] bg-white p-5">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Authorized PDF URL
+            </label>
+            <input
+              type="url"
+              value={pdfUrl}
+              onChange={(e) => setPdfUrl(e.target.value)}
+              placeholder="https://example.com/authorized-book.pdf"
+              className="w-full rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2.5 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20"
+            />
+            <p className="text-[12px] text-[#94A3B8]">
+              Only use URLs you are authorized to download. Private/local hosts are blocked. Prefer
+              the Netlify <code className="rounded bg-[#F7F6F2] px-1">fetch-pdf</code> function in
+              production for SSRF-safe downloads.
+            </p>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Licence / copyright note (optional)
+            </label>
+            <input
+              type="text"
+              value={licenceNote}
+              onChange={(e) => setLicenceNote(e.target.value)}
+              placeholder="e.g. Publisher permission, public domain, Creative Commons…"
+              className="w-full rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2.5 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646]"
+            />
+            <button
+              type="button"
+              disabled={!pdfUrl.trim()}
+              onClick={() => void startImport()}
+              className="w-full rounded-lg bg-[#0B1B2B] py-3 text-[14px] font-semibold text-white transition-colors hover:bg-[#162A42] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Download &amp; Start Import
+            </button>
           </div>
         )}
 
@@ -286,14 +438,28 @@ export function AdminImportPage() {
           </div>
         )}
 
-        {file && phase === 'idle' && (
-          <button
-            type="button"
-            onClick={() => void startImport()}
-            className="w-full rounded-lg bg-[#0B1B2B] py-3 text-[14px] font-semibold text-white transition-colors hover:bg-[#162A42]"
-          >
-            Start Import
-          </button>
+        {file && phase === 'idle' && importMethod === 'upload' && (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-[#E5E1D8] bg-white p-4">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                Licence / copyright note (optional)
+              </label>
+              <input
+                type="text"
+                value={licenceNote}
+                onChange={(e) => setLicenceNote(e.target.value)}
+                placeholder="e.g. Publisher permission, public domain…"
+                className="mt-1.5 w-full rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void startImport()}
+              className="w-full rounded-lg bg-[#0B1B2B] py-3 text-[14px] font-semibold text-white transition-colors hover:bg-[#162A42]"
+            >
+              Start Import
+            </button>
+          </div>
         )}
 
         {(phase === 'processing' || phase === 'done' || phase === 'error') && steps.length > 0 && (

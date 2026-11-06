@@ -29,10 +29,15 @@ export function ScholarlyEditionBook({
       (book as Book & { authorName?: string }).authorName,
       book.authorId,
     );
-  const categoryNames = book.categoryIds
-    .map((id) => allCategories.find((c) => c.id === id)?.name)
-    .filter(Boolean)
-    .join(' · ');
+  const authorHref = scholar
+    ? `/scholars/${scholar.slug || scholar.id}`
+    : authorName && authorName !== '—'
+      ? `/library?q=${encodeURIComponent(authorName)}`
+      : undefined;
+
+  const bookCategories = book.categoryIds
+    .map((id) => allCategories.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
   const introBlocks: ContentBlock[] =
     book.introduction && book.introduction.length > 0
@@ -54,7 +59,19 @@ export function ScholarlyEditionBook({
             {book.title}
           </h1>
           {authorName && authorName !== '—' && (
-            <p className="mt-1 font-serif text-sm text-ink-500">by {authorName}</p>
+            <p className="mt-1 font-serif text-sm text-ink-500">
+              by{' '}
+              {authorHref ? (
+                <Link
+                  to={authorHref}
+                  className="text-ink-600 underline-offset-2 transition-colors hover:text-accent-dark hover:underline"
+                >
+                  {authorName}
+                </Link>
+              ) : (
+                authorName
+              )}
+            </p>
           )}
         </div>
       </div>
@@ -85,9 +102,30 @@ export function ScholarlyEditionBook({
               )}
             </div>
             <dl className="space-y-3 border-t border-line pt-5 text-sm">
-              {authorName && authorName !== '—' && <Meta label="Author" value={authorName} />}
+              {authorName && authorName !== '—' && (
+                <Meta label="Author" value={authorName} href={authorHref} />
+              )}
               {book.publishedYear && <Meta label="Published" value={book.publishedYear} />}
-              {categoryNames && <Meta label="Category" value={categoryNames} />}
+              {bookCategories.length > 0 && (
+                <div>
+                  <dt className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-400">
+                    Category
+                  </dt>
+                  <dd className="mt-0.5 font-serif text-[13px] leading-snug text-ink-800">
+                    {bookCategories.map((cat, i) => (
+                      <span key={cat.id}>
+                        {i > 0 && <span className="text-ink-400"> · </span>}
+                        <Link
+                          to={`/library?category=${cat.slug}`}
+                          className="underline-offset-2 transition-colors hover:text-accent-dark hover:underline"
+                        >
+                          {cat.name}
+                        </Link>
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
             </dl>
           </aside>
 
@@ -157,11 +195,30 @@ export function ScholarlyEditionBook({
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+function Meta({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
   return (
     <div>
       <dt className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-400">{label}</dt>
-      <dd className="mt-0.5 font-serif text-[13px] leading-snug text-ink-800">{value}</dd>
+      <dd className="mt-0.5 font-serif text-[13px] leading-snug text-ink-800">
+        {href ? (
+          <Link
+            to={href}
+            className="underline-offset-2 transition-colors hover:text-accent-dark hover:underline"
+          >
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }

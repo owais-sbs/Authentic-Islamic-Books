@@ -45,7 +45,7 @@ describe('upload limits', () => {
     const big = {
       name: 'big.pdf',
       type: 'application/pdf',
-      size: 51 * 1024 * 1024,
+      size: 151 * 1024 * 1024,
     } as File;
     const result = validateBookPdfFile(big);
     expect(result.ok).toBe(false);

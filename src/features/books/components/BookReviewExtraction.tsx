@@ -1,6 +1,13 @@
-import { AlertTriangle, FileText, Languages, Layers, BookOpen } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, FileText, Languages, Layers, BookOpen, Download } from 'lucide-react';
 import type { BookWithStructure } from '../types';
 import { formatLanguagesLabel, type BookLanguage } from '@/services/pdf/language';
+import {
+  fetchLatestExtractionJob,
+  getOriginalPdfSignedUrl,
+  type ExtractionJobRow,
+} from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 function formatBytes(bytes?: number): string {
   if (bytes == null || bytes <= 0) return '—';
@@ -23,7 +30,31 @@ interface BookReviewExtractionProps {
 /** Quality-control panel for PDF import results on the review page. */
 export function BookReviewExtraction({ book }: BookReviewExtractionProps) {
   const info = book.extractionInfo;
-  if (!info && book.pageCount == null && book.wordCount == null) return null;
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  const [job, setJob] = useState<ExtractionJobRow | null>(null);
+
+  useEffect(() => {
+    if (!book.id || !isSupabaseConfigured()) return;
+    let cancelled = false;
+    fetchLatestExtractionJob(book.id).then((row) => {
+      if (!cancelled) setJob(row);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [book.id, book.updatedAt]);
+
+  if (
+    !info &&
+    book.pageCount == null &&
+    book.wordCount == null &&
+    !book.sourcePdfPath &&
+    !book.sourcePdfUrl &&
+    !job
+  ) {
+    return null;
+  }
 
   const languages = info?.languages?.length
     ? formatLanguagesLabel(info.languages as BookLanguage[])
@@ -32,6 +63,20 @@ export function BookReviewExtraction({ book }: BookReviewExtractionProps) {
   const chapterCount = book.chapterCount ?? book.chapters.length;
   const sectionCount =
     book.sectionCount ?? book.chapters.reduce((n, ch) => n + ch.sections.length, 0);
+
+  async function downloadOriginalPdf() {
+    if (!book.sourcePdfPath || !isSupabaseConfigured()) return;
+    setPdfBusy(true);
+    setPdfError('');
+    try {
+      const url = await getOriginalPdfSignedUrl(book.sourcePdfPath);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Could not open original PDF');
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-[#E5E1D8] bg-white overflow-hidden">
@@ -61,6 +106,80 @@ export function BookReviewExtraction({ book }: BookReviewExtractionProps) {
           />
         )}
       </div>
+
+      {job && (
+        <div className="border-t border-[#E5E1D8] px-5 py-4 space-y-1 text-[12px] text-[#64748B]">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+            Extraction job
+          </p>
+          <p>
+            Status: <span className="font-medium text-[#0B1B2B]">{job.status}</span>
+            {job.stage ? ` · stage: ${job.stage}` : ''}
+          </p>
+          {job.totalPages != null && (
+            <p>
+              Pages: {job.completedPages ?? 0}/{job.totalPages}
+              {job.ocrPages.length ? ` · OCR pages: ${job.ocrPages.length}` : ''}
+              {job.failedPages.length ? ` · failed: ${job.failedPages.length}` : ''}
+            </p>
+          )}
+          {job.errorMessage && <p className="text-red-600">{job.errorMessage}</p>}
+        </div>
+      )}
+
+      {(book.sourcePdfPath || book.sourcePdfUrl || book.importMethod || book.licenceNote) && (
+        <div className="border-t border-[#E5E1D8] px-5 py-4 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+            Original source
+          </p>
+          <div className="space-y-1 text-[12px] text-[#64748B]">
+            {book.importMethod && (
+              <p>
+                Import method:{' '}
+                <span className="font-medium text-[#0B1B2B]">{book.importMethod}</span>
+              </p>
+            )}
+            {book.sourcePdfUrl && (
+              <p className="truncate">
+                Source URL:{' '}
+                <a
+                  href={book.sourcePdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-[#C9A646] underline"
+                >
+                  {book.sourcePdfUrl}
+                </a>
+              </p>
+            )}
+            {book.licenceNote && (
+              <p>
+                Licence: <span className="font-medium text-[#0B1B2B]">{book.licenceNote}</span>
+              </p>
+            )}
+            {book.importedAt && (
+              <p>
+                Imported:{' '}
+                <span className="font-medium text-[#0B1B2B]">
+                  {new Date(book.importedAt).toLocaleString()}
+                </span>
+              </p>
+            )}
+          </div>
+          {book.sourcePdfPath && isSupabaseConfigured() && (
+            <button
+              type="button"
+              onClick={() => void downloadOriginalPdf()}
+              disabled={pdfBusy}
+              className="mt-2 inline-flex items-center gap-2 rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2 text-[12px] font-semibold text-[#0B1B2B] hover:border-[#C9A646] disabled:opacity-50"
+            >
+              <Download size={14} />
+              {pdfBusy ? 'Preparing…' : 'Download original PDF'}
+            </button>
+          )}
+          {pdfError && <p className="text-[12px] text-red-600">{pdfError}</p>}
+        </div>
+      )}
 
       {info?.warnings && info.warnings.length > 0 && (
         <div className="border-t border-[#E5E1D8] px-5 py-4 space-y-2">

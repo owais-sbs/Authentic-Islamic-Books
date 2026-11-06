@@ -15,11 +15,14 @@ import {
   reviewBookToPublicBook,
 } from '@/lib/bookTransform';
 import {
+  createExtractionJob,
   fetchBookById,
   refreshSupabasePublishedCache,
   testSupabaseConnection,
+  updateExtractionJob,
   upsertBookToSupabase,
 } from '@/lib/bookApi';
+import { reprocessBookFromStoredPdf } from '@/lib/bookReprocess';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { showBookSavedSuccess, showNewBookWelcome } from '@/lib/swal';
 import { notifyBooksChanged } from '@/hooks/useAdminBooks';
@@ -71,6 +74,7 @@ export function AdminReviewPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!isNewBook && isSupabaseConfigured());
   const [supabaseStatus, setSupabaseStatus] = useState<{ ok: boolean; message: string } | null>(null);
@@ -203,6 +207,78 @@ export function AdminReviewPage() {
     void persistBook('published');
   }
 
+  async function handleReprocess() {
+    if (!book.sourcePdfPath) {
+      setSaveError('No original PDF is stored for this book. Import again to retain the PDF.');
+      return;
+    }
+    const confirmed = window.confirm(
+      'Reprocess from the stored original PDF?\n\n' +
+        'This rebuilds chapters and sections from extraction.\n' +
+        'Admin-inserted images will be preserved and appended for review.\n' +
+        'Manual text edits may be overwritten — save a draft first if needed.\n\n' +
+        'Continue?',
+    );
+    if (!confirmed) return;
+
+    setIsReprocessing(true);
+    setSaveError(null);
+    const jobId = await createExtractionJob({
+      bookId: book.id,
+      importMethod: book.importMethod ?? 'upload',
+      totalPages: book.pageCount,
+    });
+
+    try {
+      const next = await reprocessBookFromStoredPdf(book, {
+        preserveImages: true,
+        onProgress: (stage, _message, detail) => {
+          if (!jobId) return;
+          void updateExtractionJob(jobId, {
+            stage,
+            progress: Math.round(detail?.percent ?? 0),
+            completedPages: detail?.page,
+            totalPages: detail?.totalPages ?? book.pageCount,
+          });
+        },
+      });
+
+      if (next.extractionInfo) {
+        try {
+          sessionStorage.setItem(`idl-extract-${next.id}`, JSON.stringify(next.extractionInfo));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      setBook(next);
+      setIsDirty(true);
+      setPdfImported(true);
+
+      if (jobId) {
+        await updateExtractionJob(jobId, {
+          status: 'completed',
+          stage: 'done',
+          progress: 100,
+          warnings: next.extractionInfo?.warnings,
+          completed: true,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Reprocess failed';
+      setSaveError(msg);
+      if (jobId) {
+        await updateExtractionJob(jobId, {
+          status: 'failed',
+          errorMessage: msg,
+          completed: true,
+        });
+      }
+    } finally {
+      setIsReprocessing(false);
+    }
+  }
+
   function handlePreview() {
     const publicBook = reviewBookToPublicBook(book);
     addBook(publicBook);
@@ -238,9 +314,12 @@ export function AdminReviewPage() {
           isDirty={isDirty}
           isNewBook={isNewBook}
           isSaving={isSaving}
+          canReprocess={Boolean(book.sourcePdfPath) && isSupabaseConfigured()}
+          isReprocessing={isReprocessing}
           onSaveDraft={handleSaveDraft}
           onApprove={handleApprove}
           onPreview={handlePreview}
+          onReprocess={() => void handleReprocess()}
         />
       </div>
 

@@ -91,6 +91,7 @@ export function BookReviewContent({ book, onChange, isNewBook }: BookReviewConte
               onChange={(html) => updateIntro({ content: html })}
               placeholder="Introduction content extracted from PDF..."
               minHeight="200px"
+              bookId={book.id}
             />
           </div>
         </SectionCard>
@@ -121,6 +122,7 @@ export function BookReviewContent({ book, onChange, isNewBook }: BookReviewConte
             <BookChapterReview
               key={chapter.id}
               chapter={chapter}
+              bookId={book.id}
               onChange={(patch) => updateChapter(idx, patch)}
             />
           ))

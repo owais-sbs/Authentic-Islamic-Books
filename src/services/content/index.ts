@@ -5,6 +5,13 @@ export {
   repairFragmentedArabic,
   splitMixedScript,
 } from './arabic';
+export {
+  buildArabicTextLayers,
+  containsArabicScript,
+  hasArabicDiacritics,
+  normalizeArabicPreserveDiacritics,
+  pickArabicDisplayText,
+} from './arabicPreserve';
 export { repairLineWraps, stripRepeatedPageArtifacts, normalizeDisplayText, cleanUnicode } from './normalizeText';
 export { parseBookContent, contentBlocksToHtml, htmlDocumentToContentBlocks } from './parseBookContent';
 export { HIGH, MEDIUM, LOW, parseQuranReferenceLine, looksLikeBookReference } from './patterns';

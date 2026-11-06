@@ -57,12 +57,20 @@ export function ReaderSidebar({
               {book.title}
             </h2>
             {scholar && (
-              <p className="mt-1 text-[12px] text-ink-400">{scholar.name}</p>
+              <Link
+                to={`/scholars/${scholar.slug || scholar.id}`}
+                className="mt-1 block text-[12px] text-ink-400 transition-colors hover:text-accent-dark hover:underline"
+              >
+                {scholar.name}
+              </Link>
             )}
             {category && (
-              <span className="mt-2 inline-block rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+              <Link
+                to={`/library?category=${category.slug}`}
+                className="mt-2 inline-block rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/20"
+              >
                 {category.name}
-              </span>
+              </Link>
             )}
           </div>
         </div>

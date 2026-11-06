@@ -2,7 +2,10 @@ import type { RawPage } from '@/lib/pdfExtractor';
 import type { NormalizedBlock, NormalizedPage } from './types';
 import { languageMeta } from './language';
 import { pageHasUsableText } from './documentType';
-import { repairFragmentedArabic } from '@/services/content/arabic';
+import {
+  buildArabicTextLayers,
+  pickArabicDisplayText,
+} from '@/services/content/arabicPreserve';
 import {
   cleanUnicode,
   isIsolatedStructuralLine,
@@ -15,15 +18,16 @@ function collapseSpaces(text: string): string {
   return text.replace(/[ \t]{2,}/g, ' ').trim();
 }
 
-/** Arabic/Urdu-aware cleanup — removes extraction artifacts only, keeps diacritics. */
+/**
+ * Arabic/Urdu-aware cleanup for the structured book pipeline.
+ * Uses non-destructive layers: never strips harakat; display may repair spaced glyphs.
+ */
 export function normalizeArabicScript(text: string): string {
-  return (
-    repairFragmentedArabic(text)
-      // Collapse Arabic comma spacing artifacts
-      .replace(/\s+([،؛؟!.])/g, '$1')
-      .replace(/[ \t]{2,}/g, ' ')
-      .trim()
-  );
+  const layers = buildArabicTextLayers(text);
+  return pickArabicDisplayText(layers)
+    .replace(/\s+([،؛؟!.])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
 }
 
 export function normalizeLatinScript(text: string): string {

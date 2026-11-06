@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Send, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Send, Eye, RefreshCw } from 'lucide-react';
 import { BookStatusBadge } from './BookStatusBadge';
 import type { BookStatus } from '../types';
 import { cn } from '@/lib/utils';
@@ -10,9 +10,12 @@ interface BookReviewHeaderProps {
   isDirty: boolean;
   isNewBook?: boolean;
   isSaving?: boolean;
+  canReprocess?: boolean;
+  isReprocessing?: boolean;
   onSaveDraft: () => void;
   onApprove: () => void;
   onPreview: () => void;
+  onReprocess?: () => void;
 }
 
 export function BookReviewHeader({
@@ -21,9 +24,12 @@ export function BookReviewHeader({
   isDirty,
   isNewBook,
   isSaving,
+  canReprocess,
+  isReprocessing,
   onSaveDraft,
   onApprove,
   onPreview,
+  onReprocess,
 }: BookReviewHeaderProps) {
   return (
     <div className="sticky top-14 z-20 border-b border-[#E5E1D8] bg-[#F7F6F2]">
@@ -51,10 +57,24 @@ export function BookReviewHeader({
 
         {/* Right */}
         <div className="flex items-center gap-2 shrink-0">
+          {canReprocess && onReprocess && (
+            <button
+              type="button"
+              onClick={onReprocess}
+              disabled={isSaving || isReprocessing}
+              title="Re-run extraction from the stored original PDF"
+              className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[13px] font-medium text-[#64748B] transition-colors hover:bg-[#F7F6F2] hover:text-[#0B1B2B] disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={cn(isReprocessing && 'animate-spin')} />
+              <span className="hidden sm:inline">
+                {isReprocessing ? 'Reprocessing…' : 'Reprocess'}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onPreview}
-            disabled={isSaving}
+            disabled={isSaving || isReprocessing}
             className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[13px] font-medium text-[#64748B] transition-colors hover:bg-[#F7F6F2] hover:text-[#0B1B2B] disabled:opacity-50"
           >
             <Eye size={14} />
@@ -63,7 +83,7 @@ export function BookReviewHeader({
           <button
             type="button"
             onClick={onSaveDraft}
-            disabled={isSaving}
+            disabled={isSaving || isReprocessing}
             className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#F7F6F2] disabled:opacity-50"
           >
             <Save size={14} />
@@ -72,7 +92,7 @@ export function BookReviewHeader({
           <button
             type="button"
             onClick={onApprove}
-            disabled={isSaving}
+            disabled={isSaving || isReprocessing}
             className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-3 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-50"
           >
             <Send size={14} />

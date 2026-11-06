@@ -1,6 +1,7 @@
 /**
  * RichTextEditor — contentEditable scholarly editor (Word/PDF paste friendly).
- * Outputs HTML stored in section.content. Swap-ready for TipTap later.
+ * Outputs HTML stored in section.content. Supports mid-content images with
+ * alignment / width / caption / alt / replace / delete controls.
  */
 import { useRef, useEffect, useCallback, useState } from 'react';
 import {
@@ -21,9 +22,18 @@ import {
   Highlighter,
   Languages,
   ImagePlus,
+  Trash2,
+  Replace,
+  Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { snippetForBlock } from '@/features/books/manual/blockSnippets';
+import {
+  snippetForBlock,
+  type ImageAlignOption,
+  type ImageWidthOption,
+} from '@/features/books/manual/blockSnippets';
+import { uploadBookContentImage } from '@/lib/bookApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface RichTextEditorProps {
   value: string;
@@ -31,6 +41,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   minHeight?: string;
   className?: string;
+  /** Book id — used to upload content images to Supabase Storage */
+  bookId?: string;
   /** Insert HTML at caret (used by block inserter). */
   insertHtmlRef?: React.MutableRefObject<((html: string) => void) | null>;
 }
@@ -65,6 +77,57 @@ const TOOLBAR: (ToolbarButton | 'sep')[] = [
   { icon: LinkIcon, command: 'createLink', title: 'Insert link' },
 ];
 
+const WIDTH_CSS: Record<ImageWidthOption, string> = {
+  small: 'max-width:min(100%,16rem)',
+  medium: 'max-width:min(100%,28rem)',
+  large: 'max-width:min(100%,36rem)',
+  full: 'max-width:100%',
+};
+
+function findFigureFromNode(node: Node | null): HTMLElement | null {
+  let el: Node | null = node;
+  while (el) {
+    if (el instanceof HTMLElement) {
+      if (el.tagName === 'FIGURE' && el.classList.contains('content-image')) return el;
+      if (el.tagName === 'IMG') {
+        const fig = el.closest('figure.content-image');
+        if (fig instanceof HTMLElement) return fig;
+      }
+    }
+    el = el.parentNode;
+  }
+  return null;
+}
+
+function applyFigureLayout(figure: HTMLElement, align: ImageAlignOption, width: ImageWidthOption) {
+  const resolvedWidth = align === 'full' ? 'full' : width;
+  figure.setAttribute('data-align', align);
+  figure.setAttribute('data-width', resolvedWidth);
+  figure.className = `content-image content-image-${align}`;
+
+  let style =
+    align === 'wrap-left'
+      ? 'float:left;margin:0.5rem 1.25rem 0.75rem 0;max-width:min(100%,42%)'
+      : align === 'wrap-right'
+        ? 'float:right;margin:0.5rem 0 0.75rem 1.25rem;max-width:min(100%,42%)'
+        : align === 'left'
+          ? 'text-align:left;margin-right:auto'
+          : align === 'right'
+            ? 'text-align:right;margin-left:auto'
+            : align === 'full'
+              ? 'text-align:center;margin-left:auto;margin-right:auto;width:100%'
+              : 'text-align:center;margin-left:auto;margin-right:auto';
+  figure.setAttribute('style', style);
+
+  const img = figure.querySelector('img');
+  if (img) {
+    img.setAttribute(
+      'style',
+      `${WIDTH_CSS[resolvedWidth]};height:auto;border-radius:0.5rem;display:inline-block`,
+    );
+  }
+}
+
 /** Strip Word junk while keeping basic structure. */
 function sanitizePastedHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -80,13 +143,20 @@ function sanitizePastedHtml(html: string): string {
       'class',
       'colspan',
       'rowspan',
+      'data-align',
+      'data-width',
+      'contenteditable',
     ]);
     [...el.attributes].forEach((attr) => {
       if (!allowed.has(attr.name.toLowerCase())) el.removeAttribute(attr.name);
       if (attr.name === 'style') {
         const keep = attr.value
           .split(';')
-          .filter((p) => /^(direction|text-align|font-weight|font-style|text-decoration)/i.test(p.trim()))
+          .filter((p) =>
+            /^(direction|text-align|font-weight|font-style|text-decoration|max-width|margin|float|width|height|border-radius|display)/i.test(
+              p.trim(),
+            ),
+          )
           .join(';');
         if (keep) el.setAttribute('style', keep);
         else el.removeAttribute('style');
@@ -96,22 +166,27 @@ function sanitizePastedHtml(html: string): string {
   return doc.body.innerHTML;
 }
 
-type ImageAlign = 'left' | 'center' | 'right';
-
 export function RichTextEditor({
   value,
   onChange,
   placeholder = 'Write or paste chapter content…',
   minHeight = '280px',
   className,
+  bookId,
   insertHtmlRef,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const initialised = useRef(false);
   const [dir, setDir] = useState<'ltr' | 'rtl'>('ltr');
-  const [imageAlign, setImageAlign] = useState<ImageAlign>('center');
+  const [imageAlign, setImageAlign] = useState<ImageAlignOption>('center');
+  const [imageWidth, setImageWidth] = useState<ImageWidthOption>('large');
   const [showImageMenu, setShowImageMenu] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [selectedFigure, setSelectedFigure] = useState<HTMLElement | null>(null);
+  const [captionDraft, setCaptionDraft] = useState('');
+  const [altDraft, setAltDraft] = useState('');
 
   useEffect(() => {
     if (editorRef.current && !initialised.current) {
@@ -120,7 +195,6 @@ export function RichTextEditor({
     }
   }, [value]);
 
-  // Sync external value when switching chapters
   useEffect(() => {
     if (!editorRef.current || !initialised.current) return;
     if (editorRef.current.innerHTML !== value) {
@@ -165,6 +239,29 @@ export function RichTextEditor({
     [emit],
   );
 
+  function selectFigure(figure: HTMLElement | null) {
+    editorRef.current?.querySelectorAll('figure.content-image.is-selected').forEach((el) => {
+      el.classList.remove('is-selected');
+    });
+    if (figure) {
+      figure.classList.add('is-selected');
+      setSelectedFigure(figure);
+      setCaptionDraft(figure.querySelector('figcaption')?.textContent ?? '');
+      setAltDraft(figure.querySelector('img')?.getAttribute('alt') ?? '');
+      const a = (figure.getAttribute('data-align') || 'center') as ImageAlignOption;
+      const w = (figure.getAttribute('data-width') || 'large') as ImageWidthOption;
+      setImageAlign(a);
+      setImageWidth(w);
+    } else {
+      setSelectedFigure(null);
+    }
+  }
+
+  function handleEditorClick(e: React.MouseEvent) {
+    const figure = findFigureFromNode(e.target as Node);
+    selectFigure(figure);
+  }
+
   function handlePaste(e: React.ClipboardEvent) {
     const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
@@ -184,6 +281,13 @@ export function RichTextEditor({
     }
   }
 
+  function handleDrop(e: React.DragEvent) {
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    e.preventDefault();
+    void handleImagePick(file, false);
+  }
+
   function toggleRtl() {
     const next = dir === 'ltr' ? 'rtl' : 'ltr';
     setDir(next);
@@ -193,19 +297,82 @@ export function RichTextEditor({
     }
   }
 
-  function handleImagePick(file: File | undefined) {
+  async function resolveImageUrl(file: File): Promise<string> {
+    if (bookId && isSupabaseConfigured()) {
+      try {
+        const uploaded = await uploadBookContentImage(bookId, file, file.name);
+        return uploaded.publicUrl;
+      } catch (err) {
+        console.warn('[RichTextEditor] Storage upload failed, using local data URL', err);
+      }
+    }
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Could not read image'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImagePick(file: File | undefined, replaceSelected: boolean) {
     if (!file || !file.type.startsWith('image/')) return;
     if (file.size > 8 * 1024 * 1024) {
       window.alert('Please choose an image under 8 MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = reader.result as string;
-      insertHtml(snippetForBlock('image', url, imageAlign));
+
+    setImageUploading(true);
+    try {
+      const url = await resolveImageUrl(file);
+      if (replaceSelected && selectedFigure) {
+        const img = selectedFigure.querySelector('img');
+        if (img) {
+          img.setAttribute('src', url);
+          emit();
+        }
+      } else {
+        insertHtml(snippetForBlock('image', url, imageAlign, imageWidth));
+      }
       setShowImageMenu(false);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Image upload failed');
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  function updateSelectedAlign(align: ImageAlignOption) {
+    if (!selectedFigure) return;
+    setImageAlign(align);
+    applyFigureLayout(selectedFigure, align, imageWidth);
+    emit();
+  }
+
+  function updateSelectedWidth(width: ImageWidthOption) {
+    if (!selectedFigure) return;
+    setImageWidth(width);
+    applyFigureLayout(selectedFigure, imageAlign, width);
+    emit();
+  }
+
+  function applyCaptionAndAlt() {
+    if (!selectedFigure) return;
+    let caption = selectedFigure.querySelector('figcaption');
+    if (!caption) {
+      caption = document.createElement('figcaption');
+      selectedFigure.appendChild(caption);
+    }
+    caption.textContent = captionDraft;
+    const img = selectedFigure.querySelector('img');
+    if (img) img.setAttribute('alt', altDraft);
+    emit();
+  }
+
+  function deleteSelectedImage() {
+    if (!selectedFigure) return;
+    selectedFigure.remove();
+    setSelectedFigure(null);
+    emit();
   }
 
   return (
@@ -233,7 +400,7 @@ export function RichTextEditor({
         <div className="relative">
           <button
             type="button"
-            title="Insert image (left / center / right)"
+            title="Insert image"
             onMouseDown={(e) => {
               e.preventDefault();
               setShowImageMenu((v) => !v);
@@ -249,15 +416,18 @@ export function RichTextEditor({
             Image
           </button>
           {showImageMenu && (
-            <div className="absolute left-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-lg border border-[#E5E1D8] bg-white py-1 shadow-lg">
+            <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-[#E5E1D8] bg-white py-1 shadow-lg">
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
                 Placement
               </p>
               {(
                 [
-                  { id: 'left', label: 'Left', icon: AlignLeft },
-                  { id: 'center', label: 'Center', icon: AlignCenter },
-                  { id: 'right', label: 'Right', icon: AlignRight },
+                  { id: 'left', label: 'Left' },
+                  { id: 'center', label: 'Center' },
+                  { id: 'right', label: 'Right' },
+                  { id: 'full', label: 'Full width' },
+                  { id: 'wrap-left', label: 'Wrap left' },
+                  { id: 'wrap-right', label: 'Wrap right' },
                 ] as const
               ).map((opt) => (
                 <button
@@ -268,11 +438,36 @@ export function RichTextEditor({
                     setImageAlign(opt.id);
                   }}
                   className={cn(
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] transition-colors hover:bg-[#F7F6F2]',
+                    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-[#F7F6F2]',
                     imageAlign === opt.id ? 'bg-[#104C3B]/8 font-semibold text-[#104C3B]' : 'text-[#0B1B2B]',
                   )}
                 >
-                  <opt.icon size={14} />
+                  {opt.label}
+                </button>
+              ))}
+              <p className="mt-1 border-t border-[#E5E1D8] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                Size
+              </p>
+              {(
+                [
+                  { id: 'small', label: 'Small' },
+                  { id: 'medium', label: 'Medium' },
+                  { id: 'large', label: 'Large' },
+                  { id: 'full', label: 'Full' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setImageWidth(opt.id);
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-[#F7F6F2]',
+                    imageWidth === opt.id ? 'bg-[#104C3B]/8 font-semibold text-[#104C3B]' : 'text-[#0B1B2B]',
+                  )}
+                >
                   {opt.label}
                 </button>
               ))}
@@ -286,7 +481,7 @@ export function RichTextEditor({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-semibold text-[#104C3B] hover:bg-[#F7F6F2]"
               >
                 <ImagePlus size={14} />
-                Upload image…
+                {imageUploading ? 'Uploading…' : 'Upload image…'}
               </button>
             </div>
           )}
@@ -296,7 +491,17 @@ export function RichTextEditor({
             accept="image/jpeg,image/png,image/webp,image/gif"
             className="hidden"
             onChange={(e) => {
-              handleImagePick(e.target.files?.[0]);
+              void handleImagePick(e.target.files?.[0], false);
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              void handleImagePick(e.target.files?.[0], true);
               e.target.value = '';
             }}
           />
@@ -321,6 +526,94 @@ export function RichTextEditor({
         </button>
       </div>
 
+      {selectedFigure && (
+        <div className="flex flex-wrap items-end gap-2 border-b border-[#E5E1D8] bg-[#FAFAF8] px-3 py-2">
+          <div className="space-y-0.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Align
+            </label>
+            <select
+              value={imageAlign}
+              onChange={(e) => updateSelectedAlign(e.target.value as ImageAlignOption)}
+              className="rounded border border-[#E5E1D8] bg-white px-2 py-1 text-[12px]"
+            >
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+              <option value="full">Full width</option>
+              <option value="wrap-left">Wrap left</option>
+              <option value="wrap-right">Wrap right</option>
+            </select>
+          </div>
+          <div className="space-y-0.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Width
+            </label>
+            <select
+              value={imageWidth}
+              onChange={(e) => updateSelectedWidth(e.target.value as ImageWidthOption)}
+              className="rounded border border-[#E5E1D8] bg-white px-2 py-1 text-[12px]"
+            >
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
+          <div className="min-w-[8rem] flex-1 space-y-0.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Caption
+            </label>
+            <input
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              onBlur={applyCaptionAndAlt}
+              className="w-full rounded border border-[#E5E1D8] bg-white px-2 py-1 text-[12px]"
+              placeholder="Caption"
+            />
+          </div>
+          <div className="min-w-[8rem] flex-1 space-y-0.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              Alt text
+            </label>
+            <input
+              value={altDraft}
+              onChange={(e) => setAltDraft(e.target.value)}
+              onBlur={applyCaptionAndAlt}
+              className="w-full rounded border border-[#E5E1D8] bg-white px-2 py-1 text-[12px]"
+              placeholder="Describe the image"
+            />
+          </div>
+          <button
+            type="button"
+            title="Replace image"
+            onClick={() => replaceInputRef.current?.click()}
+            className="inline-flex h-8 items-center gap-1 rounded border border-[#E5E1D8] bg-white px-2 text-[11px] font-medium text-[#0B1B2B] hover:border-[#C9A646]"
+          >
+            <Replace size={13} />
+            Replace
+          </button>
+          <button
+            type="button"
+            title="Delete image"
+            onClick={deleteSelectedImage}
+            className="inline-flex h-8 items-center gap-1 rounded border border-red-200 bg-white px-2 text-[11px] font-medium text-red-700 hover:bg-red-50"
+          >
+            <Trash2 size={13} />
+            Delete
+          </button>
+          <button
+            type="button"
+            title="Deselect"
+            onClick={() => selectFigure(null)}
+            className="inline-flex h-8 items-center gap-1 rounded border border-[#E5E1D8] bg-white px-2 text-[11px] text-[#64748B]"
+          >
+            <Maximize2 size={13} />
+            Done
+          </button>
+        </div>
+      )}
+
       <div
         ref={editorRef}
         contentEditable
@@ -328,6 +621,11 @@ export function RichTextEditor({
         dir={dir}
         onInput={emit}
         onPaste={handlePaste}
+        onClick={handleEditorClick}
+        onDrop={handleDrop}
+        onDragOver={(e) => {
+          if ([...e.dataTransfer.types].includes('Files')) e.preventDefault();
+        }}
         data-placeholder={placeholder}
         style={{ minHeight }}
         className={cn(
@@ -343,6 +641,7 @@ export function RichTextEditor({
           '[&_.content-arabic]:font-[Scheherazade_New,Noto_Naskh_Arabic,Amiri,serif] [&_.content-arabic]:text-[1.35em] [&_.content-arabic]:leading-[2.4] [&_.content-arabic]:text-[#104C3B]',
           '[&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-md',
           '[&_figure.content-image]:my-4 [&_figure.content-image]:block',
+          '[&_figure.content-image.is-selected]:outline [&_figure.content-image.is-selected]:outline-2 [&_figure.content-image.is-selected]:outline-[#C9A646]',
           '[&_figure.content-image figcaption]:mt-1.5 [&_figure.content-image figcaption]:text-center [&_figure.content-image figcaption]:text-[12px] [&_figure.content-image figcaption]:text-[#64748B]',
           '[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[#E5E1D8] [&_td]:p-2',
         )}

@@ -576,9 +576,10 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
         }
         case 'image': {
           const align = block.align ?? 'center';
+          const width = block.width ?? (align === 'full' ? 'full' : 'large');
           const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : '';
           const alt = escape(block.alt || block.caption || '');
-          return `<figure class="content-image content-image-${align}" data-align="${align}"><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
+          return `<figure class="content-image content-image-${align}" data-align="${align}" data-width="${width}"><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
         }
         default:
           return '';
@@ -616,17 +617,35 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       const url = img?.getAttribute('src')?.trim();
       if (url) {
         const alignAttr = (el.getAttribute('data-align') || '').toLowerCase();
-        const align: 'left' | 'center' | 'right' =
-          alignAttr === 'left' || alignAttr === 'right'
+        const align: 'left' | 'center' | 'right' | 'full' | 'wrap-left' | 'wrap-right' =
+          alignAttr === 'left' ||
+          alignAttr === 'right' ||
+          alignAttr === 'full' ||
+          alignAttr === 'wrap-left' ||
+          alignAttr === 'wrap-right'
             ? alignAttr
-            : cls.includes('content-image-left')
-              ? 'left'
-              : cls.includes('content-image-right')
-                ? 'right'
-                : 'center';
+            : cls.includes('content-image-wrap-left')
+              ? 'wrap-left'
+              : cls.includes('content-image-wrap-right')
+                ? 'wrap-right'
+                : cls.includes('content-image-full')
+                  ? 'full'
+                  : cls.includes('content-image-left')
+                    ? 'left'
+                    : cls.includes('content-image-right')
+                      ? 'right'
+                      : 'center';
+        const widthAttr = (el.getAttribute('data-width') || '').toLowerCase();
+        const width: 'small' | 'medium' | 'large' | 'full' | undefined =
+          widthAttr === 'small' ||
+          widthAttr === 'medium' ||
+          widthAttr === 'large' ||
+          widthAttr === 'full'
+            ? widthAttr
+            : undefined;
         const caption = el.querySelector('figcaption')?.textContent?.trim();
         const alt = img?.getAttribute('alt')?.trim() || undefined;
-        blocks.push({ type: 'image', url, caption, alt, align });
+        blocks.push({ type: 'image', url, caption, alt, align, width });
       }
       return;
     }

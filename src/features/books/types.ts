@@ -26,7 +26,15 @@ export interface Book {
   shortDescription?: string;
   coverUrl?: string;
   coverColor: string;
+  /** Legacy / external URL field */
   originalPdfUrl?: string;
+  /** Private Storage path for retained original PDF (book-pdfs bucket) */
+  sourcePdfPath?: string;
+  /** Authorized external PDF URL used for import (if any) */
+  sourcePdfUrl?: string;
+  importMethod?: 'upload' | 'url' | 'manual';
+  licenceNote?: string;
+  importedAt?: string;
   /** Intermediate markdown from the PDF pipeline (import only, not shown to readers) */
   sourceMarkdown?: string;
   categories: string[];
@@ -104,6 +112,10 @@ export interface BookExtractionInfo {
   lowConfidenceHeadings?: number;
   scannedPageNums?: number[];
   ocrPageCount?: number;
+  /** Pages where Arabic OCR confidence was low */
+  lowConfidenceArabicPages?: number[];
+  importMethod?: 'upload' | 'url' | 'manual';
+  sourcePdfUrl?: string;
 }
 
 // ─── Filter / sort helpers (UI state only, not persisted) ─────────────────────

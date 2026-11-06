@@ -1,8 +1,8 @@
 /**
  * Single source of truth for book PDF upload limits (admin import).
  *
- * PDFs are processed in the browser (pdf.js). Only the converted content is
- * saved (Supabase Storage, book-content bucket) — the PDF itself is not stored.
+ * PDFs are processed in the browser (pdf.js). Converted content is saved to
+ * book-content; when permitted the original PDF is retained in private book-pdfs.
  * Cap is file size (bytes), not page count: a multi-hundred-page scholarly
  * PDF under 150 MB is allowed.
  */
