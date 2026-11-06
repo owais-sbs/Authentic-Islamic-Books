@@ -114,8 +114,8 @@ function showConfirm(options: {
 export async function confirmCreateNewBook(): Promise<boolean> {
   return showConfirm({
     title: 'Create a new book?',
-    body: 'You will add the title, chapters, and content. Save as draft anytime, or publish when the book is ready for readers.',
-    confirmLabel: 'Start new book',
+    body: 'Next you can Import a PDF or Create a book manually. Both publish to the same library.',
+    confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
   });
 }

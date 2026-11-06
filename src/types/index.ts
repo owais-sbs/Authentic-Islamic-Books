@@ -68,6 +68,18 @@ export type ContentBlock =
       text: string;
       narrator?: string;
       reference?: string;
+    } & ContentBlockLang)
+  | ({
+      type: 'image';
+      url: string;
+      caption?: string;
+      alt?: string;
+      align?: 'left' | 'center' | 'right';
+    } & ContentBlockLang)
+  | ({
+      type: 'callout';
+      text: string;
+      variant?: 'info' | 'warning' | 'claim';
     } & ContentBlockLang);
 
 export interface BookSection {

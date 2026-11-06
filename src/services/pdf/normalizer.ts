@@ -2,6 +2,7 @@ import type { RawPage } from '@/lib/pdfExtractor';
 import type { NormalizedBlock, NormalizedPage } from './types';
 import { languageMeta } from './language';
 import { pageHasUsableText } from './documentType';
+import { repairFragmentedArabic } from '@/services/content/arabic';
 import {
   cleanUnicode,
   isIsolatedStructuralLine,
@@ -17,16 +18,11 @@ function collapseSpaces(text: string): string {
 /** Arabic/Urdu-aware cleanup — removes extraction artifacts only, keeps diacritics. */
 export function normalizeArabicScript(text: string): string {
   return (
-    text
-      // Presentation forms → standard where safely mappable via NFKC
-      .normalize('NFKC')
-      // Tatweel / kashida (decorative elongation)
-      .replace(/\u0640+/g, '')
-      // Zero-width / BOM leftovers
-      .replace(/[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]/g, '')
+    repairFragmentedArabic(text)
       // Collapse Arabic comma spacing artifacts
       .replace(/\s+([،؛؟!.])/g, '$1')
       .replace(/[ \t]{2,}/g, ' ')
+      .trim()
   );
 }
 

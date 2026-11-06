@@ -4,7 +4,80 @@
 const ARABIC_CHAR =
   /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
+/** Base letters only (no harakat / tatweel) — after NFKC presentation forms become these. */
+const ARABIC_BASE =
+  /[\u0621-\u063A\u0641-\u064A\u066E\u066F\u0671-\u06D3\u06EE\u06EF\u06FA-\u06FF]/;
+
 const LATIN_LETTER = /[A-Za-z]/;
+
+function baseLetterCount(token: string): number {
+  let n = 0;
+  for (const ch of token) {
+    if (ARABIC_BASE.test(ch)) n += 1;
+  }
+  return n;
+}
+
+/** Map Arabic presentation forms → standard letters without touching harakat NFC. */
+function unwrapPresentationForms(text: string): string {
+  return text.replace(/[\uFB50-\uFDFF\uFE70-\uFEFF]/g, (ch) => ch.normalize('NFKC'));
+}
+
+/**
+ * Repair PDF Arabic that arrives as spaced presentation glyphs / tatweel fragments
+ * (e.g. "ـلـ ـلشـ ـيـ ـخـ" → "الشيخ" after cleanup).
+ * Keeps real word spaces when tokens already look like normal Arabic words.
+ */
+export function repairFragmentedArabic(text: string): string {
+  let t = unwrapPresentationForms(text)
+    // Decorative tatweel / kashida between broken glyphs
+    .replace(/\u0640+/g, '')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+  if (!t || !ARABIC_CHAR.test(t)) return t;
+
+  const tokens = t.split(/\s+/).filter(Boolean);
+  const arabicTokens = tokens.filter((tok) => ARABIC_CHAR.test(tok));
+  if (arabicTokens.length < 4) return t;
+
+  const shortCount = arabicTokens.filter((tok) => baseLetterCount(tok) <= 2).length;
+  const shortRatio = shortCount / arabicTokens.length;
+  // Normal Arabic prose has multi-letter words — leave it alone
+  if (shortRatio < 0.45) return t;
+
+  const out: string[] = [];
+  let buf = '';
+  const flush = () => {
+    if (buf) {
+      out.push(buf);
+      buf = '';
+    }
+  };
+
+  for (const tok of tokens) {
+    if (!ARABIC_CHAR.test(tok)) {
+      flush();
+      out.push(tok);
+      continue;
+    }
+    const n = baseLetterCount(tok);
+    // Definite article often starts a new word in fragmented extracts
+    if (/^ال/.test(tok) && buf.length >= 3) {
+      flush();
+      buf = tok;
+      continue;
+    }
+    if (n <= 3) {
+      buf += tok;
+      continue;
+    }
+    flush();
+    out.push(tok);
+  }
+  flush();
+  return out.join(' ').replace(/[ \t]{2,}/g, ' ').trim();
+}
 
 export function countArabicChars(text: string): number {
   let n = 0;

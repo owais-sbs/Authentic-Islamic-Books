@@ -15,7 +15,7 @@ const SECTION_TITLE_RE = /^(Chapter|Section|Part|Book|CHAPTER|SECTION|PART)\s+(\
 /** "…said:" / "narrated:" style lead-in that introduces a quotation. */
 const QUOTE_LEAD_IN = /(said|says|stated|narrated|reported|wrote|asked|replied)[^.!?]{0,40}[:,]?$/i;
 
-const SEMANTIC_TYPES = new Set(['arabic', 'quran', 'hadith', 'footnote']);
+const SEMANTIC_TYPES = new Set(['arabic', 'quran', 'hadith', 'footnote', 'image']);
 
 function collapseSpacedCaps(text: string): string {
   const spaced = text.match(/(?:\b[A-Z]\s+){4,}[A-Z]\b/);
@@ -164,6 +164,10 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
       if (block.type === 'footnote') {
         const text = normalizeReaderText(block.text);
         if (text) expanded.push({ ...block, text });
+        continue;
+      }
+      if (block.type === 'image') {
+        if (block.url?.trim()) expanded.push(block);
         continue;
       }
     }

@@ -574,6 +574,12 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
           const items = block.items.map((it) => `<li>${escape(it)}</li>`).join('');
           return `<${tag}>${items}</${tag}>`;
         }
+        case 'image': {
+          const align = block.align ?? 'center';
+          const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : '';
+          const alt = escape(block.alt || block.caption || '');
+          return `<figure class="content-image content-image-${align}" data-align="${align}"><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
+        }
         default:
           return '';
       }
@@ -602,6 +608,26 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       const translation = el.querySelector('.content-quran-translation')?.textContent?.trim();
       const reference = el.querySelector('.content-quran-reference')?.textContent?.trim();
       blocks.push({ type: 'quran', arabic, translation, reference });
+      return;
+    }
+
+    if ((cls.includes('content-image') || tag === 'figure') && el.querySelector('img')) {
+      const img = el.querySelector('img');
+      const url = img?.getAttribute('src')?.trim();
+      if (url) {
+        const alignAttr = (el.getAttribute('data-align') || '').toLowerCase();
+        const align: 'left' | 'center' | 'right' =
+          alignAttr === 'left' || alignAttr === 'right'
+            ? alignAttr
+            : cls.includes('content-image-left')
+              ? 'left'
+              : cls.includes('content-image-right')
+                ? 'right'
+                : 'center';
+        const caption = el.querySelector('figcaption')?.textContent?.trim();
+        const alt = img?.getAttribute('alt')?.trim() || undefined;
+        blocks.push({ type: 'image', url, caption, alt, align });
+      }
       return;
     }
 
@@ -689,7 +715,9 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
 
   // Keep structured HTML (headings, quotes, semantic classes) as-is
   const hasRich = blocks.some((b) =>
-    ['quran', 'arabic', 'hadith', 'footnote', 'heading', 'quote', 'list', 'reference'].includes(b.type),
+    ['quran', 'arabic', 'hadith', 'footnote', 'heading', 'quote', 'list', 'reference', 'image'].includes(
+      b.type,
+    ),
   );
   if (hasRich) return blocks;
 

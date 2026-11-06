@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Tag,
   Upload,
+  PenLine,
   Settings,
   X,
   BookMarked,
@@ -43,6 +44,7 @@ const navigation: NavGroup[] = [
   {
     group: 'Content',
     items: [
+      { label: 'Add New Book', href: '/admin/books/new', icon: PenLine },
       { label: 'Import Book', href: '/admin/books/import', icon: Upload },
     ],
   },

@@ -3,6 +3,8 @@
  * Preserves headings, numbering, Arabic, references, and footnote markers.
  */
 
+import { repairFragmentedArabic } from './arabic';
+
 const FOOTER_LINE = [
   /^\s*page\s+\d+\s*(of\s+\d+)?\s*$/i,
   /^\s*-\s*\d+\s*-\s*$/,
@@ -181,9 +183,13 @@ export function stripRepeatedPageArtifacts(pages: string[]): string[] {
 
 /** Light cleanup for display without destroying paragraph boundaries. */
 export function normalizeDisplayText(text: string): string {
-  return cleanUnicode(text)
+  let out = cleanUnicode(text)
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\s+([,.;:!?])/g, '$1')
     .replace(/\bAL\s*-\s*/gi, 'Al-')
     .trim();
+  if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(out)) {
+    out = repairFragmentedArabic(out);
+  }
+  return out;
 }

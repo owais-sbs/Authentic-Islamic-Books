@@ -90,12 +90,7 @@ function isGarbledMixedLine(text: string): boolean {
     if (shortJunk / Math.max(words.length, 1) > 0.45) return true;
   }
 
-  // Mostly disconnected single Arabic glyphs with almost no continuous words
-  if (arabic >= 10 && arabic <= 30 && words.length >= 8) {
-    const singleGlyphs = words.filter((w) => /^[\u0600-\u06FF]{1,2}$/.test(w)).length;
-    if (singleGlyphs / words.length > 0.55) return true;
-  }
-
+  // Fragmented Arabic is repaired at import — do not hide remaining short tokens
   return false;
 }
 
@@ -384,6 +379,26 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                   <span className="reader-accent"> — {block.source}</span>
                 )}
               </p>
+            );
+          }
+
+          case 'image': {
+            const align = block.align ?? 'center';
+            return (
+              <figure
+                key={i}
+                className={cn(
+                  'reader-image',
+                  align === 'left' && 'reader-image-left',
+                  align === 'center' && 'reader-image-center',
+                  align === 'right' && 'reader-image-right',
+                )}
+              >
+                <img src={block.url} alt={block.alt || block.caption || ''} loading="lazy" />
+                {block.caption && (
+                  <figcaption style={{ fontSize: `${small}px` }}>{block.caption}</figcaption>
+                )}
+              </figure>
             );
           }
 

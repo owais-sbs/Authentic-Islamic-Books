@@ -120,9 +120,25 @@ export type BooksSortKey = 'updatedAt_desc' | 'title_asc' | 'title_desc';
 
 // ─── Mock-data full book (review page uses this shape) ────────────────────────
 
+/** Reader presentation templates (demo formats 01–06). Default = Format 06. */
+export type PresentationFormatId =
+  | 'classic-book'
+  | 'research-article'
+  | 'numbered-refutation'
+  | 'quote-reader'
+  | 'audio-pdf'
+  | 'combined-edition';
+
 export interface BookWithStructure extends Book {
   introduction?: Omit<BookIntroduction, 'bookId'>;
   chapters: BookChapter[];
   /** Present after PDF import — review quality panel */
   extractionInfo?: BookExtractionInfo;
+  /**
+   * Optional reader layout (Formats 01–06). Omitted / unknown → Format 06.
+   * Stored in content.json for backward compatibility (no required DB column).
+   */
+  presentationFormat?: PresentationFormatId;
+  /** How the book was created — does not affect publishing. */
+  creationMethod?: 'pdf_import' | 'manual';
 }

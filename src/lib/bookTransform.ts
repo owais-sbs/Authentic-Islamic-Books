@@ -170,6 +170,8 @@ export function createEmptyBook(): BookWithStructure {
     status: 'draft',
     createdAt: today,
     updatedAt: today,
+    creationMethod: 'manual',
+    presentationFormat: 'combined-edition',
     introduction: {
       id: 'intro',
       title: 'Introduction',
@@ -177,7 +179,29 @@ export function createEmptyBook(): BookWithStructure {
       content: '',
       order: 0,
     },
-    chapters: [],
+    chapters: (() => {
+      const chapterId = crypto.randomUUID();
+      return [
+        {
+          id: chapterId,
+          bookId: id,
+          number: '1',
+          title: 'Chapter 1',
+          description: '',
+          order: 0,
+          sections: [
+            {
+              id: crypto.randomUUID(),
+              chapterId,
+              number: '1',
+              title: 'Content',
+              content: '',
+              order: 0,
+            },
+          ],
+        },
+      ];
+    })(),
   };
 }
 

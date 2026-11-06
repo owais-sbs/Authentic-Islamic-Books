@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri+Quran&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Scheherazade+New:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -197,7 +197,7 @@
   }
 
   .reader-prose {
-    font-family: 'Source Serif 4', Georgia, serif;
+    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
     line-height: 1.85;
     color: var(--ink-700, #334155);
     font-size: inherit;
@@ -226,7 +226,7 @@
   .reader-prose h3,
   .reader-prose h4,
   .reader-prose .reader-heading {
-    font-family: 'Source Serif 4', Georgia, serif;
+    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
     line-height: 1.3;
     color: var(--ink-800, #1e293b);
@@ -279,35 +279,36 @@
     font-style: italic;
   }
 
-  /* Arabic body — clean Noto Naskh (publication-quality RTL) */
+  /* Arabic body — professional Naskh stack (Scheherazade → Noto → Amiri) */
   .reader-prose .reader-arabic {
-    font-family: 'Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', 'Scheherazade New', serif;
+    font-family: 'Scheherazade New', 'Noto Naskh Arabic', 'Amiri', 'Traditional Arabic', serif;
     text-align: center;
     direction: rtl;
     unicode-bidi: isolate;
-    margin: 1.75em auto;
+    margin: 1.85em auto;
     max-width: 42rem;
     overflow-wrap: anywhere;
     word-break: normal;
     white-space: normal;
-    line-height: 2.35;
+    line-height: 2.55;
     letter-spacing: 0;
-    color: var(--ink-900, #0f172a);
-    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1;
+    color: #104c3b;
+    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'mark' 1, 'mkmk' 1;
     font-weight: 500;
   }
 
   /* Urdu body */
   .reader-prose .reader-urdu {
-    font-family: 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', 'Traditional Arabic', serif;
+    font-family: 'Scheherazade New', 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', 'Traditional Arabic', serif;
     text-align: right;
     direction: rtl;
     unicode-bidi: isolate;
     margin: 1.5em 0;
     overflow-wrap: break-word;
     word-break: keep-all;
-    line-height: 2.25;
-    color: var(--ink-800, #1e293b);
+    line-height: 2.4;
+    color: #104c3b;
+    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'mark' 1, 'mkmk' 1;
   }
 
   .reader-prose .reader-rtl-block {
@@ -324,7 +325,7 @@
     border: none;
   }
   .reader-prose .reader-quran-arabic {
-    font-family: 'Amiri Quran', 'Noto Naskh Arabic', 'Traditional Arabic', 'Scheherazade New', serif;
+    font-family: 'Amiri Quran', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
     text-align: center;
     direction: rtl;
     unicode-bidi: isolate;
@@ -333,10 +334,57 @@
     overflow-wrap: anywhere;
     word-break: normal;
     white-space: normal;
-    line-height: 2.45;
-    color: var(--ink-900, #0f172a);
-    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1;
+    line-height: 2.65;
+    color: #104c3b;
+    font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'mark' 1, 'mkmk' 1;
     font-weight: 400;
+  }
+
+  /* Inline book images (admin-inserted mid-content) */
+  .reader-prose .reader-image {
+    margin: 1.75em 0;
+    max-width: 100%;
+  }
+  .reader-prose .reader-image img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(24, 37, 31, 0.08);
+  }
+  .reader-prose .reader-image-left {
+    margin-right: auto;
+    text-align: left;
+  }
+  .reader-prose .reader-image-left img {
+    margin-right: auto;
+    margin-left: 0;
+    max-width: min(100%, 28rem);
+  }
+  .reader-prose .reader-image-center {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+  .reader-prose .reader-image-center img {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: min(100%, 36rem);
+  }
+  .reader-prose .reader-image-right {
+    margin-left: auto;
+    text-align: right;
+  }
+  .reader-prose .reader-image-right img {
+    margin-left: auto;
+    margin-right: 0;
+    max-width: min(100%, 28rem);
+  }
+  .reader-prose .reader-image figcaption {
+    margin-top: 0.65em;
+    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.85em;
+    color: var(--ink-500, #6c756e);
   }
   .reader-prose .reader-quran-translation {
     text-align: left;
@@ -348,7 +396,7 @@
   }
   .reader-prose .reader-quran-reference {
     text-align: center;
-    font-family: Inter, system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
     font-size: 0.88em;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -504,7 +552,7 @@
     float: left;
     margin-right: 0.12em;
     margin-top: 0.06em;
-    font-family: 'Source Serif 4', Georgia, serif;
+    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
     font-size: 3.35em;
     font-weight: 600;
     line-height: 0.8;

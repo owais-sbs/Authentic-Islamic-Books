@@ -1208,7 +1208,7 @@ const bookStyles = `
 }
 .qob-closed-eyebrow {
   margin-top: 1rem;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1216,7 +1216,7 @@ const bookStyles = `
 }
 .qob-closed-title {
   margin-top: 1.25rem;
-  font-family: Cinzel, Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.25rem, 3.5vw, 1.55rem);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1236,7 +1236,7 @@ const bookStyles = `
 }
 .qob-closed-sub {
   margin-top: 0.75rem;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.88rem;
   font-style: italic;
   opacity: 0.75;
@@ -1245,19 +1245,19 @@ const bookStyles = `
 }
 .qob-closed-author {
   margin-top: 0.35rem;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.95rem;
 }
 .qob-closed-meta {
   margin-top: 0.35rem;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   opacity: 0.65;
 }
 .qob-closed-cta {
   margin-top: auto;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1427,7 +1427,7 @@ const bookStyles = `
   min-height: 0;
   width: 100%;
   padding: 1.75rem 2rem 3.25rem;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   color: var(--qob-ink);
   overflow: hidden;
 }
@@ -1554,7 +1554,7 @@ const bookStyles = `
   border-radius: 0 6px 6px 0;
 }
 .qob-arabic-label {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -1578,7 +1578,7 @@ const bookStyles = `
 }
 .qob-arabic-src {
   margin-top: 0.35rem;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.72rem;
   color: var(--qob-accent);
 }
@@ -1590,7 +1590,7 @@ const bookStyles = `
   font-size: 0.9em;
 }
 .qob-note-label {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -1624,7 +1624,7 @@ const bookStyles = `
 }
 .qob-fn-active { color: var(--qob-ink); }
 .qob-ref {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.7em;
   font-weight: 700;
   vertical-align: super;
@@ -1662,7 +1662,7 @@ const bookStyles = `
   opacity: 0.75;
 }
 .qob-page-num {
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.85rem;
   color: var(--qob-ink);
   min-width: 1.5rem;
@@ -1710,7 +1710,7 @@ const bookStyles = `
   background: var(--qob-page);
   color: var(--qob-ink);
   font-size: 13px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
   white-space: nowrap;
 }

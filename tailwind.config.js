@@ -47,11 +47,18 @@ export default {
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['Cormorant Garamond', 'Georgia', 'Times New Roman', 'serif'],
-        display: ['Cormorant Garamond', 'Georgia', 'Times New Roman', 'serif'],
-        arabic: ['Noto Naskh Arabic', 'Amiri Quran', 'Traditional Arabic', 'serif'],
-        cinzel: ['Cormorant Garamond', 'Georgia', 'serif'],
-        'cinzel-decorative': ['Cormorant Garamond', 'Georgia', 'serif'],
+        serif: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        arabic: [
+          'Scheherazade New',
+          'Noto Naskh Arabic',
+          'Amiri',
+          'Amiri Quran',
+          'Traditional Arabic',
+          'serif',
+        ],
+        cinzel: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'cinzel-decorative': ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       maxWidth: {
         prose: '720px',

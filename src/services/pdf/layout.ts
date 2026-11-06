@@ -183,6 +183,10 @@ function groupLines(glyphs: Glyph[]): Glyph[][] {
   return lines.map((l) => l.glyphs);
 }
 
+const ARABIC_MARK_ONLY = /^[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]+$/;
+const ARABIC_LETTERISH =
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
 function joinLine(glyphs: Glyph[]): Line {
   const raw = glyphs.map((g) => g.str).join('');
   const rtl = glyphs.some((g) => g.rtl) ? isMostlyRtl(raw) || glyphs.every((g) => g.rtl) : isMostlyRtl(raw);
@@ -201,12 +205,24 @@ function joinLine(glyphs: Glyph[]): Line {
       prev = g;
       continue;
     }
+    // Harakat / tatweel never start a new word
+    if (ARABIC_MARK_ONLY.test(g.str.trim())) {
+      text += g.str;
+      prev = g;
+      continue;
+    }
     const alreadySpaced = /\s$/.test(text) || /^\s/.test(g.str);
     const punctuation = /^[.,;:!?)\]،؛؟]/.test(g.str);
     let wideGap = true;
     if (prev.width > 0) {
       const gap = rtl ? prev.x - (g.x + g.width) : g.x - (prev.x + prev.width);
-      wideGap = gap > 0.15 * Math.min(prev.size, g.size);
+      const bothArabic =
+        ARABIC_LETTERISH.test(prev.str) && ARABIC_LETTERISH.test(g.str);
+      // Arabic letters inside a word sit close; only real word gaps get spaces
+      const threshold = bothArabic
+        ? 0.42 * Math.min(prev.size, g.size)
+        : 0.15 * Math.min(prev.size, g.size);
+      wideGap = gap > threshold;
     }
     text += !alreadySpaced && !punctuation && wideGap ? ` ${g.str}` : g.str;
     prev = g;

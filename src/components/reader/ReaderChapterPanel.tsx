@@ -43,7 +43,7 @@ function ChapterOrnament({ number }: { number: string }) {
           y="46"
           textAnchor="middle"
           className="fill-accent font-bold"
-          style={{ fontFamily: 'Source Serif 4, Georgia, serif', fontSize }}
+          style={{ fontFamily: 'Plus Jakarta Sans, Inter, sans-serif', fontSize }}
         >
           {label}
         </text>
