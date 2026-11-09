@@ -2,7 +2,7 @@
 
 A modern, polished digital library for exploring centuries of Islamic scholarship. Every book is presented in a clean, structured reading experience — not as a PDF, but as carefully typeset web content organized by chapters, sections, and subsections. 
 
-## Features 
+## Features  
    
 
 
