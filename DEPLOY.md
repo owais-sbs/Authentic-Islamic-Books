@@ -34,6 +34,18 @@ If you see `Invalid API key`, regenerate keys in Supabase **Settings → API** a
 
 ---
 
+## Optional SQL — admin review bibliographic + attachments
+
+After `book-storage.sql` and `book-enhancements.sql`, you may run:
+
+`supabase/admin-review-enhancements.sql`
+
+This adds optional `books` columns (Arabic/English title, translator, publisher, year, ISBN) and a **private** `book-attachments` bucket for audio/supplemental PDFs. The app already stores these fields in `content.json`, so books work before the script is applied. Do **not** make `book-attachments` public.
+
+For **anonymous** readers to open audio/PDF attachments via signed URLs, also run `supabase/book-attachments-anon-signed.sql` (bucket stays private).
+
+---
+
 ## Shared book visibility (team members)
 
 **Problem:** books were saved to each browser's `localStorage`, so Team A and Team B could not see each other's books.

@@ -37,7 +37,7 @@ export function ReaderSearch({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-1/2 top-20 z-50 w-[90vw] max-w-xl -translate-x-1/2 rounded-xl bg-cream shadow-2xl border border-line overflow-hidden"
+            className="fixed left-1/2 top-14 z-50 w-[min(94vw,36rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border border-line bg-cream shadow-2xl sm:top-20"
             role="dialog"
             aria-modal="true"
             aria-label="Search in book"
@@ -54,7 +54,7 @@ export function ReaderSearch({
               />
               <button
                 onClick={onClose}
-                className="rounded-md p-1 text-ink-400 transition-colors hover:bg-paper hover:text-ink-700"
+                className="flex h-10 w-10 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-paper hover:text-ink-700"
                 aria-label="Close search"
               >
                 <X size={16} />

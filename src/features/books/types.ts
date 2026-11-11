@@ -15,13 +15,44 @@ export type ExtractionStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 // ─── Core book model (maps to future `books` Supabase table) ──────────────────
 
+/** Page- or section-scoped media kept as Storage paths (never base64 in JSON). */
+export type BookAttachmentKind = 'image' | 'audio' | 'pdf' | 'other';
+
+export interface BookAttachment {
+  id: string;
+  kind: BookAttachmentKind;
+  /** Storage object path within `bucket` */
+  storagePath: string;
+  bucket: 'book-images' | 'book-pdfs' | 'book-attachments';
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  caption?: string;
+  alt?: string;
+  /** Original source PDF page (distinct from reader pagination) */
+  pdfPage?: number;
+  chapterId?: string;
+  sectionId?: string;
+  /** Optional paragraph/footnote anchor within section HTML (`data-anchor-id`) */
+  anchorId?: string;
+  createdAt: string;
+}
+
 export interface Book {
   id: string;
   title: string;
   subtitle?: string;
+  /** Original Arabic title of the work */
+  originalArabicTitle?: string;
+  /** Explicit English title when distinct from `title` */
+  englishTitle?: string;
   authorId?: string;
   authorName?: string;
   scholarId?: string;
+  translator?: string;
+  publisher?: string;
+  publicationYear?: number;
+  isbn?: string;
   description?: string;
   shortDescription?: string;
   coverUrl?: string;
@@ -51,6 +82,8 @@ export interface Book {
   featured?: boolean;
   isPublic?: boolean;
   allowSearch?: boolean;
+  /** Media linked to book / PDF page / section locations */
+  attachments?: BookAttachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -84,6 +117,12 @@ export interface BookSection {
   subtitle?: string;
   content: string;
   order: number;
+  /**
+   * Inclusive original PDF page range for this section.
+   * Distinct from reader pagination — used for admin placement of media/notes.
+   */
+  pdfPageStart?: number;
+  pdfPageEnd?: number;
 }
 
 // ─── Import job model (maps to future `book_imports` Supabase table) ──────────

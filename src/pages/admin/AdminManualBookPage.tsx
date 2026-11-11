@@ -422,8 +422,8 @@ export function AdminManualBookPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
-        {/* Left: chapters */}
-        <aside className="space-y-3 rounded-xl border border-[#E5E1D8] bg-white p-3">
+        {/* Left: chapters — full width above editor on mobile */}
+        <aside className="order-2 space-y-3 rounded-xl border border-[#E5E1D8] bg-white p-3 lg:order-none">
 
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -534,8 +534,8 @@ export function AdminManualBookPage() {
           </div>
         </aside>
 
-        {/* Center: editor */}
-        <main className="min-w-0 space-y-3">
+        {/* Center: editor — first on mobile for writing focus */}
+        <main className="order-1 min-w-0 space-y-3 lg:order-none">
           <div className="rounded-xl border border-[#E5E1D8] bg-white px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
               Editing
@@ -557,7 +557,7 @@ export function AdminManualBookPage() {
         </main>
 
         {/* Right: blocks / format */}
-        <aside className="space-y-3">
+        <aside className="order-3 space-y-3 lg:order-none">
           <div className="rounded-xl border border-[#E5E1D8] bg-white p-3">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
               Insert content block

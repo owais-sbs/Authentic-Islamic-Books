@@ -4,13 +4,19 @@ import {
   generateSlug,
   reviewBookToPublicBook,
 } from '@/lib/bookTransform';
-import type { BookWithStructure, BookStatus } from '@/features/books/types';
+import { stripDataUriImagesFromBookContent } from '@/lib/stripDataUriImages';
+import type {
+  BookAttachment,
+  BookWithStructure,
+  BookStatus,
+} from '@/features/books/types';
 import type { Book } from '@/types';
 
 const COVER_BUCKET = 'book-covers';
 const CONTENT_BUCKET = 'book-content';
 const PDF_BUCKET = 'book-pdfs';
 const IMAGE_BUCKET = 'book-images';
+const ATTACHMENT_BUCKET = 'book-attachments';
 
 interface DbBookRow {
   id: string;
@@ -38,6 +44,12 @@ interface DbBookRow {
   import_method?: string | null;
   licence_note?: string | null;
   imported_at?: string | null;
+  original_arabic_title?: string | null;
+  english_title?: string | null;
+  translator?: string | null;
+  publisher?: string | null;
+  publication_year?: number | null;
+  isbn?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,11 +62,30 @@ export interface UpsertBookOptions {
   originalPdfFileName?: string;
 }
 
+type HydratedDbBookRow = DbBookRow & {
+  _attachments?: BookAttachment[];
+  _presentationFormat?: BookWithStructure['presentationFormat'];
+};
+
+interface StoredBookBibliographic {
+  originalArabicTitle?: string;
+  englishTitle?: string;
+  translator?: string;
+  publisher?: string;
+  publicationYear?: number;
+  isbn?: string;
+  licenceNote?: string;
+  language?: string;
+}
+
 interface StoredBookContent {
   version: 1;
   introduction: BookWithStructure['introduction'] | null;
   chapters: ReturnType<typeof chaptersToDb>;
   sourceMarkdown?: string;
+  bibliographic?: StoredBookBibliographic;
+  attachments?: BookAttachment[];
+  presentationFormat?: BookWithStructure['presentationFormat'];
   savedAt: string;
 }
 
@@ -72,8 +103,10 @@ function chaptersToDb(book: BookWithStructure) {
       number: sec.number,
       title: sec.title,
       subtitle: sec.subtitle ?? '',
-      content: sec.content,
+      content: stripDataUriImagesFromBookContent(sec.content ?? ''),
       order: sec.order,
+      ...(sec.pdfPageStart != null ? { pdfPageStart: sec.pdfPageStart } : {}),
+      ...(sec.pdfPageEnd != null ? { pdfPageEnd: sec.pdfPageEnd } : {}),
     })),
   }));
 }
@@ -87,7 +120,7 @@ function chaptersToIndex(book: BookWithStructure) {
   }));
 }
 
-function rowToReviewBook(row: DbBookRow): BookWithStructure {
+function rowToReviewBook(row: HydratedDbBookRow): BookWithStructure {
   const catMap: Record<string, string> = {
     'cat-aqeedah': 'Aqeedah',
     'cat-hadith': 'Hadith',
@@ -116,6 +149,14 @@ function rowToReviewBook(row: DbBookRow): BookWithStructure {
       subtitle: sec.subtitle,
       content: sec.content ?? '',
       order: sec.order ?? si,
+      pdfPageStart:
+        typeof (sec as { pdfPageStart?: number }).pdfPageStart === 'number'
+          ? (sec as { pdfPageStart?: number }).pdfPageStart
+          : undefined,
+      pdfPageEnd:
+        typeof (sec as { pdfPageEnd?: number }).pdfPageEnd === 'number'
+          ? (sec as { pdfPageEnd?: number }).pdfPageEnd
+          : undefined,
     })),
   }));
 
@@ -123,8 +164,14 @@ function rowToReviewBook(row: DbBookRow): BookWithStructure {
     id: row.id,
     title: row.title,
     subtitle: row.subtitle ?? undefined,
+    originalArabicTitle: row.original_arabic_title ?? undefined,
+    englishTitle: row.english_title ?? undefined,
     authorName: row.author_name ?? undefined,
     authorId: row.author_id ?? undefined,
+    translator: row.translator ?? undefined,
+    publisher: row.publisher ?? undefined,
+    publicationYear: row.publication_year ?? undefined,
+    isbn: row.isbn ?? undefined,
     description: row.description ?? undefined,
     coverColor: row.cover_color || '#18231F',
     coverUrl: row.cover_url ?? undefined,
@@ -148,6 +195,8 @@ function rowToReviewBook(row: DbBookRow): BookWithStructure {
     updatedAt: (row.updated_at || new Date().toISOString()).slice(0, 10),
     introduction: row.introduction ?? undefined,
     chapters,
+    attachments: row._attachments,
+    presentationFormat: row._presentationFormat,
   };
 }
 
@@ -396,6 +445,130 @@ export async function uploadBookContentImage(
   return { path, publicUrl: data.publicUrl };
 }
 
+/**
+ * Upload audio / supplemental PDF to private book-attachments.
+ * Returns a BookAttachment record (path only — use signed URLs to open).
+ */
+export async function uploadBookAttachment(
+  bookId: string,
+  file: File,
+  meta?: {
+    kind?: BookAttachment['kind'];
+    caption?: string;
+    pdfPage?: number;
+    chapterId?: string;
+    sectionId?: string;
+    anchorId?: string;
+  },
+): Promise<BookAttachment> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured');
+  }
+  const supabase = getSupabase();
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    throw new Error('Sign in to upload attachments.');
+  }
+
+  const mime = file.type || 'application/octet-stream';
+  const kind: BookAttachment['kind'] =
+    meta?.kind ||
+    (mime.startsWith('audio/') ? 'audio' : mime.includes('pdf') ? 'pdf' : 'other');
+  const safeName = (file.name || `file-${Date.now()}`).replace(/[^\w.\-]+/g, '_');
+  const path = `${bookId}/attachments/${crypto.randomUUID()}-${safeName}`;
+
+  const { error } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file, {
+    contentType: mime,
+    upsert: false,
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('bucket') && msg.includes('not found')) {
+      throw new Error(
+        'Storage bucket "book-attachments" missing — run supabase/admin-review-enhancements.sql, then try again.',
+      );
+    }
+    throw new Error(`Attachment upload failed: ${error.message}`);
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    storagePath: path,
+    bucket: 'book-attachments',
+    fileName: file.name || safeName,
+    mimeType: mime,
+    sizeBytes: file.size,
+    caption: meta?.caption,
+    pdfPage: meta?.pdfPage,
+    chapterId: meta?.chapterId,
+    sectionId: meta?.sectionId,
+    anchorId: meta?.anchorId,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/** Short-lived signed URL for private book-attachments / book-pdfs objects. */
+export async function getAttachmentSignedUrl(
+  bucket: BookAttachment['bucket'],
+  storagePath: string,
+  expiresIn = 3600,
+): Promise<string> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured');
+  }
+  if (bucket === 'book-images') {
+    const { data } = getSupabase().storage.from(IMAGE_BUCKET).getPublicUrl(storagePath);
+    return data.publicUrl;
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(storagePath, expiresIn);
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'Could not create signed URL');
+  }
+  return data.signedUrl;
+}
+
+export async function removeBookAttachmentObject(
+  attachment: Pick<BookAttachment, 'bucket' | 'storagePath'>,
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  if (attachment.bucket === 'book-images') {
+    await getSupabase().storage.from(IMAGE_BUCKET).remove([attachment.storagePath]);
+    return;
+  }
+  await getSupabase().storage.from(attachment.bucket).remove([attachment.storagePath]);
+}
+
+/**
+ * Copy the current content.json to a timestamped backup object before overwrite.
+ * Non-fatal if the previous object is missing.
+ */
+export async function backupBookContentSnapshot(bookId: string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = getSupabase();
+    const src = `${bookId}/content.json`;
+    const dest = `${bookId}/content.backup.${Date.now()}.json`;
+    const { data, error } = await supabase.storage.from(CONTENT_BUCKET).download(src);
+    if (error || !data) return null;
+    const { error: upErr } = await supabase.storage
+      .from(CONTENT_BUCKET)
+      .upload(dest, data, { contentType: 'application/json', upsert: false });
+    if (upErr) {
+      console.warn('[bookApi] content backup skipped:', upErr.message);
+      return null;
+    }
+    return dest;
+  } catch (err) {
+    console.warn('[bookApi] content backup failed:', err);
+    return null;
+  }
+}
+
 /** Upload chapters + introduction JSON to Supabase Storage (S3). */
 async function uploadBookContentToStorage(
   bookId: string,
@@ -404,11 +577,31 @@ async function uploadBookContentToStorage(
 ): Promise<string> {
   const supabase = getSupabase();
   const path = `${bookId}/content.json`;
+  const introduction = book.introduction
+    ? {
+        ...book.introduction,
+        content: stripDataUriImagesFromBookContent(book.introduction.content ?? ''),
+      }
+    : null;
+  const bibliographic: StoredBookBibliographic = {
+    ...(book.originalArabicTitle ? { originalArabicTitle: book.originalArabicTitle } : {}),
+    ...(book.englishTitle ? { englishTitle: book.englishTitle } : {}),
+    ...(book.translator ? { translator: book.translator } : {}),
+    ...(book.publisher ? { publisher: book.publisher } : {}),
+    ...(book.publicationYear != null ? { publicationYear: book.publicationYear } : {}),
+    ...(book.isbn ? { isbn: book.isbn } : {}),
+    ...(book.licenceNote ? { licenceNote: book.licenceNote } : {}),
+    ...(book.language ? { language: book.language } : {}),
+  };
+
   const payload: StoredBookContent = {
     version: 1,
-    introduction: book.introduction ?? null,
+    introduction,
     chapters: chaptersToDb(book),
     ...(sourceMarkdown ? { sourceMarkdown } : {}),
+    ...(Object.keys(bibliographic).length ? { bibliographic } : {}),
+    ...(book.attachments?.length ? { attachments: book.attachments } : {}),
+    ...(book.presentationFormat ? { presentationFormat: book.presentationFormat } : {}),
     savedAt: new Date().toISOString(),
   };
   const body = new Blob([JSON.stringify(payload)], { type: 'application/json' });
@@ -431,7 +624,7 @@ async function uploadBookContentToStorage(
 }
 
 /** Load structured content from Storage when content_path is set. */
-async function hydrateContentFromStorage(row: DbBookRow): Promise<DbBookRow> {
+async function hydrateContentFromStorage(row: DbBookRow): Promise<HydratedDbBookRow> {
   if (!row.content_path) return row;
 
   try {
@@ -443,10 +636,23 @@ async function hydrateContentFromStorage(row: DbBookRow): Promise<DbBookRow> {
     const parsed = JSON.parse(text) as StoredBookContent;
     if (!parsed?.chapters) return row;
 
+    const bib = parsed.bibliographic;
     return {
       ...row,
       introduction: parsed.introduction ?? row.introduction,
       chapters: parsed.chapters as DbBookRow['chapters'],
+      // Prefer explicit DB columns; fall back to content.json bibliographic block
+      original_arabic_title:
+        row.original_arabic_title ?? bib?.originalArabicTitle ?? null,
+      english_title: row.english_title ?? bib?.englishTitle ?? null,
+      translator: row.translator ?? bib?.translator ?? null,
+      publisher: row.publisher ?? bib?.publisher ?? null,
+      publication_year: row.publication_year ?? bib?.publicationYear ?? null,
+      isbn: row.isbn ?? bib?.isbn ?? null,
+      licence_note: row.licence_note ?? bib?.licenceNote ?? null,
+      language: row.language || bib?.language || 'English',
+      _attachments: parsed.attachments,
+      _presentationFormat: parsed.presentationFormat,
     };
   } catch {
     return row;
@@ -782,6 +988,12 @@ export async function upsertBookToSupabase(
     import_method: book.importMethod ?? null,
     licence_note: book.licenceNote ?? null,
     imported_at: book.importedAt ?? (sourcePdfPath ? new Date().toISOString() : null),
+    original_arabic_title: book.originalArabicTitle ?? null,
+    english_title: book.englishTitle ?? null,
+    translator: book.translator ?? null,
+    publisher: book.publisher ?? null,
+    publication_year: book.publicationYear ?? null,
+    isbn: book.isbn ?? null,
     created_by: sessionData.session.user.id,
   };
 
@@ -799,8 +1011,28 @@ export async function upsertBookToSupabase(
       msg.includes('import_method') ||
       msg.includes('licence_note') ||
       msg.includes('imported_at');
-    if (msg.includes('created_by') || msg.includes('content_path') || missingEnhancement) {
+    const missingBibliographic =
+      msg.includes('original_arabic_title') ||
+      msg.includes('english_title') ||
+      msg.includes('translator') ||
+      msg.includes('publisher') ||
+      msg.includes('publication_year') ||
+      msg.includes('isbn');
+    if (
+      msg.includes('created_by') ||
+      msg.includes('content_path') ||
+      missingEnhancement ||
+      missingBibliographic
+    ) {
       delete payload.created_by;
+      if (missingBibliographic) {
+        delete payload.original_arabic_title;
+        delete payload.english_title;
+        delete payload.translator;
+        delete payload.publisher;
+        delete payload.publication_year;
+        delete payload.isbn;
+      }
       if (missingEnhancement) {
         delete payload.source_pdf_path;
         delete payload.source_pdf_url;
@@ -828,6 +1060,8 @@ export async function upsertBookToSupabase(
         }
         throw new Error(retry.error.message);
       }
+      invalidatePublishedBookCache(retry.data.slug);
+      invalidatePublishedBookCache(slug);
       return {
         id: retry.data.id,
         slug: retry.data.slug,
@@ -835,8 +1069,11 @@ export async function upsertBookToSupabase(
         contentPath: payload.content_path ? contentPath : undefined,
       };
     }
-    throw new Error(error.message);
+  throw new Error(error.message);
   }
+
+  invalidatePublishedBookCache(data.slug);
+  invalidatePublishedBookCache(slug);
 
   return {
     id: data.id,
@@ -850,6 +1087,16 @@ export async function upsertBookToSupabase(
 // without Storage text (contentPending); fullBookCache holds loaded ones.
 let publishedCache: Book[] = [];
 const fullBookCache = new Map<string, Book>();
+
+export function invalidatePublishedBookCache(slug?: string): void {
+  if (!slug) {
+    fullBookCache.clear();
+    publishedCache = [];
+    return;
+  }
+  fullBookCache.delete(slug);
+  publishedCache = publishedCache.filter((b) => b.slug !== slug);
+}
 
 export function getSupabasePublishedCache(): Book[] {
   if (fullBookCache.size === 0) return publishedCache;

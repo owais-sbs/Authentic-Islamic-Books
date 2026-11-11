@@ -15,7 +15,22 @@ const SECTION_TITLE_RE = /^(Chapter|Section|Part|Book|CHAPTER|SECTION|PART)\s+(\
 /** "…said:" / "narrated:" style lead-in that introduces a quotation. */
 const QUOTE_LEAD_IN = /(said|says|stated|narrated|reported|wrote|asked|replied)[^.!?]{0,40}[:,]?$/i;
 
-const SEMANTIC_TYPES = new Set(['arabic', 'quran', 'hadith', 'footnote', 'image']);
+const SEMANTIC_TYPES = new Set([
+  'arabic',
+  'urdu',
+  'bilingual',
+  'quran',
+  'hadith',
+  'footnote',
+  'endnote',
+  'citation',
+  'image',
+  'table',
+  'audio',
+  'pdf',
+  'callout',
+  'html',
+]);
 
 function collapseSpacedCaps(text: string): string {
   const spaced = text.match(/(?:\b[A-Z]\s+){4,}[A-Z]\b/);
@@ -135,9 +150,19 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
 
   for (const block of blocks) {
     if (SEMANTIC_TYPES.has(block.type)) {
-      if (block.type === 'arabic') {
+      if (block.type === 'arabic' || block.type === 'urdu') {
         const text = normalizeDisplayText(block.text);
         if (text) expanded.push({ ...block, text });
+        continue;
+      }
+      if (block.type === 'bilingual') {
+        expanded.push({
+          ...block,
+          arabic: block.arabic ? normalizeDisplayText(block.arabic) : block.arabic,
+          translation: block.translation
+            ? normalizeReaderText(block.translation)
+            : block.translation,
+        });
         continue;
       }
       if (block.type === 'quran') {
@@ -151,36 +176,79 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
       }
       if (block.type === 'hadith') {
         const text = normalizeReaderText(block.text);
-        if (!isJunkReaderText(text)) {
+        if (!isJunkReaderText(text) || block.arabic) {
           expanded.push({
             ...block,
-            text,
+            text: text || block.arabic || '',
+            arabic: block.arabic ? normalizeDisplayText(block.arabic) : block.arabic,
             narrator: block.narrator ? normalizeReaderText(block.narrator) : block.narrator,
             reference: block.reference ? normalizeDisplayText(block.reference) : block.reference,
           });
         }
         continue;
       }
-      if (block.type === 'footnote') {
+      if (block.type === 'footnote' || block.type === 'endnote' || block.type === 'citation') {
         const text = normalizeReaderText(block.text);
         if (text) expanded.push({ ...block, text });
         continue;
       }
+      if (block.type === 'callout') {
+        const text = normalizeReaderText(block.text);
+        if (text || block.claim || block.response) expanded.push({ ...block, text });
+        continue;
+      }
       if (block.type === 'image') {
-        if (block.url?.trim()) expanded.push(block);
+        if (block.url?.trim() || block.storagePath?.trim()) expanded.push(block);
+        continue;
+      }
+      if (block.type === 'table' || block.type === 'audio' || block.type === 'pdf' || block.type === 'html') {
+        expanded.push(block);
         continue;
       }
     }
 
     if (block.type === 'paragraph' && block.text.length > 120) {
-      expanded.push(...expandParagraphBlock(block.text));
+      const expandedParas = expandParagraphBlock(block.text).map((b) => {
+        if (b.type !== 'paragraph') return b;
+        const meta = languageMeta(b.text);
+        if (meta.language === 'ar' || meta.language === 'ur') {
+          return {
+            type: meta.language === 'ur' ? ('urdu' as const) : ('arabic' as const),
+            text: b.text,
+            language: meta.language,
+            direction: 'rtl' as const,
+          };
+        }
+        return {
+          ...b,
+          language: block.language ?? b.language,
+          direction: block.direction ?? b.direction,
+        };
+      });
+      expanded.push(...expandedParas);
       continue;
     }
 
     if (block.type === 'paragraph') {
       const text = normalizeReaderText(block.text);
-      if (!isJunkReaderText(text)) {
-        expanded.push({ type: 'paragraph', text });
+      if (isJunkReaderText(text)) continue;
+      const meta = languageMeta(text);
+      const lang = block.language ?? meta.language;
+      const dir = block.direction ?? meta.direction;
+      if (lang === 'ar' || lang === 'ur' || dir === 'rtl') {
+        expanded.push({
+          type: lang === 'ur' ? 'urdu' : 'arabic',
+          text,
+          language: lang === 'ur' ? 'ur' : 'ar',
+          direction: 'rtl',
+        });
+      } else {
+        expanded.push({
+          type: 'paragraph',
+          text,
+          language: block.language,
+          direction: block.direction,
+        });
       }
       continue;
     }

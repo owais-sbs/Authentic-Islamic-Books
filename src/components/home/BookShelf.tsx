@@ -62,7 +62,7 @@ export function BookShelf({ title, subtitle, books, fallbackMocks = [] }: BookSh
 
       <div
         ref={scrollerRef}
-        className="flex gap-6 overflow-x-auto pb-3 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+        className="flex gap-4 overflow-x-auto overscroll-x-contain pb-3 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:gap-6 [&::-webkit-scrollbar]:hidden"
       >
         {books.length > 0
           ? books.map((book) => {
@@ -74,23 +74,23 @@ export function BookShelf({ title, subtitle, books, fallbackMocks = [] }: BookSh
                 <Link
                   key={book.id}
                   to={`/books/${book.slug}`}
-                  className="group w-[148px] shrink-0 snap-start sm:w-[164px]"
+                  className="group w-[128px] shrink-0 snap-start min-[360px]:w-[140px] sm:w-[164px]"
                 >
                   <div className="relative overflow-hidden rounded-xl shadow-[0_12px_28px_rgba(16,76,59,0.16)] transition-transform duration-500 group-hover:-translate-y-1.5">
                     <BookCover
                       book={book}
                       size="md"
-                      className="!h-[222px] !w-full rounded-xl sm:!h-[246px]"
+                      className="!h-[192px] !w-full rounded-xl min-[360px]:!h-[210px] sm:!h-[246px]"
                     />
-                    <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-islamic-green px-2 py-0.5 font-sans text-[10px] font-semibold text-white shadow-sm">
+                    <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-islamic-green px-2 py-0.5 font-sans text-[10px] font-semibold text-white shadow-sm">
                       <Check size={10} strokeWidth={3} />
                       Ready
                     </span>
                   </div>
-                  <h4 className="mt-3 line-clamp-2 font-sans text-[13px] font-semibold leading-snug text-ink-900 group-hover:text-islamic-green dark:text-white dark:group-hover:text-accent sm:text-sm">
+                  <h4 className="mt-2.5 line-clamp-2 font-sans text-[12px] font-semibold leading-snug text-ink-900 group-hover:text-islamic-green dark:text-white dark:group-hover:text-accent min-[360px]:text-[13px] sm:text-sm">
                     {book.title}
                   </h4>
-                  <p className="mt-1 line-clamp-1 font-sans text-xs text-ink-500 dark:text-white/55">
+                  <p className="mt-1 line-clamp-1 font-sans text-[11px] text-ink-500 dark:text-white/55 sm:text-xs">
                     {author}
                   </p>
                   {chapters > 0 && (

@@ -11,6 +11,8 @@
  *   `headingLines` (level 1 = much larger, level 2 = somewhat larger).
  */
 
+import { shouldSortRtlByDescendingX } from './arabicQuality';
+
 export interface PdfTextItem {
   str?: string;
   transform?: number[];
@@ -190,7 +192,16 @@ const ARABIC_LETTERISH =
 function joinLine(glyphs: Glyph[]): Line {
   const raw = glyphs.map((g) => g.str).join('');
   const rtl = glyphs.some((g) => g.rtl) ? isMostlyRtl(raw) || glyphs.every((g) => g.rtl) : isMostlyRtl(raw);
-  const ordered = [...glyphs].sort((a, b) => (rtl ? b.x - a.x : a.x - b.x));
+  // Arabic: only re-sort by geometry when the content stream is visual LTR.
+  // If items already arrive right→left, keep document order (logical Unicode).
+  let ordered: Glyph[];
+  if (!rtl) {
+    ordered = [...glyphs].sort((a, b) => a.x - b.x);
+  } else if (shouldSortRtlByDescendingX(glyphs)) {
+    ordered = [...glyphs].sort((a, b) => b.x - a.x);
+  } else {
+    ordered = [...glyphs];
+  }
 
   let text = '';
   let prev: Glyph | null = null;

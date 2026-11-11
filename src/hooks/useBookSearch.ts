@@ -28,12 +28,26 @@ export function useBookSearch(book: Book) {
           if (!sec.content) return;
           for (const block of sec.content) {
             let text = '';
-            if (block.type === 'paragraph' || block.type === 'quote' || block.type === 'heading') {
-              text = block.text;
+            if (
+              block.type === 'paragraph' ||
+              block.type === 'quote' ||
+              block.type === 'heading' ||
+              block.type === 'arabic' ||
+              block.type === 'urdu' ||
+              block.type === 'citation' ||
+              block.type === 'callout'
+            ) {
+              text = 'text' in block ? block.text : '';
             } else if (block.type === 'list') {
               text = block.items.join(' ');
-            } else if (block.type === 'reference' || block.type === 'footnote') {
+            } else if (block.type === 'reference' || block.type === 'footnote' || block.type === 'endnote') {
               text = block.text;
+            } else if (block.type === 'quran') {
+              text = [block.arabic, block.translation, block.reference].filter(Boolean).join(' ');
+            } else if (block.type === 'hadith') {
+              text = [block.text, block.arabic, block.narrator, block.reference].filter(Boolean).join(' ');
+            } else if (block.type === 'bilingual') {
+              text = [block.arabic, block.translation].filter(Boolean).join(' ');
             }
 
             const lowerText = text.toLowerCase();

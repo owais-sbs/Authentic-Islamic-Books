@@ -93,11 +93,11 @@ export function ScholarsPage() {
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
-              className="rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
             >
               <option value="">All Periods</option>
               {hijriPeriods.map((p) => (
@@ -109,7 +109,7 @@ export function ScholarsPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
             >
               <option value="az">A–Z</option>
               <option value="za">Z–A</option>

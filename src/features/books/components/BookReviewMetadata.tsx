@@ -8,6 +8,8 @@ const AVAILABLE_CATEGORIES = [
   'History', 'Ethics', 'Spirituality', 'Islamic Thought', 'Biography',
 ];
 
+const LANGUAGES = ['English', 'Arabic', 'Urdu', 'Bilingual', 'Multilingual'];
+
 const COVER_COLORS = [
   '#18231F', '#3F4A5D', '#3A4A3F', '#5B4B3A', '#2D1215', '#0B1929', '#1C1C2E',
 ];
@@ -55,24 +57,18 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
       <div className="border-b border-[#E5E1D8] px-5 py-3.5">
         <h3 className="text-[13px] font-semibold text-[#0B1B2B]">Book Metadata</h3>
         <p className="text-[12px] text-[#94A3B8] mt-0.5">
-          {isNewBook ? 'Fill in the book details below' : 'Review and correct book details'}
+          {isNewBook ? 'Fill in the book details below' : 'Review and correct book details — manual edits are preserved on reprocess'}
         </p>
       </div>
       <div className="px-5 py-5 space-y-4">
-
-        {/* Cover image */}
-        <Field label="Cover Image" hint="Upload a cover image (JPG, PNG, WebP). Optional — a generated cover is used if none is provided.">
+        <Field label="Cover Image" hint="Upload JPG, PNG or WebP. Saved to book-covers on draft/publish.">
           <div className="flex items-start gap-4">
             <div
               className="relative flex h-36 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E5E1D8] bg-[#F7F6F2]"
               style={!book.coverUrl ? { backgroundColor: book.coverColor } : undefined}
             >
               {book.coverUrl ? (
-                <img
-                  src={book.coverUrl}
-                  alt="Book cover preview"
-                  className="h-full w-full object-cover"
-                />
+                <img src={book.coverUrl} alt="Book cover preview" className="h-full w-full object-cover" />
               ) : (
                 <ImagePlus size={24} className="text-white/60" />
               )}
@@ -107,9 +103,8 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
           </div>
         </Field>
 
-        {/* Fallback cover color (when no image) */}
         {!book.coverUrl && (
-          <Field label="Cover Color" hint="Used for the generated cover when no image is uploaded">
+          <Field label="Cover Color" hint="Used when no cover image is set">
             <div className="flex flex-wrap gap-2">
               {COVER_COLORS.map((color) => (
                 <button
@@ -120,7 +115,7 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
                     'h-8 w-8 rounded-lg border-2 transition-all',
                     book.coverColor === color
                       ? 'border-[#C9A646] scale-110'
-                      : 'border-transparent hover:border-[#E5E1D8]'
+                      : 'border-transparent hover:border-[#E5E1D8]',
                   )}
                   style={{ backgroundColor: color }}
                   aria-label={`Select cover color ${color}`}
@@ -130,14 +125,35 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
           </Field>
         )}
 
-        <Field label="Title">
+        <Field label="Book Title">
           <input
             className={inputCls}
             value={book.title}
             onChange={(e) => onChange({ title: e.target.value })}
-            placeholder="Book title"
+            placeholder="Display title"
           />
         </Field>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="English Title" hint="When distinct from display title">
+            <input
+              className={inputCls}
+              value={book.englishTitle ?? ''}
+              onChange={(e) => onChange({ englishTitle: e.target.value || undefined })}
+              placeholder="English title"
+            />
+          </Field>
+          <Field label="Original Arabic Title">
+            <input
+              className={cn(inputCls, 'font-[family-name:var(--font-arabic,serif)]')}
+              dir="rtl"
+              lang="ar"
+              value={book.originalArabicTitle ?? ''}
+              onChange={(e) => onChange({ originalArabicTitle: e.target.value || undefined })}
+              placeholder="العنوان العربي"
+            />
+          </Field>
+        </div>
 
         <Field label="Subtitle">
           <input
@@ -148,27 +164,56 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
           />
         </Field>
 
-        <Field label="Author">
-          <input
-            className={inputCls}
-            value={book.authorName ?? ''}
-            onChange={(e) => onChange({ authorName: e.target.value })}
-            placeholder="Author name"
-          />
-        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Author">
+            <input
+              className={inputCls}
+              value={book.authorName ?? ''}
+              onChange={(e) => onChange({ authorName: e.target.value })}
+              placeholder="Author name"
+            />
+          </Field>
+          <Field label="Translator">
+            <input
+              className={inputCls}
+              value={book.translator ?? ''}
+              onChange={(e) => onChange({ translator: e.target.value || undefined })}
+              placeholder="Translator name"
+            />
+          </Field>
+        </div>
 
-        <Field label="Description">
-          <textarea
-            className={cn(inputCls, 'resize-none')}
-            rows={3}
-            value={book.description ?? ''}
-            onChange={(e) => onChange({ description: e.target.value })}
-            placeholder="Short description for library listings..."
-          />
-        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Publisher">
+            <input
+              className={inputCls}
+              value={book.publisher ?? ''}
+              onChange={(e) => onChange({ publisher: e.target.value || undefined })}
+              placeholder="Publisher"
+            />
+          </Field>
+          <Field label="ISBN">
+            <input
+              className={inputCls}
+              value={book.isbn ?? ''}
+              onChange={(e) => onChange({ isbn: e.target.value || undefined })}
+              placeholder="ISBN-10 or ISBN-13"
+            />
+          </Field>
+        </div>
 
-        {/* Hijri period */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="Pub. Year">
+            <input
+              type="number"
+              className={inputCls}
+              value={book.publicationYear ?? ''}
+              onChange={(e) =>
+                onChange({ publicationYear: Number(e.target.value) || undefined })
+              }
+              placeholder="e.g. 2020"
+            />
+          </Field>
           <Field label="Hijri Start">
             <input
               type="number"
@@ -187,10 +232,42 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
               placeholder="e.g. 774"
             />
           </Field>
+          <Field label="Language">
+            <select
+              className={inputCls}
+              value={book.language || 'English'}
+              onChange={(e) => onChange({ language: e.target.value })}
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
 
-        {/* Categories */}
-        <Field label="Categories" hint="Select all that apply">
+        <Field label="Description">
+          <textarea
+            className={cn(inputCls, 'resize-y min-h-[4.5rem]')}
+            rows={3}
+            value={book.description ?? ''}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Short description for library listings..."
+          />
+        </Field>
+
+        <Field label="Copyright / Licence" hint="Shown with import source; not overwritten by extraction">
+          <textarea
+            className={cn(inputCls, 'resize-y min-h-[3rem]')}
+            rows={2}
+            value={book.licenceNote ?? ''}
+            onChange={(e) => onChange({ licenceNote: e.target.value || undefined })}
+            placeholder="Copyright and licence information"
+          />
+        </Field>
+
+        <Field label="Category" hint="Select all that apply">
           <div className="flex flex-wrap gap-1.5 pt-0.5">
             {AVAILABLE_CATEGORIES.map((cat) => {
               const active = book.categories.includes(cat);
@@ -203,7 +280,7 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
                     'rounded-full border px-3 py-0.5 text-[12px] font-medium transition-all',
                     active
                       ? 'border-[#C9A646] bg-[#C9A646]/10 text-[#8C7030]'
-                      : 'border-[#E5E1D8] bg-white text-[#64748B] hover:border-[#C9A646]/30'
+                      : 'border-[#E5E1D8] bg-white text-[#64748B] hover:border-[#C9A646]/30',
                   )}
                 >
                   {cat}
@@ -213,22 +290,23 @@ export function BookReviewMetadata({ book, onChange, isNewBook }: BookReviewMeta
           </div>
         </Field>
 
-        {/* Stats row */}
         {(book.wordCount || book.pageCount) && (
-          <div className="flex flex-wrap gap-4 pt-1 border-t border-[#F1F0EB]">
-            {book.wordCount && (
+          <div className="flex flex-wrap gap-4 border-t border-[#F1F0EB] pt-1">
+            {book.wordCount != null && (
               <div>
-                <p className="text-[11px] text-[#94A3B8]">Words extracted</p>
-                <p className="text-[13px] font-semibold text-[#0B1B2B]">{book.wordCount.toLocaleString()}</p>
+                <p className="text-[11px] text-[#94A3B8]">Words</p>
+                <p className="text-[13px] font-semibold text-[#0B1B2B]">
+                  {book.wordCount.toLocaleString()}
+                </p>
               </div>
             )}
-            {book.pageCount && (
+            {book.pageCount != null && (
               <div>
-                <p className="text-[11px] text-[#94A3B8]">Pages</p>
+                <p className="text-[11px] text-[#94A3B8]">PDF pages</p>
                 <p className="text-[13px] font-semibold text-[#0B1B2B]">{book.pageCount}</p>
               </div>
             )}
-            {book.chapterCount && (
+            {book.chapterCount != null && (
               <div>
                 <p className="text-[11px] text-[#94A3B8]">Chapters</p>
                 <p className="text-[13px] font-semibold text-[#0B1B2B]">{book.chapterCount}</p>

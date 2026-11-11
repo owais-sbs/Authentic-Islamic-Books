@@ -60,6 +60,27 @@ function looksLikeHtml(content: string): boolean {
  * Always ensures semantic parsing runs on dense/plain content so existing
  * imported books improve without re-import.
  */
+const PRESERVE_AS_IS = new Set([
+  'image',
+  'audio',
+  'pdf',
+  'table',
+  'html',
+  'quran',
+  'arabic',
+  'urdu',
+  'bilingual',
+  'hadith',
+  'footnote',
+  'endnote',
+  'callout',
+  'citation',
+  'reference',
+  'list',
+  'quote',
+  'heading',
+]);
+
 export function htmlToContentBlocks(html: string): ContentBlock[] {
   if (!html?.trim()) return [];
 
@@ -70,12 +91,10 @@ export function htmlToContentBlocks(html: string): ContentBlock[] {
 
   let blocks = htmlDocumentToContentBlocks(html);
 
-  const hasSemantic = blocks.some((b) =>
-    ['quran', 'arabic', 'hadith', 'footnote'].includes(b.type),
-  );
+  const hasMediaOrStructure = blocks.some((b) => PRESERVE_AS_IS.has(b.type));
 
-  if (!hasSemantic) {
-    // Paragraph/heading HTML without semantic types — re-parse as text
+  if (!hasMediaOrStructure) {
+    // Plain <p>-only HTML — semantic text parse is safe (nothing visual to keep)
     const plain =
       blocks
         .map((b) => {
@@ -87,10 +106,29 @@ export function htmlToContentBlocks(html: string): ContentBlock[] {
         .join('\n\n') || html.replace(/<[^>]+>/g, '\n');
     blocks = parseBookContent(plain);
   } else {
-    // Keep semantic blocks; re-parse leftover dense paragraphs that still mix scripts
+    // Keep images / Arabic / media / headings. Only re-parse dense mixed paragraphs.
     blocks = blocks.flatMap((b) => {
       if (b.type !== 'paragraph') return [b];
       const t = b.text;
+      // Already marked RTL/Arabic from the editor — keep as arabic block
+      if (
+        b.language === 'ar' ||
+        b.language === 'ur' ||
+        b.direction === 'rtl' ||
+        (/^[\s\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\d.,;:!?'"()\-\s]+$/u.test(t) &&
+          /[\u0600-\u06FF]/.test(t) &&
+          t.replace(/\s/g, '').length >= 8)
+      ) {
+        const isUrdu = b.language === 'ur';
+        return [
+          {
+            type: isUrdu ? 'urdu' : 'arabic',
+            text: t,
+            language: isUrdu ? 'ur' : 'ar',
+            direction: 'rtl',
+          } as ContentBlock,
+        ];
+      }
       if (t.length > 80 && /[\u0600-\u06FF]/.test(t) && /[A-Za-z]/.test(t)) {
         return parseBookContent(t);
       }
@@ -121,6 +159,8 @@ export function reviewBookToPublicBook(book: BookWithStructure): Book {
         title: sec.title,
         subtitle: sec.subtitle,
         content: htmlToContentBlocks(sec.content),
+        pdfPageStart: sec.pdfPageStart,
+        pdfPageEnd: sec.pdfPageEnd,
       })
     ),
   }));
@@ -136,20 +176,45 @@ export function reviewBookToPublicBook(book: BookWithStructure): Book {
     slug,
     title: book.title,
     subtitle: book.subtitle,
+    authorName: book.authorName,
+    originalArabicTitle: book.originalArabicTitle,
+    englishTitle: book.englishTitle,
+    translator: book.translator,
+    publisher: book.publisher,
+    publicationYear: book.publicationYear,
+    isbn: book.isbn,
+    language: book.language,
+    licenceNote: book.licenceNote,
     authorId: book.authorId ?? 'scholar-ibn-kathir',
     description: book.description ?? `${book.title || 'Untitled'} — an Islamic scholarly work.`,
     longDescription: undefined,
     coverColor: book.coverColor,
     coverUrl: book.coverUrl,
-    hijriStart: book.hijriStartYear ?? 700,
-    hijriEnd: book.hijriEndYear ?? 800,
+    hijriStart: book.hijriStartYear,
+    hijriEnd: book.hijriEndYear,
     categoryIds:
       book.categories.length > 0 ? book.categories.map(catNameToId) : ['cat-thought'],
     chapters: publicChapters,
     introduction,
+    attachments: book.attachments?.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      storagePath: a.storagePath,
+      bucket: a.bucket,
+      fileName: a.fileName,
+      caption: a.caption,
+      alt: a.alt,
+      pdfPage: a.pdfPage,
+      chapterId: a.chapterId,
+      sectionId: a.sectionId,
+      anchorId: a.anchorId,
+    })),
     featured: book.featured ?? false,
+    publishedYear: book.publicationYear != null ? String(book.publicationYear) : undefined,
     popularity: 50,
     addedDate: book.createdAt ?? new Date().toISOString().slice(0, 10),
+    pageCount: book.pageCount,
+    volumeLabel: 'Single volume',
   };
 }
 
@@ -280,7 +345,10 @@ export function publicBookToReviewBook(book: Book, status: BookStatus = 'draft')
         subtitle: sec.subtitle,
         content: blocksToStoredContent(sec.content),
         order: si,
+        pdfPageStart: sec.pdfPageStart,
+        pdfPageEnd: sec.pdfPageEnd,
       })),
     })),
+    pageCount: book.pageCount,
   };
 }

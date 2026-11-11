@@ -59,7 +59,8 @@ export default function App() {
               <Route path="/scholars/:slug"   element={<ScholarDetailPage />} />
               {/* Library Read → book detail (cover + chapter dropdowns) */}
               <Route path="/books/:slug"      element={<BookDetailPage />} />
-              {/* Full reader experience */}
+              {/* Page-based reader (kutub-style): /read → /read/1 */}
+              <Route path="/books/:slug/read/:pageNumber" element={<ReaderPage />} />
               <Route path="/books/:slug/read" element={<ReaderPage />} />
               <Route path="/timeline"         element={<TimelinePage />} />
               <Route path="/categories"       element={<CategoriesPage />} />

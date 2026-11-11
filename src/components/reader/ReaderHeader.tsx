@@ -27,17 +27,17 @@ export function ReaderHeader({
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 border-b reader-border reader-card backdrop-blur-sm',
+        'sticky top-0 z-30 reader-card backdrop-blur-sm shadow-[0_6px_20px_rgba(0,0,0,0.05)]',
         className
       )}
     >
-      <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="flex h-12 items-center justify-between gap-2 px-2 sm:h-14 sm:gap-3 sm:px-6">
         {/* Left */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-3">
           {showTocButton && (
             <button
               onClick={onOpenToc}
-              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
+              className="touch-target lg:hidden flex items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
               aria-label="Open table of contents"
             >
               <Menu size={18} />
@@ -45,24 +45,24 @@ export function ReaderHeader({
           )}
           <Link
             to={`/books/${book.slug}`}
-            className="flex h-9 w-9 items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
+            className="touch-target flex items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
             aria-label="Back to book details"
           >
             <ArrowLeft size={18} />
           </Link>
           <div className="min-w-0">
-            <h1 className="truncate font-serif text-sm font-semibold" style={{ color: 'var(--reader-text)' }}>
+            <h1 className="truncate font-serif text-[13px] font-semibold sm:text-sm" style={{ color: 'var(--reader-text)' }}>
               {book.title}
             </h1>
-            <p className="truncate text-xs reader-muted hidden sm:block">{book.subtitle}</p>
+            <p className="hidden truncate text-xs reader-muted sm:block">{book.subtitle}</p>
           </div>
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center">
           <button
             onClick={onOpenSearch}
-            className="flex h-9 w-9 items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
+            className="touch-target flex items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
             aria-label="Search in book"
             title="Search (Ctrl+K)"
           >
@@ -70,7 +70,7 @@ export function ReaderHeader({
           </button>
           <button
             onClick={onOpenSettings}
-            className="flex h-9 w-9 items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
+            className="touch-target flex items-center justify-center rounded-md reader-muted transition-colors hover:reader-accent"
             aria-label="Reading settings"
             title="Reading settings"
           >
@@ -79,7 +79,7 @@ export function ReaderHeader({
           <button
             onClick={onToggleBookmark}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+              'touch-target flex items-center justify-center rounded-md transition-colors',
               isBookmarked ? 'reader-accent' : 'reader-muted hover:reader-accent'
             )}
             aria-label={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}

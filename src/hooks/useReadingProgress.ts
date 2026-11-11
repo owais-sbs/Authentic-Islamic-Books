@@ -5,6 +5,8 @@ interface BookProgress {
   scrollPercent: number;
   activeSectionId: string | null;
   updatedAt: number;
+  /** 1-based reading page (kutub-style pagination) */
+  pageNumber?: number;
 }
 
 type ProgressMap = Record<string, BookProgress>;
@@ -16,13 +18,14 @@ export function useReadingProgress(bookSlug: string) {
   const bookProgress = progress[bookSlug];
 
   const saveProgress = useCallback(
-    (sectionId: string | null, percent: number) => {
+    (sectionId: string | null, percent: number, pageNumber?: number) => {
       setProgress((prev) => ({
         ...prev,
         [bookSlug]: {
           scrollPercent: percent,
           activeSectionId: sectionId,
           updatedAt: Date.now(),
+          ...(pageNumber != null ? { pageNumber } : {}),
         },
       }));
     },

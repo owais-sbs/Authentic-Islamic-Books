@@ -28,7 +28,12 @@ export interface OcrPageResult {
   /** Recognised words with positions — fed through the same layout engine as PDF text */
   items?: PdfTextItem[];
   /** Recognised words in canvas pixels (used to repair damaged fonts) */
-  words?: Array<{ text: string; bbox: OcrBox }>;
+  words?: Array<{ text: string; bbox: OcrBox; confidence?: number }>;
+  /**
+   * Mean OCR confidence 0–100 from the engine when provided.
+   * Null/undefined means unavailable — do not invent a score.
+   */
+  meanConfidence?: number | null;
 }
 
 export interface OcrRectangle {
@@ -167,13 +172,24 @@ export class TesseractOcrProvider implements OcrProvider {
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
+    const wordConfs = (data.words ?? [])
+      .map((w) => w.confidence)
+      .filter((c): c is number => typeof c === 'number' && Number.isFinite(c));
+    const meanConfidence =
+      typeof data.confidence === 'number' && Number.isFinite(data.confidence)
+        ? data.confidence
+        : wordConfs.length
+          ? wordConfs.reduce((a, b) => a + b, 0) / wordConfs.length
+          : null;
+
     return {
       pageNum: request.pageNum,
       text,
       engine: this.name,
       languages: ['en', 'ar', 'ur'],
       items: data.lines?.length ? ocrLinesToItems(data.lines as unknown as OcrLine[], request.scale ?? 1) : undefined,
-      words: (data.words ?? []).map((w) => ({ text: w.text, bbox: w.bbox })),
+      words: (data.words ?? []).map((w) => ({ text: w.text, bbox: w.bbox, confidence: w.confidence })),
+      meanConfidence,
     };
   }
 

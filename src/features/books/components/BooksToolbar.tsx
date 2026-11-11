@@ -12,7 +12,7 @@ interface BooksToolbarProps {
 }
 
 const selectCls =
-  'h-9 rounded-lg border border-[#E5E1D8] bg-white px-3 text-[13px] text-[#0B1B2B] outline-none transition-colors focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 cursor-pointer';
+  'h-11 min-w-0 flex-1 rounded-lg border border-[#E5E1D8] bg-white px-3 text-[13px] text-[#0B1B2B] outline-none transition-colors focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 cursor-pointer sm:h-9 sm:flex-none';
 
 export function BooksToolbar({ filters, sort, onFiltersChange, onSortChange, onClearFilters, hasActiveFilters }: BooksToolbarProps) {
   function set<K extends keyof BooksFilters>(key: K, value: BooksFilters[K]) {
@@ -30,23 +30,23 @@ export function BooksToolbar({ filters, sort, onFiltersChange, onSortChange, onC
             value={filters.search}
             onChange={(e) => set('search', e.target.value)}
             placeholder="Search books, authors, scholars..."
-            className="h-9 w-full rounded-lg border border-[#E5E1D8] bg-white pl-9 pr-4 text-[13px] text-[#0B1B2B] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30"
+            className="h-11 w-full rounded-lg border border-[#E5E1D8] bg-white pl-9 pr-10 text-[13px] text-[#0B1B2B] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/30 sm:h-9"
           />
           {filters.search && (
-            <button onClick={() => set('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]">
+            <button onClick={() => set('search', '')} className="absolute right-2.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-[#94A3B8] hover:text-[#64748B]" aria-label="Clear search">
               <X size={14} />
             </button>
           )}
         </div>
-        <select value={sort} onChange={(e) => onSortChange(e.target.value as BooksSortKey)} className={`${selectCls} sm:w-44`}>
+        <select value={sort} onChange={(e) => onSortChange(e.target.value as BooksSortKey)} className={`${selectCls} w-full sm:w-44`}>
           <option value="updatedAt_desc">Recently Updated</option>
           <option value="title_asc">Title A–Z</option>
           <option value="title_desc">Title Z–A</option>
         </select>
       </div>
 
-      {/* Row 2 */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Row 2 — 2-up on narrow phones, wrap on larger */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <select value={filters.status} onChange={(e) => set('status', e.target.value)} className={selectCls}>
           <option value="">All Status</option>
           <option value="published">Published</option>
@@ -71,7 +71,7 @@ export function BooksToolbar({ filters, sort, onFiltersChange, onSortChange, onC
         {hasActiveFilters && (
           <button
             onClick={onClearFilters}
-            className="flex h-9 items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 text-[13px] font-medium text-[#64748B] transition-colors hover:border-[#CBD5E1] hover:text-[#0B1B2B]"
+            className="col-span-2 flex h-11 items-center justify-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 text-[13px] font-medium text-[#64748B] transition-colors hover:border-[#CBD5E1] hover:text-[#0B1B2B] sm:h-9 sm:col-span-1 sm:justify-start"
           >
             <X size={13} /> Clear
           </button>

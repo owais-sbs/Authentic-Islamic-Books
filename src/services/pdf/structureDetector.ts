@@ -280,6 +280,26 @@ function reinforceConfidence(nodes: StructureNode[]): StructureNode[] {
     return filtered;
   }
 
+  // Keep a medium-confidence multi-chapter tree when patterns repeat (TOC-like).
+  const mediumCount = nodes.filter((n) => n.kind === 'chapter' && n.confidence === 'medium').length;
+  if (explicitCount < 2 && mediumCount >= 2) {
+    const filtered: StructureNode[] = [];
+    for (const n of nodes) {
+      if (n.kind === 'chapter' && n.confidence === 'low') {
+        const demoted = demoteChapterToParagraphs(n);
+        const host = filtered[filtered.length - 1];
+        if (host && (host.kind === 'chapter' || host.kind === 'introduction')) {
+          host.children = [...(host.children ?? []), ...demoted];
+        } else {
+          filtered.push(...demoted);
+        }
+      } else {
+        filtered.push(n);
+      }
+    }
+    return filtered;
+  }
+
   // No (or only one) genuine chapter heading in the PDF → do not invent a TOC.
   // Demote every chapter node so content stays continuous page order.
   if (explicitCount < 2) {
@@ -800,37 +820,68 @@ export function extractIntroductionText(nodes: StructureNode[]): string {
   return '';
 }
 
+/** Reject copyright / publisher / ISBN / URL / page furniture as titles. */
+export function isUnusableBookTitle(line: string): boolean {
+  const t = line.trim();
+  if (!t || t.length < 4) return true;
+  if (/[©®™]/.test(t)) return true;
+  if (/\bcopyright\b|\ball rights reserved\b|\bisbn\b|\bissn\b/i.test(t)) return true;
+  if (/^(the\s+)?association for\b/i.test(t)) return true;
+  if (/\b(multi-?lingual|islamic content service|publisher|printing press)\b/i.test(t)) return true;
+  if (/^https?:\/\/|www\./i.test(t)) return true;
+  if (/^\d{1,4}$/.test(t)) return true;
+  if (/^page\s+\d+/i.test(t)) return true;
+  if (/^\(\s*©/.test(t)) return true;
+  if (/^©/.test(t)) return true;
+  // Mostly punctuation / year-only banners
+  if ((t.match(/\p{L}/gu) || []).length < Math.min(4, t.length * 0.35)) return true;
+  return false;
+}
+
 export function detectMetaFromText(fullText: string, fileName: string): DetectedMeta {
   const lines = fullText.split('\n').map((l) => l.trim()).filter(Boolean);
   const fileTitle = fileName.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim();
+  const usableFileTitle = isUnusableBookTitle(fileTitle) ? '' : fileTitle;
 
-  const titleLine = lines.slice(0, 25).find(
+  const titleLine = lines.slice(0, 40).find(
     (l) =>
       l.length >= 4 &&
-      l.length <= 100 &&
-      l.split(/\s+/).length <= 16 &&
+      l.length <= 120 &&
+      l.split(/\s+/).length <= 18 &&
       !/^\d+$/.test(l) &&
-      !matchHeadingLine(l),
+      !matchHeadingLine(l) &&
+      !isUnusableBookTitle(l),
   );
 
   const authorLine = lines.slice(0, 50).find((l) =>
-    /^(by|author|written by|compiled by|translated by|المؤلف|تصنیف|مولف)\s*/i.test(l),
+    /^(by|author|written by|compiled by|translated by|shaykh|sheikh|imam|المؤلف|تصنیف|مولف)\s*/i.test(l),
   );
-  const author = authorLine
+  let author = authorLine
     ? authorLine
-        .replace(/^(by|author|written by|compiled by|translated by|المؤلف|تصنیف|مولف)\s*[:：]?\s*/i, '')
+        .replace(
+          /^(by|author|written by|compiled by|translated by|shaykh|sheikh|imam|المؤلف|تصنیف|مولف)\s*[:：]?\s*/i,
+          '',
+        )
         .trim()
     : '';
+  if (author && isUnusableBookTitle(author)) author = '';
 
   const descLine = lines.slice(0, 60).find(
-    (l) => l.length > 30 && l.length < 250 && l.split(/\s+/).length > 5 && l !== titleLine,
+    (l) =>
+      l.length > 30 &&
+      l.length < 250 &&
+      l.split(/\s+/).length > 5 &&
+      l !== titleLine &&
+      !isUnusableBookTitle(l),
   );
 
   const hijriRange = /(\d{3,4})\s*[–\-]\s*(\d{3,4})\s*AH/i.exec(fullText.slice(0, 3000));
   const hijriSingle = /\b(\d{3,4})\s*AH\b/i.exec(fullText.slice(0, 3000));
 
+  const title = (titleLine || usableFileTitle || 'Untitled book — needs review').trim();
+
   return {
-    title: (titleLine || fileTitle).trim(),
+    title,
     author,
     description: descLine || '',
     hijriStart: hijriRange ? +hijriRange[1] : hijriSingle ? +hijriSingle[1] : undefined,

@@ -27,6 +27,12 @@ import {
   getOcrProvider,
   ocrTextIsUsable,
 } from '@/services/pdf/ocr';
+import {
+  pageNeedsArabicOcr,
+  pickBetterPageText,
+  assessArabicQuality,
+} from '@/services/pdf/arabicQuality';
+import { dedupePageText } from '@/services/pdf/dedupeText';
 
 async function getPdfjs() {
   const pdfjsLib = await import('pdfjs-dist');
@@ -46,6 +52,11 @@ export interface RawPage {
   requiresOcr?: boolean;
   /** Lines set in a larger font than the body text (heading candidates) */
   headingLines?: LayoutHeadingLine[];
+  /**
+   * Mean OCR confidence 0–100 when this page used OCR and the engine reported it.
+   * Omit / null when unavailable — never invent a value.
+   */
+  ocrConfidence?: number | null;
 }
 
 export interface DetectedMeta {
@@ -60,6 +71,10 @@ export interface DetectedSection {
   number: string;
   title: string;
   rawText: string;
+  /** 1-based PDF page this section starts on (when known from extraction) */
+  pdfPageStart?: number;
+  /** 1-based PDF page this section ends on (when known from extraction) */
+  pdfPageEnd?: number;
 }
 
 export interface DetectedChapter {
@@ -109,6 +124,31 @@ async function renderPageToCanvas(
   const task = page.render({ canvasContext: ctx, viewport });
   await task.promise;
   return canvas;
+}
+
+/**
+ * Render one PDF page to a PNG data URL for admin dry-run comparison.
+ * Browser-only; does not mutate book content.
+ */
+export async function renderPdfPagePreview(
+  file: File | Blob,
+  pageNumber: number,
+  scale = 1.15,
+): Promise<string> {
+  const pdfjsLib = await getPdfjs();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  try {
+    const page = await pdf.getPage(pageNumber);
+    try {
+      const canvas = await renderPageToCanvas(page, scale);
+      return canvas.toDataURL('image/png');
+    } finally {
+      page.cleanup?.();
+    }
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 const EXTRACT_BATCH_SIZE = 50;
@@ -344,7 +384,7 @@ export async function extractPagesFromFileDetailed(
     onProgress?.('ocr', 'Clean text PDF — OCR only for empty pages…', { percent: 45 });
   }
 
-  // ── Pass 2: layout every page (1…N). OCR garbled/empty pages so nothing is lost. ─
+  // ── Pass 2: layout every page (1…N). OCR when empty/garbled/suspicious Arabic. ─
   const pages: RawPage[] = [];
   const ocrPageNums: number[] = [];
   const ocrFailedPageNums: number[] = [];
@@ -353,15 +393,21 @@ export async function extractPagesFromFileDetailed(
   for (let i = 0; i < totalPages; i++) {
     const decodable = decoder.coverage(pageItems[i]) >= 0.4;
     const layout = layoutTextItems(decoder.decode(pageItems[i]));
-    let text = stripUndecodable(layout.text);
+    let textLayer = stripUndecodable(layout.text);
+    textLayer = dedupePageText(textLayer);
     let headingLines: LayoutHeadingLine[] = layout.headingLines;
     let fromOcr = false;
     let requiresOcr = false;
+    let ocrConfidence: number | null = null;
+    let ocrRan = false;
 
-    const stillGarbled = pageTextIsGarbled(pageItems[i].map((it) => it.str ?? '').join(' ')) && !decodable;
-    const emptyAfterStrip = !pageHasUsableText(text);
-    // Always OCR when the text layer is garbage or empty — this recovers Arabic ayahs
-    const needsOcr = stillGarbled || emptyAfterStrip || (heavilyGarbled && emptyAfterStrip);
+    const stillGarbled =
+      pageTextIsGarbled(pageItems[i].map((it) => it.str ?? '').join(' ')) && !decodable;
+    const emptyAfterStrip = !pageHasUsableText(textLayer);
+    const suspiciousArabic = pageNeedsArabicOcr(textLayer);
+    // OCR when garbage/empty OR Arabic quality looks reversed/fragmented
+    const needsOcr =
+      stillGarbled || emptyAfterStrip || suspiciousArabic || (heavilyGarbled && emptyAfterStrip);
     const ocrBudgetLeft = fullOcrUsed < MAX_FULL_OCR_PAGES;
 
     if (needsOcr && canOcr && ocrBudgetLeft) {
@@ -379,30 +425,59 @@ export async function extractPagesFromFileDetailed(
         canvas.width = 0;
         canvas.height = 0;
         fullOcrUsed += 1;
+        ocrConfidence =
+          typeof result.meanConfidence === 'number' && Number.isFinite(result.meanConfidence)
+            ? result.meanConfidence
+            : null;
         if (ocrTextIsUsable(result.text)) {
+          let ocrText = result.text;
+          let ocrHeadings: LayoutHeadingLine[] = [];
           if (result.items?.length) {
             const ocrLayout = layoutTextItems(result.items);
-            text = ocrLayout.text;
-            headingLines = ocrLayout.headingLines;
-          } else {
-            text = result.text;
-            headingLines = [];
+            ocrText = ocrLayout.text;
+            ocrHeadings = ocrLayout.headingLines;
           }
-          fromOcr = true;
-          requiresOcr = false;
-          ocrPageNums.push(i + 1);
+          ocrText = dedupePageText(ocrText);
+          // Pick ONE source — never concatenate text-layer + OCR (causes duplication)
+          const picked = pickBetterPageText(textLayer, ocrText);
+          textLayer = picked.text;
+          ocrRan = true;
+          if (picked.source === 'ocr') {
+            fromOcr = true;
+            requiresOcr = false;
+            if (ocrHeadings.length) headingLines = ocrHeadings;
+            ocrPageNums.push(i + 1);
+          } else if (emptyAfterStrip) {
+            // Text layer won but was empty — treat as OCR failure for tracking
+            ocrFailedPageNums.push(i + 1);
+            ocrConfidence = null;
+            ocrRan = false;
+          } else {
+            fromOcr = false;
+            requiresOcr = suspiciousArabic && assessArabicQuality(textLayer).needsReview;
+            ocrPageNums.push(i + 1); // OCR ran for comparison
+          }
         } else {
           ocrFailedPageNums.push(i + 1);
+          ocrConfidence = null;
         }
       } catch {
         ocrFailedPageNums.push(i + 1);
+        ocrConfidence = null;
       }
     } else if (needsOcr && !ocrBudgetLeft) {
       requiresOcr = true;
     }
 
     // Keep every page in order (blank pages stay as empty placeholders)
-    pages.push({ pageNum: i + 1, text, fromOcr, requiresOcr, headingLines });
+    pages.push({
+      pageNum: i + 1,
+      text: dedupePageText(textLayer),
+      fromOcr,
+      requiresOcr,
+      headingLines,
+      ocrConfidence: ocrRan ? ocrConfidence : null,
+    });
     if ((i + 1) % batchSize === 0) await yieldToUi();
   }
 
@@ -484,6 +559,8 @@ export function parsedBookToPublicFormat(
         number: sec.number || `${ci + 1}.${si + 1}`,
         title: sec.title,
         content: rawTextToContentBlocks(sec.rawText),
+        pdfPageStart: sec.pdfPageStart,
+        pdfPageEnd: sec.pdfPageEnd ?? sec.pdfPageStart,
       }),
     ),
   }));
@@ -509,5 +586,7 @@ export function parsedBookToPublicFormat(
       : undefined,
     popularity: 50,
     addedDate: new Date().toISOString().slice(0, 10),
+    pageCount: parsed.pageCount > 0 ? parsed.pageCount : undefined,
+    volumeLabel: 'Single volume',
   };
 }

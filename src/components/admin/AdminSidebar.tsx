@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -114,7 +115,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close menu"
           >
             <X size={18} />
@@ -177,11 +178,20 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
+
   return (
     <>
       {/* Desktop — fixed sidebar, outside document flow */}
       <aside className="hidden lg:block">
-        <div className="fixed inset-y-0 left-0 w-[250px] overflow-hidden">
+        <div className="fixed inset-y-0 left-0 w-[min(250px,100vw)] overflow-hidden">
           <SidebarContent />
         </div>
       </aside>
@@ -207,7 +217,10 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="fixed inset-y-0 left-0 z-50 w-[250px] lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[min(280px,88vw)] overflow-hidden shadow-xl lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Admin navigation"
             >
               <SidebarContent onClose={onMobileClose} />
             </motion.div>

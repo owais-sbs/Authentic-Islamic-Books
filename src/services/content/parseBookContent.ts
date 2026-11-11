@@ -579,7 +579,9 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
           const width = block.width ?? (align === 'full' ? 'full' : 'large');
           const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : '';
           const alt = escape(block.alt || block.caption || '');
-          return `<figure class="content-image content-image-${align}" data-align="${align}" data-width="${width}"><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
+          const pageAttr =
+            block.pdfPage != null ? ` data-pdf-page="${block.pdfPage}"` : '';
+          return `<figure class="content-image content-image-${align}" data-align="${align}" data-width="${width}"${pageAttr}><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
         }
         default:
           return '';
@@ -602,13 +604,66 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
 
   const walk = (el: HTMLElement) => {
     const tag = el.tagName.toLowerCase();
-    const cls = el.className || '';
+    const cls = typeof el.className === 'string' ? el.className : '';
 
-    if (cls.includes('content-quran') && tag === 'figure') {
-      const arabic = el.querySelector('.content-quran-arabic')?.textContent?.trim();
-      const translation = el.querySelector('.content-quran-translation')?.textContent?.trim();
-      const reference = el.querySelector('.content-quran-reference')?.textContent?.trim();
-      blocks.push({ type: 'quran', arabic, translation, reference });
+    if (cls.includes('content-quran') && (tag === 'figure' || tag === 'blockquote')) {
+      const arabic =
+        el.querySelector('.content-arabic, .content-quran-arabic')?.textContent?.trim() ||
+        undefined;
+      const translation =
+        el.querySelector('.content-translation, .content-quran-translation')?.textContent?.trim() ||
+        undefined;
+      const reference =
+        el.querySelector('footer, .content-reference, .content-quran-reference')?.textContent?.trim() ||
+        undefined;
+      if (arabic || translation || reference) {
+        blocks.push({ type: 'quran', arabic, translation, reference });
+        return;
+      }
+    }
+
+    if (cls.includes('content-audio') || el.getAttribute('data-kind') === 'audio') {
+      const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
+      blocks.push({
+        type: 'audio',
+        storagePath: el.getAttribute('data-storage-path') || undefined,
+        bucket: el.getAttribute('data-bucket') || undefined,
+        url: el.querySelector('audio')?.getAttribute('src') || undefined,
+        fileName: el.querySelector('figcaption')?.textContent?.replace(/^Audio:\s*/i, '').trim(),
+        caption: el.querySelector('figcaption')?.textContent?.trim(),
+        pdfPage,
+        attachmentId: el.getAttribute('data-attachment-id') || undefined,
+      });
+      return;
+    }
+
+    if (cls.includes('content-pdf') || el.getAttribute('data-kind') === 'pdf') {
+      const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
+      const link = el.querySelector('a')?.getAttribute('href') || undefined;
+      blocks.push({
+        type: 'pdf',
+        storagePath: el.getAttribute('data-storage-path') || undefined,
+        bucket: el.getAttribute('data-bucket') || undefined,
+        url: link,
+        fileName: el.querySelector('figcaption')?.textContent?.replace(/^PDF:\s*/i, '').trim(),
+        caption: el.querySelector('figcaption')?.textContent?.trim(),
+        pdfPage,
+        attachmentId: el.getAttribute('data-attachment-id') || undefined,
+      });
+      return;
+    }
+
+    if (tag === 'img') {
+      const url = el.getAttribute('src')?.trim();
+      if (url) {
+        blocks.push({
+          type: 'image',
+          url,
+          alt: el.getAttribute('alt')?.trim() || undefined,
+          align: 'center',
+          width: 'large',
+        });
+      }
       return;
     }
 
@@ -645,23 +700,80 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
             : undefined;
         const caption = el.querySelector('figcaption')?.textContent?.trim();
         const alt = img?.getAttribute('alt')?.trim() || undefined;
-        blocks.push({ type: 'image', url, caption, alt, align, width });
+        const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
+        blocks.push({ type: 'image', url, caption, alt, align, width, pdfPage });
       }
       return;
     }
 
-    if (cls.includes('content-hadith') && tag === 'blockquote') {
-      const paras = Array.from(el.querySelectorAll('p'));
-      const text = paras.find((p) => !p.className.includes('narrator'))?.textContent?.trim() ?? el.textContent?.trim() ?? '';
+    if (cls.includes('content-hadith') && (tag === 'blockquote' || tag === 'div')) {
+      const arabic = el.querySelector('.content-arabic')?.textContent?.trim();
+      const paras = Array.from(el.querySelectorAll('p')).filter(
+        (p) => !p.className.toString().includes('content-arabic'),
+      );
+      const text =
+        paras.find((p) => !p.className.toString().includes('narrator'))?.textContent?.trim() ??
+        el.textContent?.trim() ??
+        '';
       const narrator = el.querySelector('.content-hadith-narrator')?.textContent?.trim();
-      const reference = el.querySelector('.content-hadith-source')?.textContent?.trim();
-      blocks.push({ type: 'hadith', text, narrator, reference });
+      const reference =
+        el.querySelector('.content-hadith-source, footer, .content-reference')?.textContent?.trim();
+      if (text || arabic) blocks.push({ type: 'hadith', text: text || arabic || '', arabic, narrator, reference });
+      return;
+    }
+
+    if (cls.includes('content-bilingual')) {
+      const arabic = el.querySelector('.content-arabic')?.textContent?.trim();
+      const translation = el.querySelector('.content-translation')?.textContent?.trim();
+      if (arabic || translation) {
+        blocks.push({ type: 'bilingual', arabic, translation });
+        return;
+      }
+    }
+
+    if (cls.includes('content-callout') || cls.includes('content-claim')) {
+      const claim =
+        Array.from(el.querySelectorAll('p'))
+          .find((p) => /^claim:/i.test(p.textContent || ''))
+          ?.textContent?.replace(/^claim:\s*/i, '')
+          .trim() || undefined;
+      const response =
+        Array.from(el.querySelectorAll('p'))
+          .find((p) => /^response:/i.test(p.textContent || ''))
+          ?.textContent?.replace(/^response:\s*/i, '')
+          .trim() || undefined;
+      const text = el.textContent?.trim() || '';
+      blocks.push({
+        type: 'callout',
+        text,
+        claim,
+        response,
+        variant: cls.includes('content-claim') ? 'claim' : 'info',
+      });
+      return;
+    }
+
+    if (cls.includes('content-urdu')) {
+      const text = el.textContent?.trim();
+      if (text) blocks.push({ type: 'urdu', text, language: 'ur', direction: 'rtl' });
       return;
     }
 
     if (cls.includes('content-arabic')) {
       const text = el.textContent?.trim();
-      if (text) blocks.push({ type: 'arabic', text });
+      if (text) blocks.push({ type: 'arabic', text, language: 'ar', direction: 'rtl' });
+      return;
+    }
+
+    if (cls.includes('content-translation')) {
+      const text = el.textContent?.trim();
+      if (text) blocks.push({ type: 'paragraph', text, language: 'en', direction: 'ltr' });
+      return;
+    }
+
+    if (cls.includes('content-citation') || tag === 'cite') {
+      const text = el.textContent?.trim();
+      if (text) blocks.push({ type: 'citation', text });
       return;
     }
 
@@ -671,11 +783,29 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       return;
     }
 
+    if (cls.includes('content-endnote')) {
+      const num = Number(el.getAttribute('data-endnote') || el.querySelector('sup')?.textContent || '0');
+      const text = (el.textContent || '').replace(/^\s*\d+\s*/, '').trim();
+      blocks.push({ type: 'endnote', number: num, text });
+      return;
+    }
+
     if (cls.includes('content-footnote')) {
       const num = Number(el.getAttribute('data-footnote') || el.querySelector('sup')?.textContent || '0');
       const text = (el.textContent || '').replace(/^\s*\d+\s*/, '').trim();
       blocks.push({ type: 'footnote', number: num, text });
       return;
+    }
+
+    if (tag === 'table' || cls.includes('content-table')) {
+      const headers = Array.from(el.querySelectorAll('thead th')).map((th) => th.textContent?.trim() || '');
+      const rows = Array.from(el.querySelectorAll('tbody tr')).map((tr) =>
+        Array.from(tr.querySelectorAll('td')).map((td) => td.textContent?.trim() || ''),
+      );
+      if (headers.length || rows.length) {
+        blocks.push({ type: 'table', headers, rows });
+        return;
+      }
     }
 
     if (tag === 'blockquote') {
@@ -699,7 +829,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     }
 
     if (tag === 'ul' || tag === 'ol') {
-      const items = Array.from(el.querySelectorAll('li'))
+      const items = Array.from(el.querySelectorAll(':scope > li'))
         .map((li) => li.textContent?.trim() ?? '')
         .filter(Boolean);
       if (items.length) blocks.push({ type: 'list', ordered: tag === 'ol', items });
@@ -708,11 +838,47 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
 
     if (tag === 'p') {
       const text = el.textContent?.trim();
-      if (text) blocks.push({ type: 'paragraph', text });
+      if (text) {
+        const langAttr = el.getAttribute('lang');
+        const dirAttr = el.getAttribute('dir');
+        const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+        const looksArabic =
+          langAttr === 'ar' ||
+          dirAttr === 'rtl' ||
+          (arabicChars >= 8 && arabicChars >= text.replace(/\s/g, '').length * 0.4);
+        if (looksArabic && langAttr !== 'ur') {
+          blocks.push({
+            type: 'arabic',
+            text,
+            language: 'ar',
+            direction: 'rtl',
+          });
+        } else if (langAttr === 'ur' || (dirAttr === 'rtl' && langAttr === 'ur')) {
+          blocks.push({
+            type: 'urdu',
+            text,
+            language: 'ur',
+            direction: 'rtl',
+          });
+        } else {
+          blocks.push({
+            type: 'paragraph',
+            text,
+            language:
+              langAttr === 'ar' ? 'ar' : langAttr === 'ur' ? 'ur' : langAttr === 'en' ? 'en' : undefined,
+            direction: dirAttr === 'rtl' ? 'rtl' : dirAttr === 'ltr' ? 'ltr' : undefined,
+          });
+        }
+      }
       return;
     }
 
-    // Unknown wrappers — walk children
+    // Unknown wrappers — walk children; if leaf with text, keep as html fallback
+    if (el.children.length === 0) {
+      const text = el.textContent?.trim();
+      if (text) blocks.push({ type: 'paragraph', text });
+      return;
+    }
     Array.from(el.children).forEach((child) => walk(child as HTMLElement));
   };
 
@@ -734,9 +900,26 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
 
   // Keep structured HTML (headings, quotes, semantic classes) as-is
   const hasRich = blocks.some((b) =>
-    ['quran', 'arabic', 'hadith', 'footnote', 'heading', 'quote', 'list', 'reference', 'image'].includes(
-      b.type,
-    ),
+    [
+      'quran',
+      'arabic',
+      'urdu',
+      'bilingual',
+      'hadith',
+      'footnote',
+      'endnote',
+      'heading',
+      'quote',
+      'list',
+      'reference',
+      'citation',
+      'image',
+      'table',
+      'audio',
+      'pdf',
+      'callout',
+      'html',
+    ].includes(b.type),
   );
   if (hasRich) return blocks;
 

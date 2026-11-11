@@ -3,6 +3,7 @@ export {
   detectStructureFromPages,
   structureToDetectedChapters,
   detectMetaFromText,
+  isUnusableBookTitle,
   extractIntroductionText,
   countLowConfidenceHeadings,
   matchHeadingLine,
@@ -20,4 +21,13 @@ export {
 } from './language';
 export { structureToMarkdown, markdownToStructure } from './markdown';
 export { getOcrProvider, setOcrProvider, buildOcrWarning, NullOcrProvider, TesseractOcrProvider } from './ocr';
+export {
+  assessArabicQuality,
+  isFragmentedArabic,
+  looksVisuallyReversedArabic,
+  pageNeedsArabicOcr,
+  pickBetterPageText,
+  shouldSortRtlByDescendingX,
+} from './arabicQuality';
+export { dedupePageText, dedupeIntraLine, textSimilarity } from './dedupeText';
 export type * from './types';

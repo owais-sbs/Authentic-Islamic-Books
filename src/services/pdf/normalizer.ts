@@ -308,40 +308,31 @@ function headingTiers(pages: RawPage[]): (size: number) => 1 | 2 {
 
 /** Clean raw PDF.js page text into structured blocks without changing meaning. */
 export function normalizePages(pages: RawPage[]): NormalizedPage[] {
-  const { tocPages } = extractTableOfContents(pages);
   const stripped = stripRepeatedPageArtifacts(pages.map((p) => p.text));
-  const seenPageHashes = new Set<string>();
   const tierOf = headingTiers(pages);
 
   const normalized = pages.map((page, idx) => {
-    if (tocPages.has(page.pageNum)) {
-      return { pageNumber: page.pageNum, blocks: [], requiresOcr: false };
-    }
+    // Keep every PDF page slot, including TOC / short Arabic pages.
     const pageText = stripped[idx] ?? page.text;
-    const requiresOcr = !pageHasUsableText(pageText);
-    // Only skip exact full-page duplicates (running headers), never drop unique short pages
+    const requiresOcr = !pageHasUsableText(pageText) || Boolean(page.requiresOcr);
     const exactKey = pageText.replace(/\s+/g, ' ').trim();
-    if (
+    // Only collapse consecutive identical short Latin headers — never wipe Arabic pages.
+    const prevKey = idx > 0 ? (stripped[idx - 1] ?? pages[idx - 1]?.text ?? '').replace(/\s+/g, ' ').trim() : '';
+    const isConsecutiveRunningHeader =
       exactKey.length > 0 &&
-      exactKey.length < 180 &&
-      seenPageHashes.has(exactKey) &&
-      !requiresOcr
-    ) {
-      return {
-        pageNumber: page.pageNum,
-        blocks: [],
-        requiresOcr,
-      };
-    }
-    if (exactKey) seenPageHashes.add(exactKey);
+      exactKey.length < 120 &&
+      exactKey === prevKey &&
+      !requiresOcr &&
+      !/[\u0600-\u06FF]/.test(exactKey);
+
     const headingLevels = new Map<string, 1 | 2>();
     for (const h of page.headingLines ?? []) {
       headingLevels.set(headingKey(h.text), h.size ? tierOf(h.size) : h.level);
     }
+    const keepText = isConsecutiveRunningHeader ? '' : pageText.trim();
     return {
       pageNumber: page.pageNum,
-      // Short pages (a lone chapter title, a closing line) still keep their text
-      blocks: pageText.trim() ? splitIntoParagraphBlocks(pageText, headingLevels) : [],
+      blocks: keepText ? splitIntoParagraphBlocks(keepText, headingLevels) : [],
       requiresOcr,
     };
   });

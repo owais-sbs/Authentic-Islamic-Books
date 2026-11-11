@@ -5,8 +5,11 @@ import {
   detectMetaFromText,
   detectStructureFromPages,
   extractIntroductionText,
+  isUnusableBookTitle,
   structureToDetectedChapters,
 } from './structureDetector';
+import { assessArabicQuality } from './arabicQuality';
+import { dedupePageText } from './dedupeText';
 import { applyAutomaticNumbering } from './numbering';
 import { detectDocumentType } from './documentType';
 import { detectDocumentLanguages, formatLanguagesLabel } from './language';
@@ -27,8 +30,15 @@ function usableMetadata(value?: string): string | undefined {
   const v = value?.trim();
   if (!v || v.length < 4 || v.length > 200) return undefined;
   if (/^(untitled|document|microsoft word|title|unknown)\b|\.(docx?|pdf|indd|tmp)$|^[\w-]+\.\w{2,4}$/i.test(v)) return undefined;
+  if (isUnusableBookTitle(v)) return undefined;
   if ((v.match(/\p{L}/gu) || []).length < v.length * 0.5) return undefined;
   return v;
+}
+
+function usableFileTitleFallback(fileName: string): string {
+  const fromFile = fileName.replace(/\.pdf$/i, '').replace(/[-_]+/g, ' ').trim();
+  if (fromFile && !isUnusableBookTitle(fromFile)) return fromFile;
+  return 'Untitled book — needs review';
 }
 
 export function runPipeline(
@@ -38,11 +48,16 @@ export function runPipeline(
   options?: PipelineOptions,
 ): ParsedBook {
   onProgress?.('normalize', 'Normalizing content…', { percent: 58 });
-  const docType = detectDocumentType(pages, {
+  // Deduplicate page text before structure detection (overlapping text layers)
+  const cleanedPages = pages.map((p) => ({
+    ...p,
+    text: dedupePageText(p.text),
+  }));
+  const docType = detectDocumentType(cleanedPages, {
     ocrPageNums: options?.ocrPageNums,
     ocrFailedPageNums: options?.ocrFailedPageNums,
   });
-  const normalized = normalizePages(pages);
+  const normalized = normalizePages(cleanedPages);
   const fullText = normalizedPagesToPlainText(normalized);
   const wordCount = fullText.split(/\s+/).filter(Boolean).length;
 
@@ -77,9 +92,13 @@ export function runPipeline(
     );
   }
 
-  // Prefer continuous page-ordered text when the PDF has no real chapter headings
+  // Prefer continuous page-ordered text only when chapter detection found nothing usable.
+  // Keep medium-confidence multi-chapter trees (TOC-aligned) instead of collapsing.
   const genuineChapterCount = structure.filter(
-    (n) => n.kind === 'chapter' && n.confidence === 'high',
+    (n) => n.kind === 'chapter' && (n.confidence === 'high' || n.confidence === 'medium'),
+  ).length;
+  const usableDetectedChapters = chapters.filter((ch) =>
+    ch.sections.some((s) => (s.rawText || '').trim().length > 80),
   ).length;
   const continuousBody = normalized
     .slice()
@@ -87,7 +106,7 @@ export function runPipeline(
     .flatMap((p) => p.blocks.map((b) => b.text.trim()).filter(Boolean))
     .join('\n\n');
 
-  if (genuineChapterCount === 0 && continuousBody.trim()) {
+  if (genuineChapterCount === 0 && usableDetectedChapters < 2 && continuousBody.trim()) {
     chapters = [
       {
         number: '1',
@@ -151,19 +170,123 @@ export function runPipeline(
       `⚠ ${formatLanguagesLabel(languages.filter((l) => l === 'ar' || l === 'ur'))} content detected — verify RTL rendering in review.`,
     );
   }
+  const arabicAssessment = assessArabicQuality(fullText.slice(0, 20000));
+  if (arabicAssessment.fragmented) {
+    warnings.push(
+      '⚠ Fragmented Arabic characters detected on some pages — review Arabic carefully; OCR may be incomplete.',
+    );
+  }
+  if (arabicAssessment.visuallyReversed) {
+    warnings.push(
+      '⚠ Suspicious reversed Arabic order detected — flag for manual correction before publishing.',
+    );
+  }
+  if (!meta.title || isUnusableBookTitle(meta.title) || /needs review/i.test(meta.title)) {
+    warnings.push('⚠ Book title could not be detected confidently — correct it in review.');
+    if (isUnusableBookTitle(meta.title) || !meta.title) {
+      meta.title = usableFileTitleFallback(fileName);
+    }
+  }
+  if (!meta.author) {
+    warnings.push('⚠ Author could not be detected confidently — correct it in review.');
+  }
   if (
     chapters.length === 1 &&
     (chapters[0].title === 'Complete Text' || chapters[0].title === meta.title) &&
     genuineChapterCount === 0
   ) {
     warnings.push(
-      '⚠ No chapter headings found in the PDF. Full text kept in page order (first → last) as continuous content.',
+      '⚠ No chapter headings found in the PDF. Full text kept in page order (first → last) as continuous content — edit structure in review if needed.',
     );
   }
   if (wordCount === 0) {
     warnings.push(
       '⚠ No extractable text found after OCR. Do not publish until text is available or entered manually.',
     );
+  }
+
+  // Final pass: dedupe section bodies (duplicate paragraphs across page joins)
+  chapters = chapters.map((ch) => ({
+    ...ch,
+    sections: ch.sections.map((sec) => ({
+      ...sec,
+      rawText: dedupePageText(sec.rawText),
+    })),
+  }));
+  introductionText = introductionText ? dedupePageText(introductionText) : introductionText;
+
+  // Rebuild one section per PDF page whenever pagination should match the file.
+  // NEVER drop middle pages — empty / OCR-failed / Arabic-only pages stay as slots.
+  const soleContentSection =
+    chapters.length === 1 &&
+    chapters[0].sections.length === 1 &&
+    (!chapters[0].sections[0].title ||
+      /^(content|complete text)$/i.test(chapters[0].sections[0].title));
+  const alreadyPageSections =
+    chapters.length === 1 &&
+    chapters[0].sections.length >= 2 &&
+    chapters[0].sections.every((s) => /^Page\s+\d+$/i.test(s.title || ''));
+  // Prefer PDF page slots when structure is weak / already page-based / bilingual scanned.
+  // Do not destroy a confident multi-chapter tree just because Arabic was detected.
+  const preferPdfPages =
+    normalized.length > 1 &&
+    (soleContentSection ||
+      alreadyPageSections ||
+      ((languages.includes('ar') ||
+        languages.includes('ur') ||
+        docType.documentType === 'scanned' ||
+        docType.documentType === 'mixed') &&
+        genuineChapterCount === 0));
+
+  if (preferPdfPages) {
+    const byNum = new Map(normalized.map((p) => [p.pageNumber, p]));
+    const pageSections = Array.from({ length: pages.length }, (_, i) => {
+      const pageNum = i + 1;
+      const p = byNum.get(pageNum);
+      const fromBlocks = p
+        ? dedupePageText(
+            p.blocks
+              .map((b) => b.text.trim())
+              .filter(Boolean)
+              .join('\n\n'),
+          )
+        : '';
+      // Fall back to raw extracted page text (preserves Arabic when blocks were emptied)
+      const fromRaw = dedupePageText(cleanedPages[i]?.text || pages[i]?.text || '');
+      let rawText = fromBlocks.trim() || fromRaw.trim();
+      if (!rawText) {
+        const needsOcr = Boolean(p?.requiresOcr || pages[i]?.requiresOcr);
+        rawText = needsOcr
+          ? `[Page ${pageNum} — text not extracted yet (OCR / Arabic). Paste or type the page content here.]`
+          : `[Page ${pageNum} — no extractable text. If this page has Arabic, images, or calligraphy, add it in review.]`;
+      }
+      return {
+        number: String(pageNum),
+        title: `Page ${pageNum}`,
+        rawText,
+        pdfPageStart: pageNum,
+        pdfPageEnd: pageNum,
+      };
+    });
+
+    chapters = [
+      {
+        number: '1',
+        title: meta.title?.trim() || chapters[0]?.title || 'Complete Text',
+        description: '',
+        rawText: '',
+        sections: pageSections,
+      },
+    ];
+
+    const emptyCount = pageSections.filter((s) =>
+      /^\[Page \d+ —/.test(s.rawText.trim()),
+    ).length;
+    if (emptyCount > 0) {
+      warnings.push(
+        `⚠ ${emptyCount} page(s) had little/no extractable text (often Arabic or scanned). Those page slots were kept — fill them in review; do not delete middle pages.`,
+      );
+    }
   }
 
   const extraction: ExtractionMeta = {

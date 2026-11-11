@@ -50,17 +50,19 @@ export function HijriCenturyMenu({ books, onNavigate }: HijriCenturyMenuProps) {
       .filter((period) => MENU_PERIOD_IDS.has(period.id))
       .map((period) => {
       const periodBooks = books
-        .filter(
-          (b) =>
-            b.hijriEnd >= period.start &&
-            b.hijriStart <= period.end
-        )
+        .filter((b) => {
+          const start = b.hijriStart ?? b.hijriEnd;
+          const end = b.hijriEnd ?? b.hijriStart;
+          if (start == null || end == null) return false;
+          return end >= period.start && start <= period.end;
+        })
         .map((b): MenuEntry => {
           const scholar = b.authorId ? getScholarById(b.authorId) : undefined;
-          const year = b.hijriEnd || b.hijriStart;
+          const year = b.hijriEnd ?? b.hijriStart ?? 0;
+          const yearLabel = year ? ` (${year}H)` : '';
           const label = scholar
-            ? `${b.title} — ${scholar.name} (${year}H)`
-            : `${b.title} (${year}H)`;
+            ? `${b.title} — ${scholar.name}${yearLabel}`
+            : `${b.title}${yearLabel}`;
           return {
             kind: 'book',
             id: b.id,
@@ -117,7 +119,7 @@ export function HijriCenturyMenu({ books, onNavigate }: HijriCenturyMenuProps) {
               )}
               aria-expanded={open}
             >
-              <span className="font-sans text-[13px] font-bold uppercase tracking-[0.04em] text-ink-900">
+              <span className="min-w-0 flex-1 break-words font-sans text-[12px] font-bold uppercase leading-snug tracking-[0.04em] text-ink-900 sm:text-[13px]">
                 {title}
               </span>
               <ChevronUp
@@ -149,7 +151,7 @@ export function HijriCenturyMenu({ books, onNavigate }: HijriCenturyMenuProps) {
                           prefetchBookDetail();
                           onNavigate?.();
                         }}
-                        className="block px-5 py-2 pl-8 font-sans text-[14px] leading-snug text-ink-700 transition-colors hover:text-ink-900"
+                        className="block break-words px-5 py-2.5 pl-8 font-sans text-[14px] leading-snug text-ink-700 transition-colors hover:text-ink-900"
                       >
                         {entry.label}
                       </Link>

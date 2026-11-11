@@ -177,6 +177,19 @@ export function BookReviewExtraction({ book }: BookReviewExtractionProps) {
               {pdfBusy ? 'Preparing…' : 'Download original PDF'}
             </button>
           )}
+          {!book.sourcePdfPath && (
+            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+              No original PDF retained in <code className="text-[11px]">book-pdfs</code>. Use{' '}
+              <strong>Validate PDF</strong> to upload the source file for a dry-run preview
+              (nothing is overwritten until you apply).
+            </p>
+          )}
+          {!book.sourcePdfPath && (
+            <p className="mt-2 text-[12px] text-amber-800">
+              Original PDF was not retained. Use Reprocess and upload the PDF again to re-extract
+              safely (existing content will not be replaced with empty text).
+            </p>
+          )}
           {pdfError && <p className="text-[12px] text-red-600">{pdfError}</p>}
         </div>
       )}

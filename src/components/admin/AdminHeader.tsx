@@ -26,12 +26,12 @@ export function AdminHeader({ pageTitle, onMobileMenuOpen }: AdminHeaderProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileMenuOpen}
-          className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 lg:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 lg:hidden"
           aria-label="Open menu"
         >
           <Menu size={20} />
         </button>
-        <h1 className="text-[15px] font-semibold text-[#0B1B2B]">{pageTitle}</h1>
+        <h1 className="min-w-0 truncate text-[15px] font-semibold text-[#0B1B2B]">{pageTitle}</h1>
       </div>
 
       <div className="relative">

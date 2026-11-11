@@ -109,17 +109,19 @@ export function Navbar() {
             : 'border-line/80 bg-ivory dark:border-white/10 dark:bg-black',
         )}
       >
-        <div className="container-page relative flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
-          {/* Mobile: menu left — matches reference */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden rounded-full p-2.5 text-ink-700 transition-colors hover:bg-islamic-green/10 dark:text-white/85 dark:hover:bg-white/10"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-
-          <BrandLogo className="absolute left-1/2 min-w-0 -translate-x-1/2 lg:static lg:translate-x-0" />
+        <div className="container-page flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
+          {/* Mobile: menu + logo share the left cluster to avoid absolute-center overlap */}
+          <div className="flex min-w-0 flex-1 items-center gap-1 lg:flex-none">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="touch-target lg:hidden flex shrink-0 items-center justify-center rounded-full p-2.5 text-ink-700 transition-colors hover:bg-islamic-green/10 dark:text-white/85 dark:hover:bg-white/10"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+            <BrandLogo className="min-w-0 lg:hidden" compact />
+            <BrandLogo className="hidden min-w-0 lg:inline-flex" />
+          </div>
 
           <nav className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => {

@@ -44,10 +44,14 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
   }
 
   body {
     @apply bg-ivory text-ink-800 font-sans antialiased;
+    overflow-x: clip;
+    /* Prevent iOS rubber-band from revealing horizontal overflow */
+    max-width: 100vw;
   }
 
   html.dark body {
@@ -109,7 +113,12 @@
 
 @layer components {
   .container-page {
-    @apply mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Touch-friendly minimum for interactive controls on small screens */
+  .touch-target {
+    @apply min-h-11 min-w-11;
   }
 
   /* Animated gold/green border for category & path cards */
@@ -174,7 +183,7 @@
     --reader-bg: #0B1929;
     --reader-text: #C8D6E5;
     --reader-muted: #6B829E;
-    --reader-border: #162A42;
+    --reader-border: rgba(200, 214, 229, 0.12);
     --reader-accent: #C9A84C;
     --reader-card: #0F1D2F;
   }
@@ -244,15 +253,13 @@
   }
   .reader-prose .reader-heading-section {
     letter-spacing: 0.01em;
-    border-bottom: 1px solid color-mix(in srgb, var(--reader-border, #D8D3C8) 70%, transparent);
-    padding-bottom: 0.35em;
+    padding-bottom: 0.15em;
   }
   .reader-prose .reader-hadith-heading {
     color: var(--accent, #9a7b2f);
     font-size: 1.05em;
     letter-spacing: 0.02em;
-    padding-bottom: 0.35em;
-    border-bottom: 1px solid color-mix(in srgb, var(--accent, #C9A646) 25%, transparent);
+    padding-bottom: 0.15em;
     margin-top: 2.25em;
   }
   .reader-prose .reader-lead {
@@ -282,17 +289,17 @@
   /* Arabic body — professional Naskh stack (Scheherazade → Noto → Amiri) */
   .reader-prose .reader-arabic {
     font-family: 'Scheherazade New', 'Noto Naskh Arabic', 'Amiri', 'Traditional Arabic', serif;
-    text-align: center;
+    text-align: right;
     direction: rtl;
     unicode-bidi: isolate;
-    margin: 1.85em auto;
-    max-width: 42rem;
+    margin: 1.5em 0;
+    max-width: 100%;
     overflow-wrap: anywhere;
     word-break: normal;
     white-space: normal;
     line-height: 2.55;
     letter-spacing: 0;
-    color: #104c3b;
+    color: var(--reader-text, #104c3b);
     font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'mark' 1, 'mkmk' 1;
     font-weight: 500;
   }
@@ -326,16 +333,16 @@
   }
   .reader-prose .reader-quran-arabic {
     font-family: 'Amiri Quran', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
-    text-align: center;
+    text-align: right;
     direction: rtl;
     unicode-bidi: isolate;
-    margin: 0 auto 1em;
-    max-width: 42rem;
+    margin: 0 0 1em;
+    max-width: 100%;
     overflow-wrap: anywhere;
     word-break: normal;
     white-space: normal;
     line-height: 2.65;
-    color: #104c3b;
+    color: var(--reader-text, #104c3b);
     font-feature-settings: 'liga' 1, 'calt' 1, 'kern' 1, 'mark' 1, 'mkmk' 1;
     font-weight: 400;
   }
@@ -495,9 +502,42 @@
     line-height: 1.55;
   }
 
+  .reader-prose .reader-callout-info {
+    border-color: color-mix(in srgb, var(--reader-accent, #C9A84C) 55%, var(--reader-border));
+    background: color-mix(in srgb, var(--reader-accent, #C9A84C) 8%, var(--reader-card));
+  }
+  .reader-prose .reader-callout-claim {
+    border-color: #B91C1C;
+    background: color-mix(in srgb, #FEF2F2 80%, var(--reader-card));
+  }
+  .reader-theme-dark .reader-prose .reader-callout-claim {
+    background: color-mix(in srgb, #7F1D1D 35%, var(--reader-card));
+  }
+  .reader-prose .reader-table th {
+    background: color-mix(in srgb, var(--reader-card) 80%, transparent);
+  }
+  .reader-attachment {
+    max-width: 100%;
+  }
+  .reader-prose mark {
+    background: color-mix(in srgb, var(--reader-accent, #C9A84C) 35%, transparent);
+    border-radius: 0.15rem;
+    padding: 0 0.1em;
+  }
+
+  .reader-prose,
+  .reader-prose p,
+  .reader-prose .reader-arabic,
+  .reader-prose .reader-urdu,
+  .reader-prose .reader-quran-arabic {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   @media (max-width: 640px) {
     .reader-prose .reader-quran-arabic,
-    .reader-prose .reader-arabic {
+    .reader-prose .reader-arabic,
+    .reader-prose .reader-urdu {
       font-size: 1.15em !important;
       padding-inline: 0.15rem;
     }

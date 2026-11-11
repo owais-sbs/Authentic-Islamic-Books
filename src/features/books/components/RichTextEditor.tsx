@@ -45,6 +45,8 @@ interface RichTextEditorProps {
   bookId?: string;
   /** Insert HTML at caret (used by block inserter). */
   insertHtmlRef?: React.MutableRefObject<((html: string) => void) | null>;
+  /** Opens the image file picker (used by Upload image beside Insert block). */
+  uploadImageRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 interface ToolbarButton {
@@ -174,6 +176,7 @@ export function RichTextEditor({
   className,
   bookId,
   insertHtmlRef,
+  uploadImageRef,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -221,6 +224,14 @@ export function RichTextEditor({
       if (insertHtmlRef) insertHtmlRef.current = null;
     };
   }, [insertHtml, insertHtmlRef]);
+
+  useEffect(() => {
+    if (!uploadImageRef) return;
+    uploadImageRef.current = () => imageInputRef.current?.click();
+    return () => {
+      uploadImageRef.current = null;
+    };
+  }, [uploadImageRef]);
 
   const exec = useCallback(
     (command: string, cmdValue?: string) => {
@@ -376,8 +387,8 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn('overflow-hidden rounded-lg border border-[#E5E1D8] bg-white', className)}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-[#E5E1D8] bg-[#F7F6F2] px-2 py-1.5">
+    <div className={cn('overflow-visible rounded-lg border border-[#E5E1D8] bg-white shadow-sm', className)}>
+      <div className="flex max-w-full flex-wrap items-center gap-0.5 overflow-x-auto bg-[#F7F6F2] px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TOOLBAR.map((item, i) =>
           item === 'sep' ? (
             <span key={`sep-${i}`} className="mx-1 h-4 w-px bg-[#E5E1D8]" />
@@ -397,10 +408,10 @@ export function RichTextEditor({
           ),
         )}
         <span className="mx-1 h-4 w-px bg-[#E5E1D8]" />
-        <div className="relative">
+        <div className="relative flex items-center gap-1">
           <button
             type="button"
-            title="Insert image"
+            title="Image placement options"
             onMouseDown={(e) => {
               e.preventDefault();
               setShowImageMenu((v) => !v);
@@ -413,10 +424,10 @@ export function RichTextEditor({
             )}
           >
             <ImagePlus size={13} />
-            Image
+            {imageUploading ? 'Uploading…' : 'Image options'}
           </button>
           {showImageMenu && (
-            <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-[#E5E1D8] bg-white py-1 shadow-lg">
+            <div className="absolute left-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-xl border border-[#E5E1D8] bg-white py-1 shadow-lg">
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
                 Placement
               </p>
@@ -436,6 +447,8 @@ export function RichTextEditor({
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setImageAlign(opt.id);
+                    if (selectedFigure) applyFigureLayout(selectedFigure, opt.id, imageWidth);
+                    emit();
                   }}
                   className={cn(
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-[#F7F6F2]',
@@ -445,7 +458,7 @@ export function RichTextEditor({
                   {opt.label}
                 </button>
               ))}
-              <p className="mt-1 border-t border-[#E5E1D8] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+              <p className="mt-1 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
                 Size
               </p>
               {(
@@ -462,6 +475,8 @@ export function RichTextEditor({
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setImageWidth(opt.id);
+                    if (selectedFigure) applyFigureLayout(selectedFigure, imageAlign, opt.id);
+                    emit();
                   }}
                   className={cn(
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-[#F7F6F2]',
@@ -471,12 +486,13 @@ export function RichTextEditor({
                   {opt.label}
                 </button>
               ))}
-              <div className="my-1 border-t border-[#E5E1D8]" />
+              <div className="my-1 h-px bg-[#F1F0EB]" />
               <button
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   imageInputRef.current?.click();
+                  setShowImageMenu(false);
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-semibold text-[#104C3B] hover:bg-[#F7F6F2]"
               >
@@ -639,11 +655,16 @@ export function RichTextEditor({
           '[&_p]:my-1.5',
           '[&_a]:text-[#C9A646] [&_a]:underline',
           '[&_.content-arabic]:font-[Scheherazade_New,Noto_Naskh_Arabic,Amiri,serif] [&_.content-arabic]:text-[1.35em] [&_.content-arabic]:leading-[2.4] [&_.content-arabic]:text-[#104C3B]',
+          '[&_.content-urdu]:font-[Noto_Nastaliq_Urdu,Amiri,serif] [&_.content-urdu]:text-[1.25em] [&_.content-urdu]:leading-[2.2]',
+          '[&_.content-bilingual]:my-3 [&_.content-bilingual]:space-y-1',
+          '[&_.content-quran]:border-l-[#104C3B] [&_.content-hadith]:border-l-[#8C7030]',
+          '[&_.content-claim]:my-3 [&_.content-footnote]:text-[12px] [&_.content-endnote]:text-[12px] [&_.content-reference]:text-[12px] [&_.content-reference]:text-[#64748B]',
           '[&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-md',
           '[&_figure.content-image]:my-4 [&_figure.content-image]:block',
           '[&_figure.content-image.is-selected]:outline [&_figure.content-image.is-selected]:outline-2 [&_figure.content-image.is-selected]:outline-[#C9A646]',
           '[&_figure.content-image figcaption]:mt-1.5 [&_figure.content-image figcaption]:text-center [&_figure.content-image figcaption]:text-[12px] [&_figure.content-image figcaption]:text-[#64748B]',
-          '[&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[#E5E1D8] [&_td]:p-2',
+          '[&_figure.content-audio]:max-w-full [&_figure.content-pdf]:max-w-full',
+          '[&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[#E5E1D8] [&_th]:p-2 [&_td]:border [&_td]:border-[#E5E1D8] [&_td]:p-2',
         )}
       />
     </div>

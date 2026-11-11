@@ -1,4 +1,5 @@
-import { BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, ChevronDown } from 'lucide-react';
 import { BookStatusBadge } from './BookStatusBadge';
 import type { BookWithStructure } from '../types';
 import { cn } from '@/lib/utils';
@@ -14,16 +15,35 @@ export function BookReviewStructure({
   activeSectionId,
   onSectionClick,
 }: BookReviewStructureProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="space-y-4">
-      {/* Structure tree */}
-      <div className="rounded-xl border border-[#E5E1D8] bg-white overflow-hidden">
-        <div className="border-b border-[#E5E1D8] px-4 py-3">
+      {/* Structure tree — collapsed by default on small screens */}
+      <div className="overflow-hidden rounded-xl border border-[#E5E1D8] bg-white">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between border-b border-[#E5E1D8] px-4 py-3 text-left lg:pointer-events-none"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+        >
           <p className="text-[12px] font-semibold uppercase tracking-wider text-[#64748B]">
             Book Structure
           </p>
-        </div>
-        <nav className="px-3 py-3 max-h-96 overflow-y-auto space-y-0.5">
+          <ChevronDown
+            size={16}
+            className={cn(
+              'text-[#94A3B8] transition-transform lg:hidden',
+              mobileOpen && 'rotate-180',
+            )}
+          />
+        </button>
+        <nav
+          className={cn(
+            'max-h-96 space-y-0.5 overflow-y-auto px-3 py-3',
+            !mobileOpen && 'hidden lg:block',
+          )}
+        >
           {/* Introduction */}
           {book.introduction && (
             <button
@@ -94,20 +114,26 @@ export function BookReviewStructure({
           Book Status
         </p>
         <BookStatusBadge status={book.status} />
-        <div className="space-y-1 pt-1 border-t border-[#F1F0EB]">
-          {book.chapterCount != null && (
+        <div className="space-y-1 border-t border-[#F1F0EB] pt-1">
+          <p className="text-[12px] text-[#64748B]">
+            <span className="font-medium text-[#0B1B2B]">{book.chapters.length}</span> chapters
+          </p>
+          <p className="text-[12px] text-[#64748B]">
+            <span className="font-medium text-[#0B1B2B]">
+              {book.chapters.reduce((n, c) => n + c.sections.length, 0)}
+            </span>{' '}
+            sections
+          </p>
+          {book.attachments && book.attachments.length > 0 && (
             <p className="text-[12px] text-[#64748B]">
-              <span className="font-medium text-[#0B1B2B]">{book.chapterCount}</span> chapters
-            </p>
-          )}
-          {book.sectionCount != null && (
-            <p className="text-[12px] text-[#64748B]">
-              <span className="font-medium text-[#0B1B2B]">{book.sectionCount}</span> sections
+              <span className="font-medium text-[#0B1B2B]">{book.attachments.length}</span>{' '}
+              attachments
             </p>
           )}
           {book.wordCount != null && (
             <p className="text-[12px] text-[#64748B]">
-              <span className="font-medium text-[#0B1B2B]">{book.wordCount.toLocaleString()}</span> words
+              <span className="font-medium text-[#0B1B2B]">{book.wordCount.toLocaleString()}</span>{' '}
+              words
             </p>
           )}
         </div>
