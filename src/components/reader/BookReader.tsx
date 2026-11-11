@@ -1,14 +1,11 @@
 /**
  * Page-based scholarly reader (kutub-inspired).
- * Shows one PDF/reading page at a time — not the whole book on one scroll.
- * Site header (navbar) + reader chrome + sticky page footer stay visible.
+ * One page at a time. Site header + page controls below the text (no overlay).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { List } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
-import { TableOfContents } from '@/components/reader/TableOfContents';
 import { ReadingSettings } from '@/components/reader/ReadingSettings';
 import { ReaderSearch } from '@/components/reader/ReaderSearch';
 import { PageContentView } from '@/components/reader/PageContentView';
@@ -101,7 +98,6 @@ export function BookReader({ book }: BookReaderProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const search = useBookSearch(book);
 
-  const [tocOpen, setTocOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pages = useMemo(() => getReaderPages(book), [book]);
@@ -130,7 +126,6 @@ export function BookReader({ book }: BookReaderProps) {
       current?.pdfPage,
     );
     if (!media.length) return base;
-    // Avoid duplicating attachments already embedded in section HTML
     const embeddedPaths = new Set(
       base
         .map((b) =>
@@ -182,10 +177,16 @@ export function BookReader({ book }: BookReaderProps) {
     (sectionId: string) => {
       const idx = pages.findIndex((p) => p.sectionId === sectionId);
       if (idx >= 0) goToPage(idx + 1);
-      setTocOpen(false);
     },
     [pages, goToPage],
   );
+
+  const chapterLabel =
+    current?.chapterTitle &&
+    !/^page\s+\d+$/i.test(current.chapterTitle.trim()) &&
+    current.chapterTitle.trim().toLowerCase() !== (book.title || '').trim().toLowerCase()
+      ? current.chapterTitle
+      : undefined;
 
   return (
     <PageContainer>
@@ -202,8 +203,6 @@ export function BookReader({ book }: BookReaderProps) {
           }
           onOpenSearch={() => search.setIsOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
-          onOpenToc={() => setTocOpen(true)}
-          showTocButton
         />
 
         <div className="h-0.5 w-full bg-transparent">
@@ -213,83 +212,38 @@ export function BookReader({ book }: BookReaderProps) {
           />
         </div>
 
-        <main
-          className={cn(
-            'mx-auto min-w-0 w-full max-w-4xl flex-1 overflow-x-clip px-3 py-5 pb-8 sm:px-6 sm:py-8',
-            widthClass,
-          )}
-        >
-          {/* Keep section/page heading only when it is not a generic "Page N" label */}
-          {current?.title &&
-            !/^page\s+\d+$/i.test(current.title.trim()) &&
-            current.title.trim().toLowerCase() !== (book.title || '').trim().toLowerCase() && (
-              <h2
-                className="reader-heading mb-4 text-base font-semibold sm:text-lg"
-                style={{ color: 'var(--reader-text)' }}
-              >
-                {current.title}
-              </h2>
-            )}
+        {/* Page body + page controls in one column: nav sits under the text, never over it */}
+        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 sm:px-6">
+          <main className={cn('min-w-0 flex-1 overflow-x-clip py-5 sm:py-7', widthClass)}>
+            {current?.title &&
+              !/^page\s+\d+$/i.test(current.title.trim()) &&
+              current.title.trim().toLowerCase() !== (book.title || '').trim().toLowerCase() && (
+                <h2
+                  className="reader-heading mb-3 text-base font-semibold sm:text-lg"
+                  style={{ color: 'var(--reader-text)' }}
+                >
+                  {current.title}
+                </h2>
+              )}
 
-          <PageContentView
-            blocks={pageBlocks}
-            fontSize={settings.fontSize}
-            lineHeight={settings.lineHeight}
-            highlightQuery={search.query}
-            preferParallel={false}
-          />
-        </main>
+            <PageContentView
+              blocks={pageBlocks}
+              fontSize={settings.fontSize}
+              lineHeight={settings.lineHeight}
+              highlightQuery={search.query}
+              preferParallel={false}
+            />
+          </main>
 
-        <div className="sticky bottom-0 z-30">
           <ReaderPageNav
             pages={pages}
             pageNumber={pageNumber}
             volumeLabel={book.volumeLabel || 'Single volume'}
+            chapterLabel={chapterLabel}
             onChangePage={goToPage}
+            className="mb-4 shrink-0 rounded-xl ring-1 ring-black/5"
           />
         </div>
-
-        {tocOpen && (
-          <div className="fixed inset-0 z-50">
-            <button
-              type="button"
-              className="absolute inset-0 bg-ink-900/40"
-              aria-label="Close contents"
-              onClick={() => setTocOpen(false)}
-            />
-            <div className="absolute inset-x-0 bottom-0 max-h-[min(75vh,100%)] overflow-hidden rounded-t-2xl reader-card pb-[env(safe-area-inset-bottom,0px)] shadow-xl">
-              <div className="flex items-center justify-between px-4 py-3">
-                <p className="text-[13px] font-semibold" style={{ color: 'var(--reader-text)' }}>
-                  Table of contents
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setTocOpen(false)}
-                  className="min-h-11 min-w-11 text-[13px] reader-muted"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="max-h-[65vh] overflow-y-auto overscroll-contain p-3">
-                <TableOfContents
-                  book={book}
-                  activeSectionId={current?.sectionId ?? null}
-                  onNavigate={scrollToSection}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setTocOpen(true)}
-          className="fixed bottom-[4.75rem] right-3 z-40 flex h-11 items-center gap-1.5 rounded-full reader-card px-3 text-[12px] font-semibold shadow-md ring-1 ring-black/5"
-          style={{ color: 'var(--reader-text)' }}
-        >
-          <List size={14} />
-          Contents
-        </button>
 
         <ReadingSettings
           open={settingsOpen}

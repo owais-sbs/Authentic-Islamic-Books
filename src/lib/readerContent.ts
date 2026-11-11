@@ -207,7 +207,8 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
       }
     }
 
-    if (block.type === 'paragraph' && block.text.length > 120) {
+    // Only aggressively re-chunk very long blobs — short paras keep natural spacing
+    if (block.type === 'paragraph' && block.text.length > 520) {
       const expandedParas = expandParagraphBlock(block.text).map((b) => {
         if (b.type !== 'paragraph') return b;
         const meta = languageMeta(b.text);
@@ -284,7 +285,7 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
     expanded.push(block);
   }
 
-  return expanded.map(withDirection).filter((block) => {
+  const directed = expanded.map(withDirection).filter((block) => {
     if (block.type === 'quran') {
       return Boolean(block.arabic || block.translation || block.reference);
     }
@@ -294,4 +295,45 @@ export function enrichContentBlocks(blocks: ContentBlock[]): ContentBlock[] {
     }
     return true;
   });
+
+  // Merge broken PDF line-paragraphs so Nawawi-style pages are not full of huge gaps
+  return compactBrokenParagraphs(directed);
+}
+
+function isContinuableParagraph(block: ContentBlock): block is Extract<ContentBlock, { type: 'paragraph' }> {
+  return block.type === 'paragraph' && Boolean(block.text?.trim());
+}
+
+/** Join consecutive short English paragraphs that are clearly mid-sentence splits. */
+function compactBrokenParagraphs(blocks: ContentBlock[]): ContentBlock[] {
+  const out: ContentBlock[] = [];
+  for (const block of blocks) {
+    const prev = out[out.length - 1];
+    if (
+      isContinuableParagraph(block) &&
+      prev &&
+      isContinuableParagraph(prev) &&
+      (prev.language ?? 'en') === (block.language ?? 'en') &&
+      (prev.direction ?? 'ltr') === (block.direction ?? 'ltr') &&
+      prev.language !== 'ar' &&
+      prev.language !== 'ur' &&
+      block.language !== 'ar' &&
+      block.language !== 'ur'
+    ) {
+      const prevEndsOpen = /[,;:–—\-]$/.test(prev.text.trim()) || !/[.!?…”"]$/.test(prev.text.trim());
+      const nextContinues =
+        /^[a-z(]/.test(block.text.trim()) ||
+        (prevEndsOpen && block.text.trim().length < 220);
+      const bothShort = prev.text.length < 280 && block.text.length < 280;
+      if (prevEndsOpen && nextContinues && bothShort) {
+        out[out.length - 1] = {
+          ...prev,
+          text: `${prev.text.trim()} ${block.text.trim()}`.replace(/\s+/g, ' '),
+        };
+        continue;
+      }
+    }
+    out.push(block);
+  }
+  return out;
 }
