@@ -38,7 +38,7 @@ export function TimelinePage() {
             <div className="flex justify-between gap-2">
               {hijriPeriods.map((period, i) => {
                 const bookCount = allBooks.filter(
-                  (b) => b.hijriStart >= period.start && b.hijriEnd <= period.end
+                  (b) => (b.hijriStart ?? 0) >= period.start && (b.hijriEnd ?? 0) <= period.end
                 ).length;
                 const scholarCount = allScholars.filter(
                   (s) => s.bornHijri >= period.start && s.diedHijri <= period.end
@@ -85,7 +85,7 @@ export function TimelinePage() {
           <div className="space-y-5">
             {hijriPeriods.map((period, i) => {
               const bookCount = allBooks.filter(
-                (b) => b.hijriStart >= period.start && b.hijriEnd <= period.end
+                (b) => (b.hijriStart ?? 0) >= period.start && (b.hijriEnd ?? 0) <= period.end
               ).length;
               const scholarCount = allScholars.filter(
                 (s) => s.bornHijri >= period.start && s.diedHijri <= period.end

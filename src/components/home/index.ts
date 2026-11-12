@@ -1,4 +1,10 @@
 export { HomeHero } from './HomeHero';
+export { TopFreeBooksSection } from './TopFreeBooksSection';
+export { ReadingGoalsSection } from './ReadingGoalsSection';
+export { FeaturedBigCard } from './FeaturedBigCard';
+export { MoreToExploreSection } from './MoreToExploreSection';
+export { CategoryBookShelves } from './CategoryBookShelves';
+export { ContinueReadingHeroCard } from './ContinueReadingHeroCard';
 export { TrustStrip } from './TrustStrip';
 export { ContinueDailySection } from './ContinueDailySection';
 export { ContinueReadingBar } from './ContinueReadingBar';

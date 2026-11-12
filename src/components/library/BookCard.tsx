@@ -47,7 +47,7 @@ export function BookCard({ book, variant = 'grid', index = 0 }: BookCardProps) {
         <div className="flex flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             {category && <Badge variant="accent">{category.name}</Badge>}
-            <Badge variant="muted">{formatHijriRange(book.hijriStart, book.hijriEnd)}</Badge>
+            <Badge variant="muted">{formatHijriRange(book.hijriStart ?? 0, book.hijriEnd ?? 0)}</Badge>
           </div>
           <Link to={`/books/${book.slug}`}>
             <h3 className="font-serif text-lg font-semibold text-ink-900 transition-colors group-hover:text-accent-dark">
@@ -98,7 +98,7 @@ export function BookCard({ book, variant = 'grid', index = 0 }: BookCardProps) {
       </Link>
       <div className="flex flex-wrap items-center gap-2 mb-2">
         {category && <Badge variant="accent">{category.name}</Badge>}
-        <Badge variant="muted">{formatHijriRange(book.hijriStart, book.hijriEnd)}</Badge>
+        <Badge variant="muted">{formatHijriRange(book.hijriStart ?? 0, book.hijriEnd ?? 0)}</Badge>
       </div>
       <Link to={`/books/${book.slug}`}>
         <h3 className="font-serif text-base font-semibold leading-snug text-ink-900 transition-colors group-hover:text-accent-dark line-clamp-2">

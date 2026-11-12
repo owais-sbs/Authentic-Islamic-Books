@@ -27,6 +27,11 @@ export default {
           dark: '#A8881F',
           subtle: 'rgb(var(--c-accent-subtle) / <alpha-value>)',
         },
+        navy: {
+          DEFAULT: '#1B4F72',
+          dark: '#154060',
+          light: '#2874A6',
+        },
         cream: 'rgb(var(--c-cream) / <alpha-value>)',
         islamic: {
           green: '#104C3B',
@@ -46,9 +51,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        serif: ['Plus Jakarta Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        editorial: ['Newsreader', 'Georgia', 'serif'],
         arabic: [
           'Scheherazade New',
           'Noto Naskh Arabic',
@@ -57,8 +63,8 @@ export default {
           'Traditional Arabic',
           'serif',
         ],
-        cinzel: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        'cinzel-decorative': ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        cinzel: ['Cinzel', 'Newsreader', 'serif'],
+        'cinzel-decorative': ['Cinzel Decorative', 'serif'],
       },
       maxWidth: {
         prose: '720px',

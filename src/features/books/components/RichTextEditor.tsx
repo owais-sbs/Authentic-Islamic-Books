@@ -301,7 +301,7 @@ export function RichTextEditor({
     if (callout && editorRef.current.contains(callout)) {
       const paragraphs = Array.from(callout.querySelectorAll('p'));
       const lastPara = paragraphs[paragraphs.length - 1];
-      const inLast = lastPara && lastPara.contains(anchor ?? el);
+      const inLast = lastPara && lastPara.contains((anchor ?? el) ?? null);
       if (inLast) {
         const range = sel.getRangeAt(0);
         const endNode = range.endContainer;

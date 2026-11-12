@@ -131,7 +131,7 @@ export function snapshotBookContent(book: BookWithStructure): {
   });
   return {
     title: book.title,
-    author: book.author ?? '',
+    author: (book as unknown as { author?: string }).author ?? book.authorId ?? '',
     chapterCount: book.chapters.length,
     sectionCount: book.chapters.reduce((n, c) => n + c.sections.length, 0),
     contentChars,

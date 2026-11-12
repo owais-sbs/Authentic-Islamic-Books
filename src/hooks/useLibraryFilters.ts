@@ -131,7 +131,7 @@ export function useLibraryFilters() {
         filters.periods.some((pId) => {
           const period = hijriPeriods.find((p) => p.id === pId);
           if (!period) return false;
-          return book.hijriStart >= period.start && book.hijriEnd <= period.end;
+          return (book.hijriStart ?? 0) >= period.start && (book.hijriEnd ?? 0) <= period.end;
         })
       );
     }

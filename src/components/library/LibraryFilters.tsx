@@ -32,7 +32,7 @@ export function LibraryFilters({
     const counts: Record<string, number> = {};
     for (const period of hijriPeriods) {
       counts[period.id] = allBooks.filter(
-        (b) => b.hijriStart >= period.start && b.hijriEnd <= period.end
+        (b) => (b.hijriStart ?? 0) >= period.start && (b.hijriEnd ?? 0) <= period.end
       ).length;
     }
     return counts;

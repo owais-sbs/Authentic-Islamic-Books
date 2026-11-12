@@ -1,25 +1,27 @@
 import {
-  BookMarked,
+  BookCheck,
   BookOpen,
   Brain,
   Heart,
-  History,
   Landmark,
   Scale,
   ScrollText,
   Sparkles,
   UserRound,
+  Compass,
   type LucideIcon,
 } from 'lucide-react';
 
-/** Shared category icons — used on /categories and homepage subject cards. */
+/** Shared category icons — clean, modern, professional vector icons. */
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  aqeedah: Landmark,
+  quran: BookCheck,
   hadith: ScrollText,
-  tafsir: BookMarked,
+  sunnah: Compass,
+  history: Landmark,
+  aqeedah: Landmark,
+  tafsir: BookCheck,
   fiqh: Scale,
-  seerah: BookOpen,
-  history: History,
+  seerah: Compass,
   ethics: Heart,
   spirituality: Sparkles,
   'islamic-thought': Brain,

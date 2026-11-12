@@ -339,7 +339,7 @@ export function AboutPage() {
                 <div className="grid grid-cols-7 gap-2">
                   {hijriPeriods.slice(0, 14).map((period, i) => {
                     const count = libraryBooks.filter(
-                      (b) => b.hijriStart >= period.start && b.hijriEnd <= period.end
+                      (b) => (b.hijriStart ?? 0) >= period.start && (b.hijriEnd ?? 0) <= period.end
                     ).length;
                     const active = count > 0;
 

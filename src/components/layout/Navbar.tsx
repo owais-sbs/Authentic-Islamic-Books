@@ -17,9 +17,11 @@ import { cn } from '@/lib/utils';
 
 const navLinks = [
   { label: 'Browse', href: '/library' },
-  { label: 'Categories', href: '/categories' },
-  { label: 'Authors', href: '/scholars' },
-  { label: 'Collections', href: '/library?sort=popular' },
+  { label: "Qur'an", href: '/library?category=quran' },
+  { label: 'Hadith', href: '/library?category=hadith' },
+  { label: 'Sunnah', href: '/library?category=sunnah' },
+  { label: 'History', href: '/library?category=history' },
+  { label: 'Scholars', href: '/scholars' },
   { label: 'About', href: '/about' },
 ];
 
@@ -105,8 +107,8 @@ export function Navbar() {
         className={cn(
           'sticky top-0 z-40 border-b transition-all duration-300',
           scrolled || searchOpen
-            ? 'border-line bg-ivory/95 shadow-soft backdrop-blur-md dark:border-white/10 dark:bg-black/95'
-            : 'border-line/80 bg-ivory dark:border-white/10 dark:bg-black',
+            ? 'border-black/[0.08] bg-white/95 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-black/95'
+            : 'border-black/[0.05] bg-white/90 backdrop-blur-md dark:border-white/10 dark:bg-black',
         )}
       >
         <div className="container-page flex h-16 items-center justify-between gap-2 sm:h-[4.25rem] sm:gap-4">
@@ -194,7 +196,7 @@ export function Navbar() {
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="rounded-full p-2.5 text-ink-600 transition-colors hover:bg-islamic-green/10 hover:text-islamic-green dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
+              className="rounded-full p-2.5 text-ink-600 transition-colors hover:bg-neutral-100 hover:text-ink-900 dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label="Search"
             >
               {searchOpen ? <X size={18} /> : <Search size={18} />}
@@ -204,7 +206,7 @@ export function Navbar() {
 
             <Link
               to="/library"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-islamic-green px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-islamic-forest"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#1B4F72] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#154060]"
             >
               Start Reading
             </Link>
