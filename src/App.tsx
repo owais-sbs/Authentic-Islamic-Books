@@ -28,6 +28,7 @@ const AdminDashboardPage  = lazy(() => import('@/pages/admin/AdminDashboardPage'
 const AdminBooksPage      = lazy(() => import('@/pages/admin/AdminBooksPage').then((m)      => ({ default: m.AdminBooksPage })));
 const AdminImportPage     = lazy(() => import('@/pages/admin/AdminImportPage').then((m)     => ({ default: m.AdminImportPage })));
 const AdminReviewPage     = lazy(() => import('@/pages/admin/AdminReviewPage').then((m)     => ({ default: m.AdminReviewPage })));
+const AdminManualBookPage = lazy(() => import('@/pages/admin/AdminManualBookPage').then((m) => ({ default: m.AdminManualBookPage })));
 const AdminScholarsPage   = lazy(() => import('@/pages/admin/AdminScholarsPage').then((m)   => ({ default: m.AdminScholarsPage })));
 const AdminCategoriesPage = lazy(() => import('@/pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage })));
 const AdminSettingsPage   = lazy(() => import('@/pages/admin/AdminSettingsPage').then((m)   => ({ default: m.AdminSettingsPage })));
@@ -76,6 +77,8 @@ export default function App() {
                 <Route path="/admin/books"                 element={<AdminBooksPage />} />
                 <Route path="/admin/books/new"             element={<AdminReviewPage />} />
                 <Route path="/admin/books/import"          element={<AdminImportPage />} />
+                <Route path="/admin/books/manual"          element={<AdminManualBookPage />} />
+                <Route path="/admin/books/manual/:bookId"  element={<AdminManualBookPage />} />
                 <Route path="/admin/books/:bookId/review"  element={<AdminReviewPage />} />
                 <Route path="/admin/scholars"              element={<AdminScholarsPage />} />
                 <Route path="/admin/categories"            element={<AdminCategoriesPage />} />

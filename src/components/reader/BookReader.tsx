@@ -217,7 +217,8 @@ export function BookReader({ book }: BookReaderProps) {
           <main className={cn('min-w-0 flex-1 overflow-x-clip py-5 sm:py-7', widthClass)}>
             {current?.title &&
               !/^page\s+\d+$/i.test(current.title.trim()) &&
-              current.title.trim().toLowerCase() !== (book.title || '').trim().toLowerCase() && (
+              current.title.trim().toLowerCase() !== (book.title || '').trim().toLowerCase() &&
+              !/^The\s+(?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth|\d+(?:st|nd|rd|th)?)\s+Hadith\b/i.test(current.title.trim()) && (
                 <h2
                   className="reader-heading mb-3 text-base font-semibold sm:text-lg"
                   style={{ color: 'var(--reader-text)' }}

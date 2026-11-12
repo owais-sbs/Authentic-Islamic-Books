@@ -11,7 +11,8 @@ import {
   Settings,
   X,
   BookMarked,
-  ExternalLink,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,15 +38,15 @@ const navigation: NavGroup[] = [
   {
     group: 'Library',
     items: [
-      { label: 'Books',      href: '/admin/books',    icon: BookOpen },
-      { label: 'Scholars',   href: '/admin/scholars', icon: GraduationCap },
+      { label: 'Books', href: '/admin/books', icon: BookOpen },
+      { label: 'Scholars', href: '/admin/scholars', icon: GraduationCap },
       { label: 'Categories', href: '/admin/categories', icon: Tag },
     ],
   },
   {
     group: 'Content',
     items: [
-      { label: 'Add New Book', href: '/admin/books/new', icon: PenLine },
+      { label: 'Manual Book Creation', href: '/admin/books/manual', icon: PenLine },
       { label: 'Import Book', href: '/admin/books/import', icon: Upload },
     ],
   },
@@ -57,27 +58,40 @@ const navigation: NavGroup[] = [
   },
 ];
 
+export const ADMIN_SIDEBAR_EXPANDED = 250;
+export const ADMIN_SIDEBAR_COLLAPSED = 72;
+
 // ─── Single nav item ──────────────────────────────────────────────────────────
-function SidebarNavItem({ item, onClick }: { item: NavItem; onClick?: () => void }) {
+function SidebarNavItem({
+  item,
+  onClick,
+  collapsed,
+}: {
+  item: NavItem;
+  onClick?: () => void;
+  collapsed?: boolean;
+}) {
   const location = useLocation();
-  // Exact match for /admin, prefix match for sub-routes
   const isActive =
     item.href === '/admin'
       ? location.pathname === '/admin'
-      : location.pathname.startsWith(item.href);
+      : item.href === '/admin/books'
+        ? location.pathname === '/admin/books'
+        : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
 
   return (
     <NavLink
       to={item.href}
       onClick={onClick}
+      title={collapsed ? item.label : undefined}
       className={cn(
-        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+        'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-all duration-150',
+        collapsed ? 'justify-center px-2' : 'gap-3 px-3',
         isActive
           ? 'bg-white/10 text-white'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
       )}
     >
-      {/* Gold left bar for active item */}
       {isActive && (
         <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#C9A646]" />
       )}
@@ -85,32 +99,47 @@ function SidebarNavItem({ item, onClick }: { item: NavItem; onClick?: () => void
         size={16}
         className={cn(
           'shrink-0 transition-colors',
-          isActive ? 'text-[#C9A646]' : 'text-slate-500 group-hover:text-slate-300'
+          isActive ? 'text-[#C9A646]' : 'text-slate-500 group-hover:text-slate-300',
         )}
       />
-      <span>{item.label}</span>
+      {!collapsed && <span className="truncate">{item.label}</span>}
     </NavLink>
   );
 }
 
 // ─── Sidebar content (shared between desktop + mobile) ───────────────────────
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function SidebarContent({
+  onClose,
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   return (
     <div className="flex h-full flex-col bg-[#0B1B2B]">
       {/* Brand */}
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#C9A646]/20">
+      <div
+        className={cn(
+          'flex items-center border-b border-white/10 py-5',
+          collapsed ? 'justify-center px-2' : 'justify-between px-5',
+        )}
+      >
+        <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#C9A646]/20">
             <BookMarked size={16} className="text-[#C9A646]" />
           </div>
-          <div>
-            <p className="text-[13px] font-semibold leading-tight text-white">
-              Islamic Digital Library
-            </p>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-[#C9A646]/70">
-              Admin Panel
-            </p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold leading-tight text-white">
+                Islamic Digital Library
+              </p>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-[#C9A646]/70">
+                Admin Panel
+              </p>
+            </div>
+          )}
         </div>
         {onClose && (
           <button
@@ -124,30 +153,18 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
-        {/* View public site */}
-        <div className="mb-5 px-1">
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#C9A646]/40 bg-[#C9A646]/15 px-3 py-2.5 text-[13px] font-semibold text-[#C9A646] transition-colors hover:bg-[#C9A646]/25 hover:text-[#e0c06a]"
-          >
-            <ExternalLink size={15} />
-            View Website
-          </a>
-        </div>
-
+      <nav className={cn('flex-1 overflow-y-auto py-4 scrollbar-hide', collapsed ? 'px-2' : 'px-3')}>
         {navigation.map((group) => (
           <div key={group.group} className="mb-5">
-            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-              {group.group}
-            </p>
+            {!collapsed && (
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                {group.group}
+              </p>
+            )}
             <ul className="space-y-0.5">
               {group.items.map((item) => (
                 <li key={item.href}>
-                  <SidebarNavItem item={item} onClick={onClose} />
+                  <SidebarNavItem item={item} onClick={onClose} collapsed={collapsed} />
                 </li>
               ))}
             </ul>
@@ -155,16 +172,37 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ))}
       </nav>
 
+      {/* Collapse toggle (desktop only) */}
+      {onToggleCollapse && (
+        <div className={cn('border-t border-white/10 py-2', collapsed ? 'px-2' : 'px-3')}>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={cn(
+              'flex w-full items-center rounded-lg py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200',
+              collapsed ? 'justify-center px-2' : 'gap-3 px-3',
+            )}
+          >
+            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+            {!collapsed && <span>Collapse</span>}
+          </button>
+        </div>
+      )}
+
       {/* Bottom profile area */}
-      <div className="border-t border-white/10 px-4 py-4">
-        <div className="flex items-center gap-3">
+      <div className={cn('border-t border-white/10 py-4', collapsed ? 'px-2' : 'px-4')}>
+        <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A646]/20 text-[13px] font-bold text-[#C9A646]">
             A
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium text-white">Admin</p>
-            <p className="truncate text-[11px] text-slate-500">Administrator</p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-medium text-white">Admin</p>
+              <p className="truncate text-[11px] text-slate-500">Administrator</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -175,9 +213,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 interface AdminSidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
+export function AdminSidebar({
+  mobileOpen,
+  onMobileClose,
+  collapsed,
+  onToggleCollapse,
+}: AdminSidebarProps) {
   useEffect(() => {
     if (!mobileOpen) return;
     const prev = document.body.style.overflow;
@@ -187,12 +232,20 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
     };
   }, [mobileOpen]);
 
+  const desktopWidth = collapsed ? ADMIN_SIDEBAR_COLLAPSED : ADMIN_SIDEBAR_EXPANDED;
+
   return (
     <>
       {/* Desktop — fixed sidebar, outside document flow */}
       <aside className="hidden lg:block">
-        <div className="fixed inset-y-0 left-0 w-[min(250px,100vw)] overflow-hidden">
-          <SidebarContent />
+        <div
+          className="fixed inset-y-0 left-0 overflow-hidden transition-[width] duration-200 ease-out"
+          style={{ width: desktopWidth }}
+        >
+          <SidebarContent
+            collapsed={collapsed}
+            onToggleCollapse={onToggleCollapse}
+          />
         </div>
       </aside>
 
@@ -200,7 +253,6 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
       <AnimatePresence>
         {mobileOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
@@ -210,7 +262,6 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
               className="fixed inset-0 z-40 bg-black/50 lg:hidden"
               onClick={onMobileClose}
             />
-            {/* Drawer */}
             <motion.div
               key="drawer"
               initial={{ x: '-100%' }}

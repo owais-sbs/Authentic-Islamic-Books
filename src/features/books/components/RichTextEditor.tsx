@@ -70,7 +70,12 @@ const TOOLBAR: (ToolbarButton | 'sep')[] = [
   'sep',
   { icon: List, command: 'insertUnorderedList', title: 'Bullet list' },
   { icon: ListOrdered, command: 'insertOrderedList', title: 'Numbered list' },
-  { icon: Quote, command: 'formatBlock', value: 'blockquote', title: 'Blockquote' },
+  {
+    icon: Quote,
+    command: 'formatBlock',
+    value: 'blockquote',
+    title: 'Blockquote — Enter exits to paragraph, Shift+Enter stays in quote',
+  },
   'sep',
   { icon: AlignLeft, command: 'justifyLeft', title: 'Align left' },
   { icon: AlignCenter, command: 'justifyCenter', title: 'Align center' },
@@ -241,6 +246,21 @@ export function RichTextEditor({
       } else if (command === 'hiliteColor') {
         document.execCommand('styleWithCSS', false, 'true');
         document.execCommand('hiliteColor', false, cmdValue);
+      } else if (command === 'formatBlock' && cmdValue === 'blockquote') {
+        // Toggle: quote → normal paragraph when already inside a blockquote
+        const inQuote = document.queryCommandValue('formatBlock').toLowerCase() === 'blockquote';
+        if (inQuote) {
+          document.execCommand('formatBlock', false, 'p');
+        } else {
+          document.execCommand('formatBlock', false, 'blockquote');
+          const sel = window.getSelection();
+          const node = sel?.anchorNode;
+          const el = node instanceof Element ? node : node?.parentElement;
+          const bq = el?.closest('blockquote');
+          if (bq && !bq.classList.contains('content-quote')) {
+            bq.classList.add('content-quote');
+          }
+        }
       } else {
         document.execCommand(command, false, cmdValue);
       }
@@ -249,6 +269,64 @@ export function RichTextEditor({
     },
     [emit],
   );
+
+  /** Enter exits a blockquote or callout/claim div into a normal paragraph below; Shift+Enter stays inside. */
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !editorRef.current) return;
+
+    const anchor = sel.anchorNode;
+    const el = anchor instanceof Element ? anchor : anchor?.parentElement;
+
+    // Exit blockquote on Enter
+    const quote = el?.closest('blockquote');
+    if (quote && editorRef.current.contains(quote)) {
+      e.preventDefault();
+      const p = document.createElement('p');
+      p.appendChild(document.createElement('br'));
+      quote.after(p);
+      const range = document.createRange();
+      range.setStart(p, 0);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      emit();
+      return;
+    }
+
+    // Exit content-callout / content-claim div on Enter at the end of the last paragraph
+    const callout = el?.closest('.content-callout');
+    if (callout && editorRef.current.contains(callout)) {
+      const paragraphs = Array.from(callout.querySelectorAll('p'));
+      const lastPara = paragraphs[paragraphs.length - 1];
+      const inLast = lastPara && lastPara.contains(anchor ?? el);
+      if (inLast) {
+        const range = sel.getRangeAt(0);
+        const endNode = range.endContainer;
+        const atEnd =
+          range.collapsed &&
+          (endNode.nodeType === Node.TEXT_NODE
+            ? range.endOffset === (endNode as Text).length &&
+              endNode === lastPara.lastChild
+            : endNode === lastPara);
+        if (atEnd) {
+          e.preventDefault();
+          const p = document.createElement('p');
+          p.appendChild(document.createElement('br'));
+          (callout as HTMLElement).after(p);
+          const newRange = document.createRange();
+          newRange.setStart(p, 0);
+          newRange.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+          emit();
+          return;
+        }
+      }
+    }
+  }
 
   function selectFigure(figure: HTMLElement | null) {
     editorRef.current?.querySelectorAll('figure.content-image.is-selected').forEach((el) => {
@@ -636,6 +714,7 @@ export function RichTextEditor({
         suppressContentEditableWarning
         dir={dir}
         onInput={emit}
+        onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={handleEditorClick}
         onDrop={handleDrop}

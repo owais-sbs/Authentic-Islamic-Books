@@ -139,16 +139,16 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
 
 const quickActions = [
   {
+    title: 'Manual Book Creation',
+    description: 'Build a book page by page with chapters, blocks, and live preview.',
+    href: '/admin/books/manual',
+    icon: BookOpen,
+  },
+  {
     title: 'Import Book',
     description: 'Upload a PDF and auto-build the book structure for review.',
     href: '/admin/books/import',
     icon: Upload,
-  },
-  {
-    title: 'Manage Books',
-    description: 'Review, edit, and publish library books.',
-    href: '/admin/books',
-    icon: BookOpen,
   },
   {
     title: 'Add Scholar',
@@ -210,7 +210,7 @@ export function AdminDashboardPage() {
         .map((b) => ({
           id: b.id,
           title: b.title,
-          authorName: b.authorName ?? b.authorId ?? '—',
+          authorName: b.authorName ?? b.authorId ?? 'Â—',
           status: (b.status as import('@/features/books/types').BookStatus) || 'published',
           updatedAt: b.addedDate ?? new Date().toISOString().slice(0, 10),
         }));
@@ -288,7 +288,7 @@ export function AdminDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <AdminPageHeader
               title="Dashboard"
-              description="Live overview of your library — stats update when books, scholars, or categories change."
+              description=""
             />
             <div className="mt-1 flex shrink-0 items-center gap-2">
               <a
@@ -370,7 +370,7 @@ export function AdminDashboardPage() {
               <Archive size={14} className="text-[#94A3B8]" />
               <span>
                 <span className="font-semibold text-[#0B1B2B]">{s.archived}</span> archived book
-                {s.archived !== 1 ? 's' : ''} — view or restore them
+                {s.archived !== 1 ? 's' : ''} Â— view or restore them
               </span>
               <ArrowRight size={13} className="ml-auto" />
             </Link>

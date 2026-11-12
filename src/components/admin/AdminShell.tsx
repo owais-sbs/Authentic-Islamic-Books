@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
+
+const SIDEBAR_COLLAPSED_KEY = 'idl-admin-sidebar-collapsed';
 
 interface AdminShellProps {
   children: ReactNode;
@@ -13,17 +15,38 @@ interface AdminShellProps {
 
 export function AdminShell({ children, pageTitle }: AdminShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const { user } = useAuth();
   const showLocalWarning = isSupabaseConfigured() && user?.mode === 'local';
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed]);
 
   return (
     <div className="min-h-screen bg-[#F7F6F2]">
       <AdminSidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((v) => !v)}
       />
 
-      <div className="flex flex-col lg:pl-[250px]">
+      <div
+        className={`flex flex-col transition-[padding] duration-200 ease-out ${
+          collapsed ? 'lg:pl-[72px]' : 'lg:pl-[250px]'
+        }`}
+      >
         <AdminHeader
           pageTitle={pageTitle}
           onMobileMenuOpen={() => setMobileOpen(true)}

@@ -808,21 +808,80 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       }
     }
 
-    if (tag === 'blockquote') {
-      const text = el.querySelector('p')?.textContent?.trim() || el.textContent?.trim() || '';
+    if (tag === 'blockquote' || cls.includes('content-quote')) {
       const attribution = el.querySelector('footer')?.textContent?.trim();
       const source = el.querySelector('.content-source')?.textContent?.trim();
-      if (text) blocks.push({ type: 'quote', text, attribution, source });
+      // Preserve <br> / multiple <p> as separate lines (textContent alone collapses them)
+      const paras = Array.from(el.querySelectorAll(':scope > p, :scope > div'))
+        .map((p) => {
+          const clone = p.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+          return (clone.textContent || '').trim();
+        })
+        .filter(Boolean);
+      let raw = '';
+      if (paras.length) {
+        raw = paras.join('\n');
+      } else {
+        const clone = el.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('footer, .content-source').forEach((n) => n.remove());
+        clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+        raw = (clone.textContent || '').trim();
+      }
+      const lines = raw
+        .split(/\n+/)
+        .flatMap((chunk) =>
+          chunk
+            .split(/(?=\bIt was narrated\b)|(?=\bHadith Number\s*\()/i)
+            .map((l) => l.trim())
+            .filter(Boolean),
+        );
+      if (!lines.length) return;
+
+      const isRefLine = (line: string) =>
+        /^(source:|reference:|it was narrated|narrated (by|also)|hadith number)/i.test(line) ||
+        /\bhadith number\s*\(/i.test(line);
+
+      const quoteLines: string[] = [];
+      const after: string[] = [];
+      let hitRef = false;
+      for (const line of lines) {
+        if (!hitRef && isRefLine(line)) hitRef = true;
+        if (hitRef) after.push(line);
+        else quoteLines.push(line);
+      }
+
+      const quoteText = (quoteLines.length ? quoteLines : lines).join('\n');
+      if (quoteText) {
+        blocks.push({
+          type: 'quote',
+          text: quoteText,
+          attribution,
+          source,
+        });
+      }
+      for (const line of quoteLines.length ? after : []) {
+        if (isRefLine(line)) blocks.push({ type: 'reference', text: line });
+        else blocks.push({ type: 'paragraph', text: line });
+      }
       return;
     }
 
     if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
       const text = el.textContent?.trim();
       if (text) {
+        // Preserve text-align from inline style (set by the editor's justify buttons)
+        const styleAlign = el.style?.textAlign?.toLowerCase();
+        const align: 'left' | 'center' | 'right' | undefined =
+          styleAlign === 'center' ? 'center'
+          : styleAlign === 'right' ? 'right'
+          : styleAlign === 'left' ? 'left'
+          : undefined;
         blocks.push({
           type: 'heading',
           text,
           level: tag === 'h2' ? 1 : tag === 'h3' ? 2 : 3,
+          ...(align ? { align } : {}),
         });
       }
       return;

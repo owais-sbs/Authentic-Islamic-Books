@@ -111,9 +111,21 @@ function flattenBook(book: Book): FlatBlock[] {
   for (const chapter of book.chapters) {
     for (const section of chapter.sections) {
       const content = enrichContentBlocks(section.content ?? []);
-      if (!content.length) continue;
       const rangeStart = section.pdfPageStart;
       const rangeEnd = section.pdfPageEnd ?? section.pdfPageStart;
+      const chapterTitle = chapter.title || `Chapter ${chapter.number}`;
+      if (!content.length) {
+        // Keep discrete empty pages (manual books) so page order stays stable
+        if (rangeStart != null && rangeStart === rangeEnd) {
+          out.push({
+            block: { type: 'paragraph', text: '' },
+            sectionId: section.id,
+            chapterTitle,
+            pdfPage: rangeStart,
+          });
+        }
+        continue;
+      }
       content.forEach((block, i) => {
         let pdfPage: number | undefined =
           block.type === 'image' || block.type === 'audio' || block.type === 'pdf'
@@ -127,7 +139,7 @@ function flattenBook(book: Book): FlatBlock[] {
         out.push({
           block,
           sectionId: section.id,
-          chapterTitle: chapter.title || `Chapter ${chapter.number}`,
+          chapterTitle,
           pdfPage,
         });
       });

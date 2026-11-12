@@ -45,7 +45,7 @@ export type ContentBlockLang = {
 
 export type ContentBlock =
   | ({ type: 'paragraph'; text: string } & ContentBlockLang)
-  | ({ type: 'heading'; text: string; level?: number } & ContentBlockLang)
+  | ({ type: 'heading'; text: string; level?: number; align?: 'left' | 'center' | 'right' } & ContentBlockLang)
   | ({
       type: 'quote';
       text: string;

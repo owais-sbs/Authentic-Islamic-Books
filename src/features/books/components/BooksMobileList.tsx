@@ -27,7 +27,10 @@ export function BooksMobileList({ books, onActionComplete }: BooksMobileListProp
   return (
     <ul className="divide-y divide-[#E5E1D8]">
       {books.map((book) => {
-        const editHref = `/admin/books/${book.id}/review`;
+        const editHref =
+          book.importMethod === 'manual'
+            ? `/admin/books/manual/${book.id}`
+            : `/admin/books/${book.id}/review`;
         const author = resolveAuthorName(book.authorName, book.authorId);
         const title = book.title?.trim() || 'Untitled';
 

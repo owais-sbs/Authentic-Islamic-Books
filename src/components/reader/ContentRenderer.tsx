@@ -250,6 +250,8 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             const HeadingTag = (level <= 1 ? 'h2' : level === 2 ? 'h3' : 'h4') as 'h2' | 'h3' | 'h4';
             const sizeBoost = level <= 1 ? 8 : level === 2 ? 4 : 2;
             const dir = resolveDir(block.language, block.direction);
+            // Respect explicit alignment set in the editor; fall back to default block direction
+            const explicitAlign = block.align;
             return (
               <HeadingTag
                 key={i}
@@ -264,6 +266,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 lang={langAttr(block.language)}
                 style={blockStyle(block.language, block.direction, {
                   fontSize: `${fontSize + sizeBoost}px`,
+                  ...(explicitAlign ? { textAlign: explicitAlign } : {}),
                 })}
               >
                 {block.text}
@@ -363,6 +366,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
 
           case 'quote': {
             const dir = resolveDir(block.language, block.direction);
+            const quoteLines = block.text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
             return (
               <blockquote
                 key={i}
@@ -375,9 +379,26 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 lang={langAttr(block.language)}
                 style={blockStyle(block.language, block.direction, { fontSize: `${fontSize + 1}px` })}
               >
-                <p className="reader-muted leading-relaxed">
-                  &ldquo;{highlightText(block.text, highlightQuery)}&rdquo;
-                </p>
+                {quoteLines.length <= 1 ? (
+                  <p className="reader-muted leading-relaxed whitespace-pre-line">
+                    &ldquo;{highlightText(block.text, highlightQuery)}&rdquo;
+                  </p>
+                ) : (
+                  quoteLines.map((line, li) => (
+                    <p
+                      key={li}
+                      className={cn('reader-muted leading-relaxed', li > 0 && 'mt-2')}
+                    >
+                      {li === 0 ? (
+                        <>&ldquo;{highlightText(line, highlightQuery)}</>
+                      ) : li === quoteLines.length - 1 ? (
+                        <>{highlightText(line, highlightQuery)}&rdquo;</>
+                      ) : (
+                        highlightText(line, highlightQuery)
+                      )}
+                    </p>
+                  ))
+                )}
                 {(block.attribution || block.author) && (
                   <footer className="mt-3 text-sm reader-muted not-italic">
                     — {block.attribution || block.author}

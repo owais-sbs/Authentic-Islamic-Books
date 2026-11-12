@@ -26,7 +26,10 @@ interface BookTableRowProps {
 }
 
 export function BookTableRow({ book, onActionComplete }: BookTableRowProps) {
-  const reviewHref = `/admin/books/${book.id}/review`;
+  const reviewHref =
+    book.importMethod === 'manual'
+      ? `/admin/books/manual/${book.id}`
+      : `/admin/books/${book.id}/review`;
   const author = resolveAuthorName(book.authorName, book.authorId);
   const title = book.title?.trim() || 'Untitled';
 

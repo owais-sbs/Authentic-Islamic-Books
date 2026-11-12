@@ -35,11 +35,11 @@ export function BooksEmptyState({ hasFilters, onClearFilters }: BooksEmptyStateP
         Start building your library by adding your first book manually.
       </p>
       <Link
-        to="/admin/books/new"
+        to="/admin/books/manual"
         className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#0B1B2B] px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-[#162A42]"
       >
         <PlusCircle size={14} />
-        Add Your First Book
+        Create Book Manually
       </Link>
     </div>
   );

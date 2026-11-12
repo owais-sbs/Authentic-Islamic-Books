@@ -96,7 +96,7 @@ export function AdminBooksPage() {
 
   async function handleAddNewBook(): Promise<void> {
     const ok = await confirmCreateNewBook();
-    if (ok) navigate('/admin/books/new');
+    if (ok) navigate('/admin/books/manual');
   }
 
   return (

@@ -197,6 +197,7 @@ function rowToReviewBook(row: HydratedDbBookRow): BookWithStructure {
     chapters,
     attachments: row._attachments,
     presentationFormat: row._presentationFormat,
+    creationMethod: row.import_method === 'manual' ? 'manual' : 'pdf_import',
   };
 }
 
@@ -772,6 +773,7 @@ const ADMIN_LIST_COLUMNS = [
   'status',
   'language',
   'featured',
+  'import_method',
   'content_path',
   'created_at',
   'updated_at',
@@ -793,6 +795,7 @@ function rowToAdminListBook(
     | 'status'
     | 'language'
     | 'featured'
+    | 'import_method'
     | 'created_at'
     | 'updated_at'
   >,
@@ -832,6 +835,10 @@ function rowToAdminListBook(
     sectionCount: undefined,
     status: row.status || 'published',
     featured: row.featured ?? false,
+    importMethod:
+      row.import_method === 'upload' || row.import_method === 'url' || row.import_method === 'manual'
+        ? row.import_method
+        : undefined,
     createdAt: (row.created_at || new Date().toISOString()).slice(0, 10),
     updatedAt: (row.updated_at || new Date().toISOString()).slice(0, 10),
   };

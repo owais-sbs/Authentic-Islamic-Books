@@ -74,7 +74,11 @@ export function BookActions({ book, onActionComplete }: BookActionsProps) {
 
   function handleEdit() {
     setOpen(false);
-    navigate(`/admin/books/${book.id}/review`);
+    const href =
+      book.importMethod === 'manual'
+        ? `/admin/books/manual/${book.id}`
+        : `/admin/books/${book.id}/review`;
+    navigate(href);
   }
 
   const actions: Array<{
