@@ -128,7 +128,7 @@ export function CategoriesPage() {
                 <p className="font-sans text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-400 mb-3.5">
                   Highlighted Works
                 </p>
-                <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory">
+                <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-none scrollbar-hide no-scrollbar snap-x snap-mandatory">
                   {meta.books.map((book) => (
                     <div key={book.id} className="snap-start shrink-0">
                       <AppBookCover book={book} size="shelf" showDetails={true} />

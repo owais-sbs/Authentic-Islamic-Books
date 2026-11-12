@@ -78,7 +78,7 @@ export function CategoryBookShelves() {
 
             {/* Horizontal Scrollable Shelf of 3D Books */}
             <div className="relative -mx-4 px-4 sm:-mx-6 sm:px-6">
-              <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 pt-2 scrollbar-none snap-x snap-mandatory">
+              <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-2 pt-2 scrollbar-none scrollbar-hide no-scrollbar snap-x snap-mandatory">
                 {shelf.books.map((book) => (
                   <div key={book.id} className="snap-start shrink-0">
                     <AppBookCover book={book} size="shelf" showDetails={true} />
