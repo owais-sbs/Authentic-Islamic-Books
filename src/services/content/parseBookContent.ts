@@ -591,6 +591,59 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
     .join('\n');
 }
 
+/**
+ * Extract text from an element while preserving spaces between inline child elements.
+ * el.textContent collapses adjacent elements: "<b>word</b><em>word</em>" → "wordword".
+ * This function ensures a space is inserted at inline element boundaries when the
+ * surrounding characters are both word characters.
+ */
+function extractInlineText(el: HTMLElement): string {
+  const parts: string[] = [];
+
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent ?? '');
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const child = node as HTMLElement;
+    const tag = child.tagName.toLowerCase();
+    // Block elements produce a space boundary
+    const isBlock = /^(div|p|br|li|tr|td|th|blockquote|pre|h[1-6])$/.test(tag);
+    if (isBlock) {
+      // Ensure space before block content if previous text ends with word char
+      const prev = parts[parts.length - 1] ?? '';
+      if (prev && /\w$/.test(prev)) parts.push(' ');
+      Array.from(child.childNodes).forEach(walk);
+      const last = parts[parts.length - 1] ?? '';
+      if (last && /\w$/.test(last)) parts.push(' ');
+      return;
+    }
+    // For <br> specifically
+    if (tag === 'br') {
+      parts.push(' ');
+      return;
+    }
+    // Inline elements: walk children, ensure space at boundaries
+    const prevBefore = parts[parts.length - 1] ?? '';
+    const needsSpaceBefore = prevBefore && /\w$/.test(prevBefore);
+    if (needsSpaceBefore) parts.push('\u200B'); // zero-width placeholder, resolved below
+    Array.from(child.childNodes).forEach(walk);
+    return;
+  }
+
+  Array.from(el.childNodes).forEach(walk);
+
+  // Resolve: collapse the zero-width placeholders into spaces only where the
+  // surrounding chars are both word characters (avoids adding spaces at punctuation)
+  return parts
+    .join('')
+    .replace(/(\w)\u200B(\w)/g, '$1 $2')
+    .replace(/\u200B/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /** Parse stored HTML (from admin / serialized blocks) back into ContentBlocks. */
 export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
   if (typeof document === 'undefined') {
@@ -900,7 +953,9 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     }
 
     if (tag === 'p') {
-      const text = el.textContent?.trim();
+      // Use innerText-style extraction that preserves spaces between inline elements
+      // (textContent collapses "<strong>word</strong>word" → "wordword")
+      const text = extractInlineText(el).trim();
       if (text) {
         const langAttr = el.getAttribute('lang');
         const dirAttr = el.getAttribute('dir');
@@ -986,7 +1041,21 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
   );
   if (hasRich) return blocks;
 
-  // Plain <p>-only HTML: run semantic parser (legacy imports / editor paste)
+  // Plain <p>-only HTML from the manual editor — check whether this is editor HTML
+  // (has lang/dir attrs, inline formatting, or multiple distinct paragraphs) vs
+  // PDF-import plain text (single dense blob). For editor HTML, preserve paragraphs
+  // exactly as written; only re-parse dense single-paragraph blobs from PDF imports.
+  const hasInlineFormatting = /<(strong|em|u|mark|a|span|sup|sub)\b/i.test(html);
+  const hasLangAttrs = /\slang=["']/i.test(html);
+  const hasMultipleParagraphs = blocks.filter((b) => b.type === 'paragraph').length > 1;
+  const isEditorHtml = hasInlineFormatting || hasLangAttrs || hasMultipleParagraphs;
+
+  if (isEditorHtml) {
+    // Editor-authored content: return paragraphs as-is, no re-parse
+    return blocks;
+  }
+
+  // Legacy PDF-import plain text wrapped in <p>: run semantic parser
   const plain = blocks
     .filter((b): b is Extract<ContentBlock, { type: 'paragraph' }> => b.type === 'paragraph')
     .map((b) => b.text)

@@ -94,7 +94,19 @@ export function htmlToContentBlocks(html: string): ContentBlock[] {
   const hasMediaOrStructure = blocks.some((b) => PRESERVE_AS_IS.has(b.type));
 
   if (!hasMediaOrStructure) {
-    // Plain <p>-only HTML — semantic text parse is safe (nothing visual to keep)
+    // Check if this is editor-authored HTML (inline formatting, lang attrs, multiple paras)
+    // If so, return paragraphs as-is — do NOT re-parse (would destroy paragraph structure)
+    const hasInlineFormatting = /<(strong|em|u|mark|a|span|sup|sub)\b/i.test(html);
+    const hasLangAttrs = /\slang=["']/i.test(html);
+    const hasMultipleParagraphs = blocks.filter((b) => b.type === 'paragraph').length > 1;
+    const isEditorHtml = hasInlineFormatting || hasLangAttrs || hasMultipleParagraphs;
+
+    if (isEditorHtml) {
+      // Editor content: preserve paragraph breaks exactly as typed
+      return enrichContentBlocks(blocks);
+    }
+
+    // Legacy PDF import plain text — semantic re-parse is safe
     const plain =
       blocks
         .map((b) => {
