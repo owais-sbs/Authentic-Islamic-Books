@@ -139,6 +139,18 @@ function applyFigureLayout(figure: HTMLElement, align: ImageAlignOption, width: 
 function sanitizePastedHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, meta, link, xml, o\\:p').forEach((n) => n.remove());
+
+  // Unwrap empty/decorative spans that collapse word boundaries
+  // e.g. Word paste: "word<span> </span>word" or "word<span/>word" with no space
+  doc.querySelectorAll('span').forEach((span) => {
+    // If span has no meaningful attributes, replace with its content
+    const hasAttrs = span.hasAttribute('style') || span.hasAttribute('class') ||
+      span.hasAttribute('dir') || span.hasAttribute('lang');
+    if (!hasAttrs) {
+      span.replaceWith(...Array.from(span.childNodes));
+    }
+  });
+
   doc.querySelectorAll('*').forEach((el) => {
     const allowed = new Set([
       'style',
@@ -160,7 +172,7 @@ function sanitizePastedHtml(html: string): string {
         const keep = attr.value
           .split(';')
           .filter((p) =>
-            /^(direction|text-align|font-weight|font-style|text-decoration|max-width|margin|float|width|height|border-radius|display)/i.test(
+            /^(direction|text-align|font-weight|font-style|text-decoration|word-spacing|letter-spacing|max-width|margin|float|width|height|border-radius|display)/i.test(
               p.trim(),
             ),
           )
@@ -170,6 +182,30 @@ function sanitizePastedHtml(html: string): string {
       }
     });
   });
+
+  // Fix missing spaces between adjacent inline text nodes / elements
+  // that Word exports as "word<span>word</span>" without whitespace
+  doc.querySelectorAll('p, div, li, td, th').forEach((block) => {
+    const children = Array.from(block.childNodes);
+    for (let i = 0; i < children.length - 1; i++) {
+      const curr = children[i];
+      const next = children[i + 1];
+      // Both are inline elements/text nodes
+      const currText = curr.textContent ?? '';
+      const nextText = next.textContent ?? '';
+      if (!currText || !nextText) continue;
+      // If current ends with a letter/digit and next starts with a letter/digit
+      // and there's no whitespace boundary → insert a space text node
+      if (/\w$/.test(currText) && /^\w/.test(nextText)) {
+        const space = doc.createTextNode(' ');
+        block.insertBefore(space, next);
+        // Update children array reference
+        children.splice(i + 1, 0, space);
+        i++; // skip the space we just inserted
+      }
+    }
+  });
+
   return doc.body.innerHTML;
 }
 

@@ -18,6 +18,7 @@ interface AttachmentBlockProps {
   bucket?: string;
   url?: string;
   pdfPage?: number;
+  align?: 'left' | 'center' | 'right';
 }
 
 function resolveBucket(raw?: string): AttachmentBucket {
@@ -33,6 +34,7 @@ export function AttachmentBlock({
   bucket,
   url: initialUrl,
   pdfPage,
+  align = 'center',
 }: AttachmentBlockProps) {
   const [url, setUrl] = useState<string | null>(initialUrl || null);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +78,18 @@ export function AttachmentBlock({
 
   const title = fileName || (kind === 'audio' ? 'Audio explanation' : 'PDF attachment');
 
+  const alignStyle: React.CSSProperties =
+    align === 'left'
+      ? { marginLeft: 0, marginRight: 'auto' }
+      : align === 'right'
+        ? { marginLeft: 'auto', marginRight: 0 }
+        : { marginLeft: 'auto', marginRight: 'auto' };
+
   return (
-    <figure className="reader-attachment my-5 rounded-lg border reader-border reader-card p-3 sm:p-4">
+    <figure
+      className="reader-attachment my-5 rounded-lg border reader-border reader-card p-3 sm:p-4"
+      style={{ maxWidth: '36rem', display: 'block', ...alignStyle }}
+    >
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 text-[13px] font-medium" style={{ color: 'var(--reader-text)' }}>
         {kind === 'audio' ? <FileAudio size={16} /> : <FileText size={16} />}
         <span>{title}</span>

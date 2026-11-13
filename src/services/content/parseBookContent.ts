@@ -624,6 +624,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
 
     if (cls.includes('content-audio') || el.getAttribute('data-kind') === 'audio') {
       const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
+      const align = (el.getAttribute('data-align') || 'center') as 'left' | 'center' | 'right';
       blocks.push({
         type: 'audio',
         storagePath: el.getAttribute('data-storage-path') || undefined,
@@ -633,6 +634,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
         caption: el.querySelector('figcaption')?.textContent?.trim(),
         pdfPage,
         attachmentId: el.getAttribute('data-attachment-id') || undefined,
+        align,
       });
       return;
     }
@@ -640,6 +642,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     if (cls.includes('content-pdf') || el.getAttribute('data-kind') === 'pdf') {
       const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
       const link = el.querySelector('a')?.getAttribute('href') || undefined;
+      const align = (el.getAttribute('data-align') || 'center') as 'left' | 'center' | 'right';
       blocks.push({
         type: 'pdf',
         storagePath: el.getAttribute('data-storage-path') || undefined,
@@ -649,6 +652,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
         caption: el.querySelector('figcaption')?.textContent?.trim(),
         pdfPage,
         attachmentId: el.getAttribute('data-attachment-id') || undefined,
+        align,
       });
       return;
     }

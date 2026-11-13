@@ -142,8 +142,7 @@ export function AdminManualBookPage() {
   const [isLoading, setIsLoading] = useState(Boolean(bookId && isSupabaseConfigured()));
   const [uploadingKind, setUploadingKind] = useState<'image' | 'audio' | 'pdf' | null>(null);
   const [autosaveNote, setAutosaveNote] = useState('');
-
-  useEffect(() => {
+  const [attachmentAlign, setAttachmentAlign] = useState<'left' | 'center' | 'right'>('center');
     if (!bookId || !isSupabaseConfigured()) {
       setIsLoading(false);
       return;
@@ -494,6 +493,7 @@ export function AdminManualBookPage() {
           caption: attachment.caption,
           pdfPage: attachment.pdfPage,
           attachmentId: attachment.id,
+          align: attachmentAlign,
         }),
       );
       patch({ attachments: [...(book.attachments ?? []), attachment] });
@@ -932,6 +932,27 @@ export function AdminManualBookPage() {
                   <Loader2 size={13} className="animate-spin" /> Uploading {uploadingKind}…
                 </div>
               )}
+              {/* Alignment option for audio / PDF blocks */}
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                  Audio/PDF align:
+                </span>
+                {(['left', 'center', 'right'] as const).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setAttachmentAlign(a)}
+                    className={cn(
+                      'rounded px-2 py-0.5 text-[11px] font-semibold capitalize transition-colors',
+                      attachmentAlign === a
+                        ? 'bg-[#104C3B] text-white'
+                        : 'bg-slate-100 text-[#64748B] hover:bg-slate-200',
+                    )}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
             </div>
           </aside>
 

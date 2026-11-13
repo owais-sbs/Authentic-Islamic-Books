@@ -63,6 +63,7 @@ export interface AttachmentSnippetOptions {
   caption?: string;
   pdfPage?: number;
   attachmentId?: string;
+  align?: 'left' | 'center' | 'right';
 }
 
 export function snippetForBlock(
@@ -160,10 +161,17 @@ export function snippetForBlock(
       const bucket = attachment?.bucket || 'book-attachments';
       const page = attachment?.pdfPage != null ? ` data-pdf-page="${attachment.pdfPage}"` : '';
       const idAttr = attachment?.attachmentId ? ` data-attachment-id="${attachment.attachmentId}"` : '';
+      const align = attachment?.align ?? 'center';
+      const alignStyle =
+        align === 'left'
+          ? 'margin-left:0;margin-right:auto'
+          : align === 'right'
+            ? 'margin-left:auto;margin-right:0'
+            : 'margin-left:auto;margin-right:auto';
       const src = attachment?.url
         ? `<audio controls preload="none" src="${attachment.url}" style="width:100%;max-width:100%"></audio>`
         : `<span class="content-attachment-pending">Upload audio via Media manager</span>`;
-      return `<figure class="content-audio" data-kind="audio" data-storage-path="${path}" data-bucket="${bucket}"${page}${idAttr} style="margin:0.75rem 0;padding:0.75rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2"><figcaption><strong>Audio:</strong> ${name}${attachment?.caption ? ` — ${attachment.caption}` : ''}</figcaption>${src}</figure><p></p>`;
+      return `<figure class="content-audio" data-kind="audio" data-align="${align}" data-storage-path="${path}" data-bucket="${bucket}"${page}${idAttr} style="display:block;max-width:36rem;${alignStyle};margin-top:0.75rem;margin-bottom:0.75rem;padding:0.75rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2"><figcaption><strong>Audio:</strong> ${name}${attachment?.caption ? ` — ${attachment.caption}` : ''}</figcaption>${src}</figure><p></p>`;
     }
     case 'pdf': {
       const name = attachment?.fileName || 'PDF attachment';
@@ -171,10 +179,17 @@ export function snippetForBlock(
       const bucket = attachment?.bucket || 'book-attachments';
       const page = attachment?.pdfPage != null ? ` data-pdf-page="${attachment.pdfPage}"` : '';
       const idAttr = attachment?.attachmentId ? ` data-attachment-id="${attachment.attachmentId}"` : '';
+      const align = attachment?.align ?? 'center';
+      const alignStyle =
+        align === 'left'
+          ? 'margin-left:0;margin-right:auto'
+          : align === 'right'
+            ? 'margin-left:auto;margin-right:0'
+            : 'margin-left:auto;margin-right:auto';
       const link = attachment?.url
         ? `<a href="${attachment.url}" target="_blank" rel="noopener noreferrer">Open PDF</a>`
         : `<span class="content-attachment-pending">Upload PDF via Media manager</span>`;
-      return `<figure class="content-pdf" data-kind="pdf" data-storage-path="${path}" data-bucket="${bucket}"${page}${idAttr} style="margin:0.75rem 0;padding:0.75rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2"><figcaption><strong>PDF:</strong> ${name}${attachment?.caption ? ` — ${attachment.caption}` : ''}</figcaption><p>${link}</p></figure><p></p>`;
+      return `<figure class="content-pdf" data-kind="pdf" data-align="${align}" data-storage-path="${path}" data-bucket="${bucket}"${page}${idAttr} style="display:block;max-width:36rem;${alignStyle};margin-top:0.75rem;margin-bottom:0.75rem;padding:0.75rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2"><figcaption><strong>PDF:</strong> ${name}${attachment?.caption ? ` — ${attachment.caption}` : ''}</figcaption><p>${link}</p></figure><p></p>`;
     }
     default:
       return `<p></p>`;

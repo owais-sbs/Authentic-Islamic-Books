@@ -104,6 +104,7 @@ export type ContentBlock =
       caption?: string;
       pdfPage?: number;
       attachmentId?: string;
+      align?: 'left' | 'center' | 'right';
     } & ContentBlockLang)
   | ({
       type: 'pdf';
@@ -114,6 +115,7 @@ export type ContentBlock =
       caption?: string;
       pdfPage?: number;
       attachmentId?: string;
+      align?: 'left' | 'center' | 'right';
     } & ContentBlockLang)
   | ({
       type: 'callout';
