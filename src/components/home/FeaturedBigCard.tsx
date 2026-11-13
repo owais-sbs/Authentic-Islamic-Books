@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookMarked, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { QURAN_BOOKS, HADITH_BOOKS, SUNNAH_BOOKS } from '@/data/mockIslamicBooks';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
 
 export function FeaturedBigCard() {
-  const books = [QURAN_BOOKS[0], HADITH_BOOKS[0], SUNNAH_BOOKS[0]];
+  const { topBooks, allBooks } = usePublicBooks();
+  const pool = topBooks.length > 0 ? topBooks : allBooks;
+  const books = pool.slice(0, 3);
 
   return (
     <section className="py-6 sm:py-10 bg-white dark:bg-black transition-colors">
@@ -15,7 +17,7 @@ export function FeaturedBigCard() {
             <p className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#1B4F72] dark:text-blue-400">
               Featured Collection
             </p>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white tracking-tight mt-0.5">
+            <h2 className="font-sans text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white tracking-tight mt-0.5">
               Classical Foundations of Knowledge
             </h2>
           </div>
@@ -31,36 +33,37 @@ export function FeaturedBigCard() {
         {/* Big Showcase Card */}
         <div
           className={cn(
-            'relative overflow-hidden rounded-3xl',
-            'border border-black/[0.07] dark:border-white/10',
-            'shadow-[0_12px_40px_rgba(0,0,0,0.07)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)]',
+            'relative overflow-hidden rounded-3xl glossy-card',
+            'border border-white/20 dark:border-white/10',
+            'shadow-[0_16px_45px_rgba(13,33,55,0.25)] dark:shadow-[0_16px_45px_rgba(0,0,0,0.45)]',
           )}
           style={{
-            background: 'linear-gradient(135deg, #0D2137 0%, #1B3D5C 50%, #0E2744 100%)',
+            background: 'linear-gradient(135deg, #0D2137 0%, #163654 60%, #102A44 100%)',
           }}
         >
-          {/* Ambient top glow */}
-          <div className="pointer-events-none absolute -top-20 left-1/4 w-96 h-64 rounded-full bg-blue-400/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 right-1/4 w-64 h-48 rounded-full bg-amber-400/10 blur-3xl" />
+          {/* Subtle glossy sheen highlight */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.12]" />
+          <div className="pointer-events-none absolute -top-24 left-1/4 w-96 h-64 rounded-full bg-blue-400/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 right-1/4 w-64 h-48 rounded-full bg-blue-500/10 blur-3xl" />
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-0 items-stretch min-h-[280px] sm:min-h-[320px]">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between min-h-[300px]">
             {/* Left Copy */}
-            <div className="lg:col-span-7 flex flex-col justify-center space-y-4 p-7 sm:p-10 lg:p-12">
+            <div className="flex-1 w-full flex flex-col justify-center space-y-4 p-7 sm:p-10 lg:p-12">
               <span className="inline-flex items-center gap-1.5 w-fit rounded-full bg-white/10 border border-white/20 px-3 py-1 font-sans text-xs font-semibold text-white/90 backdrop-blur-sm">
-                <Sparkles size={12} className="text-amber-400" />
+                <Sparkles size={12} className="text-blue-300" />
                 Curated Classical Canon
               </span>
 
-              <h3 className="font-serif text-2xl sm:text-3xl lg:text-[2.4rem] font-bold text-white leading-[1.2]">
+              <h3 className="font-sans text-2xl sm:text-3xl lg:text-[2.3rem] font-bold text-white leading-[1.2] tracking-tight">
                 Centuries of Scholarly Rigor<br className="hidden sm:block" /> at Your Fingertips
               </h3>
 
-              <p className="font-sans text-sm sm:text-base text-white/70 leading-relaxed max-w-md">
+              <p className="font-sans text-sm sm:text-base text-blue-100/75 leading-relaxed max-w-md">
                 Step into verified works of exegesis, primary prophetic hadith, and biographical
                 chronicles — preserved with chains of transmission and rendered for effortless modern reading.
               </p>
 
-              <div className="pt-1 flex flex-wrap items-center gap-3">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <Link
                   to="/library"
                   className="inline-flex items-center gap-2 rounded-full bg-white text-[#0D2137] px-5 py-2.5 text-sm font-bold shadow-lg hover:bg-neutral-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -76,30 +79,11 @@ export function FeaturedBigCard() {
                   View Disciplines
                 </Link>
               </div>
-
-              {/* Stats row */}
-              <div className="flex items-center gap-6 pt-2">
-                {[
-                  { label: 'Books', value: '500+' },
-                  { label: 'Scholars', value: '120+' },
-                  { label: 'Languages', value: '8' },
-                ].map((s) => (
-                  <div key={s.label} className="text-center">
-                    <p className="font-serif text-xl font-bold text-white">{s.value}</p>
-                    <p className="font-sans text-[11px] text-white/50 uppercase tracking-wide">{s.label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* Right: Large Book Display */}
-            <div className="lg:col-span-5 relative flex items-end justify-center overflow-hidden min-h-[180px] lg:min-h-0">
-              {/* Gradient fade at bottom */}
-              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0D2137]/80 to-transparent z-10" />
-              <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-[#0D2137]/30 to-transparent" />
-
-              {/* Three 3D books, displayed large */}
-              <div className="relative flex items-end justify-center gap-0 pb-0 mb-0 w-full h-full">
+            {/* Right: Clean 3D Books Showcase without middle divider line */}
+            <div className="relative shrink-0 flex items-end justify-center px-6 sm:px-12 pt-4 pb-0 w-full lg:w-auto overflow-visible">
+              <div className="flex items-end justify-center -space-x-3 sm:-space-x-4 pb-0">
                 {books.map((b, idx) => {
                   const edge = b.edgeColor ?? '#06221A';
                   const isCenter = idx === 1;
@@ -107,36 +91,40 @@ export function FeaturedBigCard() {
                     <div
                       key={b.id}
                       className={cn(
-                        'relative rounded-t-xl overflow-hidden border border-black/20',
-                        'transition-all duration-500',
+                        'relative rounded-t-xl overflow-hidden border border-white/25 glossy-book transition-all duration-300',
                         isCenter
-                          ? 'w-[110px] sm:w-[130px] h-[180px] sm:h-[220px] z-20 shadow-[0_-12px_40px_rgba(0,0,0,0.5)]'
-                          : 'w-[90px] sm:w-[110px] h-[150px] sm:h-[185px] z-10 shadow-[0_-8px_30px_rgba(0,0,0,0.35)]',
-                        idx === 0 && 'translate-x-6 rotate-[-4deg] origin-bottom',
-                        idx === 2 && '-translate-x-6 rotate-[4deg] origin-bottom',
+                          ? 'w-[118px] sm:w-[142px] h-[190px] sm:h-[230px] z-20 shadow-[0_-16px_40px_rgba(0,0,0,0.6)] scale-105'
+                          : 'w-[98px] sm:w-[118px] h-[160px] sm:h-[195px] z-10 shadow-[0_-10px_28px_rgba(0,0,0,0.4)] opacity-90',
+                        idx === 0 && 'rotate-[-4deg] origin-bottom',
+                        idx === 2 && 'rotate-[4deg] origin-bottom',
                       )}
                       style={{
-                        background: `linear-gradient(145deg, rgba(255,255,255,0.14) 0%, transparent 40%), linear-gradient(170deg, ${b.color} 0%, ${edge} 100%)`,
+                        background: `linear-gradient(145deg, rgba(255,255,255,0.22) 0%, transparent 40%), linear-gradient(170deg, ${b.color} 0%, ${edge} 100%)`,
                       }}
                     >
                       {/* Spine */}
-                      <div className="absolute inset-y-0 left-0 w-[6px] bg-gradient-to-r from-black/50 to-transparent" />
-                      <div className="absolute inset-y-0 left-[5px] w-[0.5px] bg-white/15" />
-                      {/* Page edges */}
+                      <div className="absolute inset-y-0 left-0 w-[6px] bg-gradient-to-r from-black/55 to-transparent" />
+                      <div className="absolute inset-y-0 left-[5px] w-[0.5px] bg-white/25" />
+                      {/* Pages edge */}
                       <div
                         className="absolute top-1 bottom-0 right-0 w-[5px]"
-                        style={{ background: 'repeating-linear-gradient(to right,#F5EEE1 0px,#F5EEE1 1px,#DACDB7 1px,#DACDB7 2px)' }}
+                        style={{
+                          background:
+                            'repeating-linear-gradient(to right, #F5EEE1 0px, #F5EEE1 1px, #DACDB7 1px, #DACDB7 2px)',
+                        }}
                       />
-                      {/* Inner frame */}
-                      <div className="absolute inset-[8px] border border-white/20 rounded-lg flex flex-col justify-between items-center text-center p-2">
+                      {/* Inside details */}
+                      <div className="absolute inset-[8px] border border-white/20 rounded-lg flex flex-col justify-between items-center text-center p-2 text-white">
                         <span className="text-[7px] text-white/70 uppercase tracking-widest">{b.categoryLabel}</span>
                         <div className="my-auto">
-                          <p dir="rtl" lang="ar" className="font-arabic text-sm sm:text-base font-bold text-white/95 leading-tight">
+                          <p dir="rtl" lang="ar" className="font-arabic text-sm sm:text-base font-bold text-white leading-tight">
                             {b.arabicTitle}
                           </p>
-                          <p className="font-serif text-[9px] text-white/80 mt-1 leading-tight line-clamp-2">{b.title}</p>
+                          <p className="font-sans text-[9px] text-white/90 font-medium mt-1 leading-tight line-clamp-2">
+                            {b.title}
+                          </p>
                         </div>
-                        <span className="text-[7px] text-amber-300/80">{b.author.split(' ').slice(-1)[0]}</span>
+                        <span className="text-[7px] text-blue-200">{b.author.split(' ').slice(-1)[0]}</span>
                       </div>
                     </div>
                   );

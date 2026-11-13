@@ -18,7 +18,7 @@ export function ReadingGoalsSection() {
     <section className="py-10 sm:py-14 bg-neutral-50/70 dark:bg-black border-y border-black/[0.05] dark:border-white/[0.06] transition-colors">
       <div className="container-page max-w-xl text-center">
         {/* Title */}
-        <h2 className="font-serif text-3xl sm:text-4xl font-bold text-ink-900 dark:text-white tracking-tight">
+        <h2 className="font-sans text-3xl sm:text-4xl font-bold text-ink-900 dark:text-white tracking-tight">
           Reading Goals
         </h2>
         <p className="mt-2 text-sm sm:text-base font-sans text-neutral-500 dark:text-neutral-400">
@@ -45,7 +45,7 @@ export function ReadingGoalsSection() {
               <path
                 d="M 20 110 A 90 90 0 0 1 200 110"
                 fill="none"
-                stroke="url(#arc-gradient)"
+                stroke="#1B4F72"
                 strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeDasharray={circumference}
@@ -65,13 +65,13 @@ export function ReadingGoalsSection() {
               <span className="font-sans text-xs font-medium text-neutral-500 dark:text-neutral-400">
                 Today’s Reading
               </span>
-              <span className="font-serif text-4xl sm:text-5xl font-bold tracking-tight text-ink-900 dark:text-white mt-0.5">
+              <span className="font-sans text-4xl sm:text-5xl font-bold tracking-tight text-ink-900 dark:text-white mt-0.5">
                 {String(readingMinutes).padStart(2, '0')}:00
               </span>
               <button
                 type="button"
                 onClick={() => setReadingMinutes((m) => (m >= 15 ? 5 : m + 5))}
-                className="inline-flex items-center gap-0.5 font-sans text-xs text-neutral-500 hover:text-ink-900 dark:text-neutral-400 dark:hover:text-white mt-1 transition-colors"
+                className="inline-flex items-center gap-0.5 font-sans text-xs text-[#64748B] hover:text-ink-900 dark:text-neutral-400 dark:hover:text-white mt-1 transition-colors"
               >
                 <span>of your {goalMinutes}-minute goal</span>
                 <ChevronRight size={13} />
@@ -79,12 +79,12 @@ export function ReadingGoalsSection() {
             </div>
           </div>
 
-          {/* Big Black Action Button (Apple Books style) */}
+          {/* Big Action Button (Theme Blue) */}
           <Link
             to="/library/demo-islamic-book"
             className={cn(
               'mt-6 inline-flex flex-col items-center justify-center w-full max-w-sm px-6 py-3.5 rounded-full',
-              'bg-ink-900 text-white dark:bg-white dark:text-ink-900',
+              'bg-[#1B4F72] hover:bg-[#154060] text-white',
               'shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all',
               'group',
             )}

@@ -351,10 +351,10 @@ export function AdminImportPage() {
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#E5E1D8] bg-[#F7F6F2] px-8 py-16 text-center transition-colors hover:border-[#C9A646]/50 hover:bg-[#F5F4EF]"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-8 py-16 text-center transition-colors hover:border-[#1B4F72]/50 hover:bg-blue-50/20 glossy-card"
           >
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#C9A646]/10">
-              <Upload size={26} className="text-[#C9A646]" />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[#1B4F72]">
+              <Upload size={26} />
             </div>
             <p className="text-[15px] font-semibold text-[#0B1B2B]">Drag &amp; drop your PDF here</p>
             <p className="mt-1 text-[13px] text-[#94A3B8]">or click to browse</p>
@@ -384,7 +384,7 @@ export function AdminImportPage() {
               value={pdfUrl}
               onChange={(e) => setPdfUrl(e.target.value)}
               placeholder="https://example.com/authorized-book.pdf"
-              className="w-full rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2.5 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20"
+              className="w-full rounded-lg border border-[#E5E1D8] bg-[#F7F6F2] px-3 py-2.5 text-[13px] text-[#0B1B2B] outline-none focus:border-[#1B4F72] focus:ring-1 focus:ring-[#1B4F72]/20"
             />
             <p className="text-[12px] text-[#94A3B8]">
               Only use URLs you are authorized to download. Private/local hosts are blocked. Prefer
@@ -475,7 +475,7 @@ export function AdminImportPage() {
                 <div className="mt-2">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E1D8]">
                     <div
-                      className="h-full rounded-full bg-[#C9A646] transition-all duration-300"
+                      className="h-full rounded-full bg-[#1B4F72] transition-all duration-300"
                       style={{ width: `${Math.min(100, progressPercent)}%` }}
                     />
                   </div>
@@ -493,7 +493,7 @@ export function AdminImportPage() {
                       className={cn(
                         'flex h-6 w-6 items-center justify-center rounded-full transition-colors',
                         step.status === 'done' && 'bg-emerald-100',
-                        step.status === 'active' && 'bg-[#C9A646]/10',
+                        step.status === 'active' && 'bg-blue-50',
                         step.status === 'error' && 'bg-red-100',
                         step.status === 'pending' && 'border-2 border-[#E5E1D8]',
                       )}
@@ -502,7 +502,7 @@ export function AdminImportPage() {
                         <Check size={12} className="text-emerald-600" strokeWidth={2.5} />
                       )}
                       {step.status === 'active' && (
-                        <Loader2 size={12} className="animate-spin text-[#C9A646]" />
+                        <Loader2 size={12} className="animate-spin text-[#1B4F72]" />
                       )}
                       {step.status === 'error' && (
                         <AlertCircle size={12} className="text-red-500" />

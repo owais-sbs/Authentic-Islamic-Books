@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 function AdminLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F7F6F2]">
-      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#E5E1D8] border-t-[#C9A646]" />
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#E5E1D8] border-t-[#1B4F72]" />
     </div>
   );
 }

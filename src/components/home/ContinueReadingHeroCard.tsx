@@ -1,18 +1,21 @@
 import { Link } from 'react-router-dom';
-import { Play, Clock, ArrowRight } from 'lucide-react';
+import { Play, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TOP_FREE_BOOKS } from '@/data/mockIslamicBooks';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
 
 export function ContinueReadingHeroCard() {
-  const currentBook = TOP_FREE_BOOKS[0]; // Ar-Raheeq Al-Makhtum
+  const { topBooks, allBooks } = usePublicBooks();
+  const currentBook = topBooks[0] || allBooks[0];
   const progressPercent = 38;
+
+  if (!currentBook) return null;
 
   return (
     <section className="py-4 sm:py-6 bg-white dark:bg-black transition-colors">
       <div className="container-page">
         <div
           className={cn(
-            'relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6',
+            'relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 glossy-card',
             'border border-black/[0.08] dark:border-white/10',
             'bg-neutral-50/70 dark:bg-[#141414]',
             'shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.2)]',
@@ -25,22 +28,24 @@ export function ContinueReadingHeroCard() {
               <div
                 className="relative w-[52px] h-[76px] sm:w-[68px] sm:h-[98px] rounded-lg overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.18)] border border-black/10 shrink-0"
                 style={{
-                  background: `linear-gradient(145deg, rgba(255,255,255,0.15) 0%, transparent 40%), linear-gradient(180deg, #1B4F72 0%, #0D2638 100%)`,
+                  background: `linear-gradient(145deg, rgba(255,255,255,0.15) 0%, transparent 40%), linear-gradient(180deg, ${currentBook.color || '#1B4F72'} 0%, ${currentBook.edgeColor || '#0D2638'} 100%)`,
                 }}
               >
                 <div className="absolute inset-y-0 left-0 w-[4px] bg-gradient-to-r from-black/50 to-transparent" />
                 <div className="absolute inset-1 border border-[#D4B445]/40 rounded flex flex-col justify-between items-center p-1 text-center">
-                  <span className="text-[5.5px] text-[#D4B445] font-sans uppercase tracking-wider">
-                    SEERAH
+                  <span className="text-[5.5px] text-[#D4B445] font-sans uppercase tracking-wider truncate max-w-full">
+                    {currentBook.categoryLabel?.toUpperCase() || 'CANON'}
                   </span>
                   <span
                     dir="rtl"
                     lang="ar"
                     className="font-arabic text-[10px] sm:text-[11px] font-bold text-white leading-none truncate max-w-full"
                   >
-                    الرحيق المختوم
+                    {currentBook.arabicTitle}
                   </span>
-                  <span className="text-[5.5px] text-white/70">Mubarakpuri</span>
+                  <span className="text-[5.5px] text-white/70 truncate max-w-full">
+                    {currentBook.author.split(' ').slice(-1)[0]}
+                  </span>
                 </div>
               </div>
 
@@ -51,10 +56,10 @@ export function ContinueReadingHeroCard() {
                     <Clock size={10} />
                     Continue Reading
                   </span>
-                  <span className="text-xs text-neutral-400">Chapter 4 of 32</span>
+                  <span className="text-xs text-neutral-400">Chapter 1</span>
                 </div>
 
-                <h3 className="font-serif text-base sm:text-lg font-bold text-ink-900 dark:text-white mt-1 truncate">
+                <h3 className="font-sans text-base sm:text-lg font-bold text-ink-900 dark:text-white mt-1 truncate">
                   {currentBook.title}
                 </h3>
                 <p className="font-sans text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
@@ -65,7 +70,7 @@ export function ContinueReadingHeroCard() {
                 <div className="mt-2.5 flex items-center gap-2.5 max-w-xs sm:max-w-sm">
                   <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#1B4F72] to-amber-500 transition-all duration-500"
+                      className="h-full rounded-full bg-[#1B4F72] transition-all duration-500"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>

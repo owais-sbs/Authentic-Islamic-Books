@@ -472,7 +472,7 @@ export function AdminReviewPage() {
     return (
       <AdminShell pageTitle={isNewBook ? 'Add Book' : 'Edit Book'}>
         <div className="flex min-h-[40vh] items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#E5E1D8] border-t-[#C9A646]" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#E5E1D8] border-t-[#1B4F72]" />
         </div>
       </AdminShell>
     );

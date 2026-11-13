@@ -116,7 +116,7 @@ export function Navbar() {
           <div className="flex min-w-0 flex-1 items-center gap-1 lg:flex-none">
             <button
               onClick={() => setMobileOpen(true)}
-              className="touch-target lg:hidden flex shrink-0 items-center justify-center rounded-full p-2.5 text-ink-700 transition-colors hover:bg-islamic-green/10 dark:text-white/85 dark:hover:bg-white/10"
+              className="touch-target lg:hidden flex shrink-0 items-center justify-center rounded-full p-2.5 text-ink-700 transition-colors hover:bg-slate-100 dark:text-white/85 dark:hover:bg-white/10"
               aria-label="Open menu"
             >
               <Menu size={20} />
@@ -139,15 +139,15 @@ export function Navbar() {
                     'relative px-3.5 py-2 text-sm font-medium transition-colors duration-200',
                     'font-sans',
                     active
-                      ? 'text-islamic-green dark:text-white'
-                      : 'text-ink-600 hover:text-islamic-green dark:text-white/65 dark:hover:text-white',
+                      ? 'text-[#1B4F72] dark:text-blue-400 font-semibold'
+                      : 'text-[#64748B] hover:text-[#1B4F72] dark:text-white/65 dark:hover:text-white',
                   )}
                 >
                   {link.label}
                   {active && (
                     <motion.span
                       layoutId="nav-underline"
-                      className="absolute inset-x-3.5 -bottom-0.5 h-0.5 rounded-full bg-accent"
+                      className="absolute inset-x-3.5 -bottom-0.5 h-0.5 rounded-full bg-[#1B4F72] dark:bg-blue-400"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -162,8 +162,8 @@ export function Navbar() {
                 className={cn(
                   'relative inline-flex items-center gap-1 px-3.5 py-2 text-sm font-medium transition-colors duration-200',
                   hijriOpen || onTimeline
-                    ? 'text-islamic-green dark:text-white'
-                    : 'text-ink-600 hover:text-islamic-green dark:text-white/65 dark:hover:text-white',
+                    ? 'text-[#1B4F72] dark:text-blue-400 font-semibold'
+                    : 'text-[#64748B] hover:text-[#1B4F72] dark:text-white/65 dark:hover:text-white',
                 )}
                 aria-expanded={hijriOpen}
                 aria-haspopup="true"
@@ -231,7 +231,7 @@ export function Navbar() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search books, scholars, topics..."
-                    className="w-full rounded-xl border border-line bg-ivory py-3 pl-12 pr-4 text-sm text-ink-900 placeholder:text-ink-400 focus:border-accent focus:outline-none dark:border-white/15 dark:bg-black dark:text-white dark:placeholder:text-white/40"
+                    className="w-full rounded-xl border border-line bg-neutral-50 py-3 pl-12 pr-4 text-sm text-ink-900 placeholder:text-[#64748B] focus:border-[#1B4F72] focus:outline-none dark:border-white/15 dark:bg-black dark:text-white dark:placeholder:text-white/40"
                   />
                 </form>
               </div>
@@ -251,7 +251,7 @@ export function Navbar() {
                 to={link.href}
                 className={cn(
                   'rounded-lg px-3 py-3 text-sm font-medium transition-colors',
-                  active ? 'bg-islamic-green/10 text-islamic-green' : 'text-ink-600 hover:bg-paper/60',
+                  active ? 'bg-blue-50 text-[#1B4F72] dark:bg-white/10 dark:text-blue-300' : 'text-[#64748B] hover:bg-slate-100',
                 )}
               >
                 {link.label}
@@ -262,7 +262,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileHijri((v) => !v)}
-            className="flex items-center justify-between rounded-lg px-3 py-3 text-sm font-medium text-ink-600 hover:bg-paper/60"
+            className="flex items-center justify-between rounded-lg px-3 py-3 text-sm font-medium text-[#64748B] hover:bg-slate-100"
           >
             Hijri
             <ChevronDown size={16} className={mobileHijri ? 'rotate-180' : ''} />
@@ -277,7 +277,7 @@ export function Navbar() {
 
           <Link
             to="/library"
-            className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-islamic-green px-4 py-3 text-sm font-semibold text-white"
+            className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-[#1B4F72] px-4 py-3 text-sm font-semibold text-white hover:bg-[#154060]"
           >
             Start Reading
           </Link>

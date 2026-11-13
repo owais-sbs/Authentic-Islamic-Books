@@ -81,7 +81,7 @@ export function ScholarsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search scholars..."
-              className="w-full rounded-xl border border-line bg-cream py-2.5 pl-10 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-accent focus:outline-none"
+              className="w-full rounded-xl border border-line bg-cream py-2.5 pl-10 pr-4 text-sm text-ink-800 placeholder:text-ink-400 focus:border-[#1B4F72] focus:outline-none"
             />
             {search && (
               <button
@@ -97,7 +97,7 @@ export function ScholarsPage() {
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
-              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-[#1B4F72] focus:outline-none cursor-pointer"
             >
               <option value="">All Periods</option>
               {hijriPeriods.map((p) => (
@@ -109,7 +109,7 @@ export function ScholarsPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-accent focus:outline-none cursor-pointer"
+              className="min-w-0 rounded-xl border border-line bg-cream py-2.5 pl-3 pr-8 text-sm text-ink-800 focus:border-[#1B4F72] focus:outline-none cursor-pointer"
             >
               <option value="az">A–Z</option>
               <option value="za">Z–A</option>
@@ -125,7 +125,7 @@ export function ScholarsPage() {
 
         {filteredScholars.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <h3 className="font-serif text-lg font-semibold text-ink-900">No scholars found</h3>
+            <h3 className="font-sans text-lg font-bold text-ink-900">No scholars found</h3>
             <p className="mt-2 text-sm text-ink-500">Try adjusting your search or filters.</p>
           </div>
         ) : (

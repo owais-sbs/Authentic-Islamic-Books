@@ -56,8 +56,8 @@ function CategoryRow({
     return (
       <li className="bg-[#FAFAF8] px-5 py-4 border-b border-[#E5E1D8] last:border-0">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#C9A646]/10 mt-1">
-            <Tag size={16} className="text-[#C9A646]" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 mt-1">
+            <Tag size={16} className="text-[#1B4F72]" />
           </div>
           <div className="flex-1 space-y-2">
             <input
@@ -65,21 +65,21 @@ function CategoryRow({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Category name *"
-              className="w-full rounded-lg border border-[#C9A646]/40 bg-white px-3 py-2 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20"
+              className="w-full rounded-lg border border-[#1B4F72]/40 bg-white px-3 py-2 text-[13px] text-[#0B1B2B] outline-none focus:border-[#1B4F72] focus:ring-1 focus:ring-[#1B4F72]/20"
             />
             <textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="Description"
               rows={2}
-              className="w-full rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20 resize-none"
+              className="w-full rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#0B1B2B] outline-none focus:border-[#1B4F72] focus:ring-1 focus:ring-[#1B4F72]/20 resize-none"
             />
           </div>
           <div className="flex items-center gap-2 sm:mt-1">
             <button
               onClick={() => void handleSave()}
               disabled={saving || !name.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-3 py-2 text-[12px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg bg-[#1B4F72] px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#154060] disabled:opacity-50"
             >
               <Check size={13} /> {saving ? 'Saving…' : 'Save'}
             </button>
@@ -98,8 +98,8 @@ function CategoryRow({
 
   return (
     <li className="flex items-center gap-4 px-5 py-4 border-b border-[#E5E1D8] last:border-0 hover:bg-[#FAFAF8] transition-colors group">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#C9A646]/10">
-        <Tag size={16} className="text-[#C9A646]" />
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+        <Tag size={16} className="text-[#1B4F72]" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-semibold text-[#0B1B2B]">{cat.name}</p>
@@ -111,7 +111,7 @@ function CategoryRow({
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => setEditing(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#C9A646]/40 hover:text-[#C9A646]"
+          className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#1B4F72]/40 hover:text-[#1B4F72]"
         >
           <Pencil size={12} /> Edit
         </button>
@@ -161,8 +161,8 @@ function AddCategoryForm({
   return (
     <li className="bg-[#FAFAF8] border-b border-[#E5E1D8] px-5 py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#C9A646]/10 mt-1">
-          <Plus size={16} className="text-[#C9A646]" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 mt-1">
+          <Plus size={16} className="text-[#1B4F72]" />
         </div>
         <div className="flex-1 space-y-2">
           <input
@@ -170,21 +170,21 @@ function AddCategoryForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Category name *"
-            className="w-full rounded-lg border border-[#C9A646]/40 bg-white px-3 py-2 text-[13px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20"
+            className="w-full rounded-lg border border-[#1B4F72]/40 bg-white px-3 py-2 text-[13px] text-[#0B1B2B] outline-none focus:border-[#1B4F72] focus:ring-1 focus:ring-[#1B4F72]/20"
           />
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="Description (optional)"
             rows={2}
-            className="w-full rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#0B1B2B] outline-none focus:border-[#C9A646] focus:ring-1 focus:ring-[#C9A646]/20 resize-none"
+            className="w-full rounded-lg border border-[#E5E1D8] bg-white px-3 py-2 text-[12px] text-[#0B1B2B] outline-none focus:border-[#1B4F72] focus:ring-1 focus:ring-[#1B4F72]/20 resize-none"
           />
         </div>
         <div className="flex items-center gap-2 sm:mt-1">
           <button
             onClick={() => void handleAdd()}
             disabled={saving || !name.trim()}
-            className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-3 py-2 text-[12px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg bg-[#1B4F72] px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#154060] disabled:opacity-40"
           >
             <Check size={13} /> {saving ? 'Adding…' : 'Add'}
           </button>
@@ -245,7 +245,7 @@ export function AdminCategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1B4F72] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#154060]"
                 >
                   <Plus size={14} /> Add Category
                 </button>

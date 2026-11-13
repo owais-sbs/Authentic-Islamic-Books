@@ -101,19 +101,19 @@ export function AdminBooksPage() {
 
   return (
     <AdminShell pageTitle="Books">
-      <div className="max-w-6xl space-y-6">
+      <div className="w-full space-y-6">
         <AdminPageHeader
           title={viewArchived ? 'Archived Books' : 'Books'}
           description={
             viewArchived
               ? 'Books moved to archive. Restore or permanently delete them.'
-              : 'Manage and review your Islamic Digital Library collection.'
+              : 'Manage and review your Authentic Islamic Books collection.'
           }
           actions={
             <button
               type="button"
               onClick={() => void handleAddNewBook()}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1B4F72] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-all hover:bg-[#154060] active:scale-[0.98]"
             >
               <PlusCircle size={14} />
               Add New Book
@@ -135,7 +135,7 @@ export function AdminBooksPage() {
             className={cn(
               'rounded-lg px-4 py-2 text-[13px] font-medium transition-colors',
               !viewArchived
-                ? 'bg-[#0B1B2B] text-white'
+                ? 'bg-[#1B4F72] text-white'
                 : 'border border-[#E5E1D8] bg-white text-[#64748B] hover:bg-[#F7F6F2]'
             )}
           >
@@ -147,7 +147,7 @@ export function AdminBooksPage() {
             className={cn(
               'inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium transition-colors',
               viewArchived
-                ? 'bg-[#0B1B2B] text-white'
+                ? 'bg-[#1B4F72] text-white'
                 : 'border border-[#E5E1D8] bg-white text-[#64748B] hover:bg-[#F7F6F2]'
             )}
           >
@@ -160,7 +160,7 @@ export function AdminBooksPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Total Books" value={stats.total} icon={BookOpen} iconCls="text-[#C9A646]" bgCls="bg-[#C9A646]/10" />
+          <StatCard label="Total Books" value={stats.total} icon={BookOpen} iconCls="text-[#1B4F72]" bgCls="bg-blue-50" />
           <StatCard label="Published" value={stats.published} icon={CheckCircle} iconCls="text-emerald-600" bgCls="bg-emerald-50" />
           <StatCard label="Needs Review" value={stats.needsReview} icon={AlertCircle} iconCls="text-amber-600" bgCls="bg-amber-50" />
           <StatCard label="Drafts" value={stats.drafts} icon={Clock} iconCls="text-slate-500" bgCls="bg-slate-100" />

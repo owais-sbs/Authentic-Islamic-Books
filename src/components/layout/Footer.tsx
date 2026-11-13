@@ -34,18 +34,18 @@ const footerSections = [
 
 export function Footer() {
   return (
-    <footer className="mt-auto bg-islamic-green text-white dark:bg-black dark:border-t dark:border-white/10">
+    <footer className="mt-auto bg-[#1B4F72] text-white dark:bg-black dark:border-t dark:border-white/10">
       <div className="container-page py-12 sm:py-14">
         <Reveal className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <BrandLogo variant="onGreen" />
-            <p className="mt-4 max-w-sm font-sans text-sm leading-relaxed text-white/80">
+            <p className="mt-4 max-w-sm font-sans text-sm leading-relaxed text-blue-100">
               A peaceful digital library for discovering and reading authentic Islamic books —
               curated for students, seekers, and everyday readers.
             </p>
             <a
               href="mailto:hello@authenticislamicbooks.local"
-              className="mt-5 inline-flex items-center gap-2 font-sans text-sm font-medium text-white transition-colors hover:text-white/85"
+              className="mt-5 inline-flex items-center gap-2 font-sans text-sm font-medium text-white transition-colors hover:text-blue-200"
             >
               <Mail size={15} />
               Contact
@@ -62,7 +62,7 @@ export function Footer() {
                   <li key={link.label}>
                     <Link
                       to={link.href}
-                      className="font-sans text-sm text-white/75 transition-colors hover:text-white"
+                      className="font-sans text-sm text-blue-100/80 transition-colors hover:text-white"
                     >
                       {link.label}
                     </Link>
@@ -74,10 +74,10 @@ export function Footer() {
         </Reveal>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/20 pt-6 text-center sm:flex-row sm:text-left">
-          <p className="font-sans text-xs text-white/60">
+          <p className="font-sans text-xs text-blue-100/70">
             © {new Date().getFullYear()} Authentic Islamic Books. All rights reserved.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 font-sans text-xs text-white/60">
+          <div className="flex flex-wrap items-center justify-center gap-4 font-sans text-xs text-blue-100/70">
             <Link to="/about" className="transition-colors hover:text-white">
               Privacy Policy
             </Link>

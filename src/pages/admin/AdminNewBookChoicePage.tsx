@@ -9,7 +9,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 export function AdminNewBookChoicePage() {
   return (
     <AdminShell pageTitle="Add New Book">
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="w-full max-w-5xl space-y-6">
         <div>
           <Link
             to="/admin/books"
@@ -26,34 +26,34 @@ export function AdminNewBookChoicePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
             to="/admin/books/import"
-            className="group flex flex-col rounded-xl border border-[#E5E1D8] bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#C9A646] hover:shadow-md"
+            className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#1B4F72] hover:shadow-md glossy-card"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F7F6F2] text-[#0B1B2B] transition-colors group-hover:bg-[#C9A646]/20">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1B4F72] transition-colors group-hover:bg-[#1B4F72] group-hover:text-white">
               <FileUp size={20} strokeWidth={1.75} />
             </div>
-            <h3 className="mt-4 text-[15px] font-semibold text-[#0B1B2B]">Import Book</h3>
-            <p className="mt-2 flex-1 text-[13px] leading-relaxed text-[#64748B]">
+            <h3 className="mt-4 text-base font-bold text-ink-900">Import Book (PDF)</h3>
+            <p className="mt-2 flex-1 text-xs leading-relaxed text-[#64748B]">
               Upload a PDF. Text, chapters, languages, and Arabic are extracted automatically —
               then review and publish.
             </p>
-            <span className="mt-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#C9A646]">
+            <span className="mt-4 text-xs font-semibold text-[#1B4F72] group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
               Existing PDF workflow →
             </span>
           </Link>
 
           <Link
             to="/admin/books/manual"
-            className="group flex flex-col rounded-xl border border-[#E5E1D8] bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#104C3B] hover:shadow-md"
+            className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#1B4F72] hover:shadow-md glossy-card"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F7F6F2] text-[#0B1B2B] transition-colors group-hover:bg-[#104C3B]/15">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1B4F72] transition-colors group-hover:bg-[#1B4F72] group-hover:text-white">
               <PenLine size={20} strokeWidth={1.75} />
             </div>
-            <h3 className="mt-4 text-[15px] font-semibold text-[#0B1B2B]">Create Book Manually</h3>
-            <p className="mt-2 flex-1 text-[13px] leading-relaxed text-[#64748B]">
-              Enter details and write or paste content from Word or PDF. Organize chapters, insert
-              scholarly blocks, images, then preview and publish.
+            <h3 className="mt-4 text-base font-bold text-ink-900">Create Book Manually</h3>
+            <p className="mt-2 flex-1 text-xs leading-relaxed text-[#64748B]">
+              Enter details and write or paste content with rich formatting. Organize chapters, insert
+              content blocks, audio, PDF, and images, then preview and publish.
             </p>
-            <span className="mt-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#104C3B]">
+            <span className="mt-4 text-xs font-semibold text-[#1B4F72] group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
               Open manual editor →
             </span>
           </Link>

@@ -54,9 +54,6 @@ export function HomePage() {
       {/* 9. Renowned Classical Scholars Grid */}
       <ScholarGrid scholars={scholars} />
 
-      {/* 10. Scholarly Verification & Authenticity Strip */}
-      <TrustStrip />
-
       {/* 11. Newsletter / Join Readers */}
       <NewsletterSection />
     </PageContainer>

@@ -5,13 +5,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppBookCover } from '@/components/book/AppBookCover';
-import {
-  ALL_MOCK_BOOKS,
-  QURAN_BOOKS,
-  HADITH_BOOKS,
-  SUNNAH_BOOKS,
-  HISTORY_BOOKS,
-} from '@/data/mockIslamicBooks';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
 import { LibraryCatalog } from '@/components/library-demo';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +21,7 @@ export function LibraryPage() {
   const activeCategory = searchParams.get('category') || 'all';
   const initialQuery = searchParams.get('q') || '';
   const [searchTerm, setSearchTerm] = useState(initialQuery);
+  const { allBooks, quranBooks, hadithBooks, sunnahBooks, historyBooks, hasRealBooks } = usePublicBooks();
 
   const categories = [
     { label: 'All Works', slug: 'all' },
@@ -37,12 +32,12 @@ export function LibraryPage() {
   ];
 
   const filteredBooks = useMemo(() => {
-    let list = ALL_MOCK_BOOKS;
+    let list = allBooks;
 
-    if (activeCategory === 'quran') list = QURAN_BOOKS;
-    else if (activeCategory === 'hadith') list = HADITH_BOOKS;
-    else if (activeCategory === 'sunnah') list = SUNNAH_BOOKS;
-    else if (activeCategory === 'history') list = HISTORY_BOOKS;
+    if (activeCategory === 'quran') list = quranBooks;
+    else if (activeCategory === 'hadith') list = hadithBooks;
+    else if (activeCategory === 'sunnah') list = sunnahBooks;
+    else if (activeCategory === 'history') list = historyBooks;
 
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
@@ -50,12 +45,12 @@ export function LibraryPage() {
         (b) =>
           b.title.toLowerCase().includes(q) ||
           b.author.toLowerCase().includes(q) ||
-          b.arabicTitle.includes(q) ||
+          (b.arabicTitle && b.arabicTitle.toLowerCase().includes(q)) ||
           b.description.toLowerCase().includes(q),
       );
     }
     return list;
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, allBooks, quranBooks, hadithBooks, sunnahBooks, historyBooks]);
 
   const handleCategorySelect = (slug: string) => {
     const params = new URLSearchParams(searchParams);
@@ -157,23 +152,25 @@ export function LibraryPage() {
           </div>
         )}
 
-        {/* Demo Format Layouts Section */}
-        <div className="mt-20 pt-12 border-t border-black/[0.06] dark:border-white/10">
-          <div className="mb-8">
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-dark dark:text-accent">
-              Reading Layouts
-            </span>
-            <h3 className="font-serif text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white mt-1">
-              Scholarly Presentation Formats
-            </h3>
-            <p className="text-sm text-neutral-500 mt-1 max-w-xl">
-              Preview dedicated layouts engineered specifically for Quranic tafsir, hadith matn & sanad,
-              biographies, refutations, and quiet reading.
-            </p>
-          </div>
+        {/* Demo Format Layouts Section (only when no real admin books uploaded yet) */}
+        {!hasRealBooks && (
+          <div className="mt-20 pt-12 border-t border-black/[0.06] dark:border-white/10">
+            <div className="mb-8">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#1B4F72] dark:text-blue-400">
+                Reading Layouts
+              </span>
+              <h3 className="font-serif text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white mt-1">
+                Scholarly Presentation Formats
+              </h3>
+              <p className="text-sm text-neutral-500 mt-1 max-w-xl">
+                Preview dedicated layouts engineered specifically for Quranic tafsir, hadith matn & sanad,
+                biographies, refutations, and quiet reading.
+              </p>
+            </div>
 
-          <LibraryCatalog />
-        </div>
+            <LibraryCatalog />
+          </div>
+        )}
       </div>
     </PageContainer>
   );

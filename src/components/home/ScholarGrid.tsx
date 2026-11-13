@@ -23,7 +23,7 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
     <section className="bg-white py-8 dark:bg-black sm:py-10 transition-colors">
       <div className="container-page">
         <Reveal className="mx-auto max-w-3xl text-center">
-          <h2 className="font-serif text-3xl font-bold leading-[1.3] tracking-tight text-ink-900 dark:text-white sm:text-4xl">
+          <h2 className="font-sans text-3xl font-bold leading-[1.3] tracking-tight text-ink-900 dark:text-white sm:text-4xl">
             Learn From Trusted Scholars and Authors All Around the World
           </h2>
           <p className="mt-4 font-sans text-sm sm:text-base leading-relaxed text-neutral-600 dark:text-neutral-400">
@@ -40,7 +40,7 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((scholar, i) => (
               <Reveal key={scholar.id} delay={(i % 3) * 0.05}>
-                <article className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-soft transition-transform duration-500 hover:-translate-y-1 dark:border-white/10 dark:bg-[#141414]">
+                <article className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-soft transition-transform duration-500 hover:-translate-y-1 dark:border-white/10 dark:bg-[#141414] glossy-card">
                   <div className="flex items-start gap-4">
                     <div
                       className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-50/60 font-sans text-sm font-bold text-[#1B4F72] dark:border-white/10 dark:bg-white/5 dark:text-blue-300"

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, Star } from 'lucide-react';
-import { TOP_FREE_BOOKS, type IslamicMockBook } from '@/data/mockIslamicBooks';
+import { ChevronRight } from 'lucide-react';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
+import type { IslamicMockBook } from '@/data/mockIslamicBooks';
 
 export function TopFreeBooksSection() {
-  const books = TOP_FREE_BOOKS;
+  const { topBooks } = usePublicBooks();
+  const books = topBooks;
 
   // Split into columns of 3 (Apple Books style)
   const column1 = books.slice(0, 3);
@@ -16,9 +18,9 @@ export function TopFreeBooksSection() {
         <div className="flex items-center justify-between mb-5 sm:mb-6">
           <Link
             to="/library?sort=popular"
-            className="group inline-flex items-center gap-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-ink-900 dark:text-white"
+            className="group inline-flex items-center gap-1 font-sans text-2xl sm:text-3xl font-bold tracking-tight text-ink-900 dark:text-white"
           >
-            <span>Top Free</span>
+            <span>Featured Books</span>
             <ChevronRight
               size={22}
               className="text-neutral-400 group-hover:text-ink-900 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all"
@@ -109,22 +111,14 @@ function RankedBookRow({ book, rank }: { book: IslamicMockBook; rank: number }) 
 
       {/* Book Metadata */}
       <div className="min-w-0 flex-1">
-        <h4 className="font-serif text-base sm:text-lg font-semibold text-ink-900 dark:text-white leading-snug truncate group-hover:text-[#1B4F72] dark:group-hover:text-blue-400 transition-colors">
+        <h4 className="font-sans text-base sm:text-lg font-bold text-ink-900 dark:text-white leading-snug truncate group-hover:text-[#1B4F72] dark:group-hover:text-blue-400 transition-colors">
           {book.title}
         </h4>
-        <p className="font-sans text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
+        <p className="font-sans text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 truncate mt-0.5">
           {book.author}
         </p>
-        <div className="flex items-center gap-1.5 mt-1 font-sans text-xs text-neutral-500 dark:text-neutral-400">
-          <span className="flex items-center text-amber-500">
-            <Star size={11} className="fill-amber-400 text-amber-400" />
-            <span className="ml-0.5 font-semibold text-ink-800 dark:text-neutral-200">
-              {book.rating.toFixed(1)}
-            </span>
-          </span>
-          <span>({book.reviewsCount})</span>
-          <span className="text-neutral-300 dark:text-neutral-700">·</span>
-          <span className="text-neutral-500 dark:text-neutral-400">{book.categoryLabel}</span>
+        <div className="flex items-center gap-1.5 mt-1 font-sans text-xs text-[#64748B] dark:text-neutral-400">
+          <span className="font-medium text-[#1B4F72] dark:text-blue-300">{book.categoryLabel}</span>
         </div>
       </div>
     </Link>

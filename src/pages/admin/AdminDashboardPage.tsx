@@ -46,7 +46,7 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
         <h3 className="text-[15px] font-semibold text-[#0B1B2B]">Recent Books</h3>
         <Link
           to="/admin/books"
-          className="flex items-center gap-1.5 text-[12px] font-medium text-[#C9A646] transition-colors hover:text-[#a8873a]"
+          className="flex items-center gap-1.5 text-[12px] font-medium text-[#1B4F72] transition-colors hover:text-[#154060]"
         >
           View All <ArrowRight size={13} />
         </Link>
@@ -70,7 +70,7 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
           <p className="mt-1 text-[13px] text-[#64748B]">Import or create your first book to see it here.</p>
           <Link
             to="/admin/books/import"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#1B4F72] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#154060]"
           >
             <Upload size={13} /> Import Book
           </Link>
@@ -94,7 +94,7 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
                     <td className="px-5 py-3.5">
                       <Link
                         to={`/admin/books/${book.id}/review`}
-                        className="font-medium text-[#0B1B2B] hover:text-[#C9A646] transition-colors text-[13px]"
+                        className="font-medium text-[#0B1B2B] hover:text-[#1B4F72] transition-colors text-[13px]"
                       >
                         {book.title}
                       </Link>
@@ -118,7 +118,7 @@ function RecentBooksTable({ books, loading }: { books: DashboardRecentBook[]; lo
                 <div className="min-w-0">
                   <Link
                     to={`/admin/books/${book.id}/review`}
-                    className="block text-[13px] font-semibold text-[#0B1B2B] hover:text-[#C9A646] leading-snug truncate"
+                    className="block text-[13px] font-semibold text-[#0B1B2B] hover:text-[#1B4F72] leading-snug truncate"
                   >
                     {book.title}
                   </Link>
@@ -283,7 +283,7 @@ export function AdminDashboardPage() {
 
   return (
     <AdminShell pageTitle="Dashboard">
-      <div className="max-w-5xl space-y-8">
+      <div className="w-full space-y-8">
         <FadeIn>
           <div className="flex items-start justify-between gap-4">
             <AdminPageHeader
@@ -295,7 +295,7 @@ export function AdminDashboardPage() {
                 href="/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#C9A646]/40 bg-[#C9A646]/10 px-3 py-2 text-[12px] font-medium text-[#C9A646] transition-colors hover:bg-[#C9A646]/20"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#1B4F72]/30 bg-blue-50 px-3 py-2 text-[12px] font-semibold text-[#1B4F72] transition-colors hover:bg-blue-100/60"
               >
                 <ExternalLink size={13} />
                 View Website

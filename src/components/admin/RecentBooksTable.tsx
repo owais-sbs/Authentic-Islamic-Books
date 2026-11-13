@@ -38,7 +38,7 @@ export function RecentBooksTable({ books }: RecentBooksTableProps) {
         <h3 className="text-[15px] font-semibold text-[#0B1B2B]">Recent Books</h3>
         <Link
           to="/admin/books"
-          className="flex items-center gap-1.5 text-[12px] font-medium text-[#C9A646] transition-colors hover:text-[#a8873a]"
+          className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1B4F72] transition-colors hover:text-[#154060]"
         >
           View All <ArrowRight size={13} />
         </Link>

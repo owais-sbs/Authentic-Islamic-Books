@@ -43,7 +43,7 @@ const FOUR_CATEGORIES = [
 
 export function TopicExplorer() {
   return (
-    <section className="bg-neutral-50/50 dark:bg-black py-8 sm:py-14 transition-colors">
+    <section className="bg-neutral-50/50 dark:bg-black pt-8 pb-3 sm:pt-12 sm:pb-4 transition-colors">
       <div className="container-page">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#1B4F72] dark:text-blue-400">
@@ -65,20 +65,16 @@ export function TopicExplorer() {
               <Reveal key={cat.slug} delay={i * 0.05}>
                 <Link
                   to={`/library?category=${cat.slug}`}
-                  className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-black/[0.08] dark:border-white/10 bg-white dark:bg-neutral-900/80 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1"
+                  className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-black/[0.08] dark:border-white/10 bg-white dark:bg-neutral-900/80 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_32px_rgba(27,79,114,0.12)] transition-all duration-300 hover:-translate-y-1 glossy-card"
                 >
                   <div>
-                    {/* Top Row: Clean Lucide Icon + Arabic Calligraphy */}
+                    {/* Top Row: Clean Lucide Icon */}
                     <div className="flex items-center justify-between">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 dark:bg-white/5 border border-blue-100 dark:border-white/10 text-[#1B4F72] dark:text-blue-300 shadow-sm transition-transform group-hover:scale-105">
                         <Icon size={20} strokeWidth={2} />
                       </div>
-                      <span
-                        dir="rtl"
-                        lang="ar"
-                        className="font-arabic text-sm text-neutral-400 group-hover:text-ink-900 dark:group-hover:text-white transition-colors"
-                      >
-                        {cat.arabic}
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-[#1B4F72] dark:bg-neutral-800 dark:text-blue-300 group-hover:bg-[#1B4F72] group-hover:text-white transition-all shadow-sm">
+                        <ArrowUpRight size={16} strokeWidth={2.2} />
                       </span>
                     </div>
 
@@ -86,18 +82,18 @@ export function TopicExplorer() {
                     <h3 className="mt-4 font-sans text-base sm:text-lg font-bold text-ink-900 dark:text-white group-hover:text-[#1B4F72] dark:group-hover:text-blue-400 transition-colors">
                       {cat.name}
                     </h3>
-                    <p className="mt-1.5 font-sans text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    <p className="mt-1.5 font-sans text-xs text-[#64748B] dark:text-neutral-400 leading-relaxed">
                       {cat.description}
                     </p>
                   </div>
 
-                  {/* Bottom Stats & Arrow */}
+                  {/* Bottom Stats */}
                   <div className="mt-5 pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
-                    <span className="font-sans text-[11px] font-medium text-neutral-400">
+                    <span className="font-sans text-[11px] font-semibold text-[#64748B] dark:text-neutral-400">
                       {cat.stats}
                     </span>
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 group-hover:bg-[#1B4F72] group-hover:text-white transition-all">
-                      <ArrowUpRight size={14} />
+                    <span className="text-xs font-semibold text-[#1B4F72] dark:text-blue-400 group-hover:underline">
+                      Explore
                     </span>
                   </div>
                 </Link>

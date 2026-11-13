@@ -17,38 +17,38 @@ export function BrandLogo({ className, to = '/', variant = 'default', compact }:
     <Link
       to={to}
       className={cn(
-        'group inline-flex min-w-0 max-w-full items-baseline gap-0.5 sm:gap-1',
+        'group inline-flex min-w-0 max-w-full items-baseline gap-1',
         className,
       )}
       aria-label="Authentic Islamic Books — Home"
     >
       <span
         className={cn(
-          'truncate font-serif font-semibold tracking-tight',
+          'truncate font-sans font-bold tracking-tight',
           compact ? 'text-[0.95rem]' : 'text-[0.95rem] min-[360px]:text-[1.05rem] sm:text-[1.2rem]',
           onGreen
             ? 'text-white transition-opacity group-hover:opacity-90'
-            : 'text-islamic-green transition-colors group-hover:text-islamic-forest dark:text-white dark:group-hover:text-accent',
+            : 'text-[#1B4F72] transition-colors dark:text-white',
         )}
       >
         Authentic
       </span>
       <span
         className={cn(
-          'truncate font-serif font-semibold tracking-tight',
+          'truncate font-sans font-bold tracking-tight',
           compact ? 'text-[0.95rem]' : 'text-[0.95rem] min-[360px]:text-[1.05rem] sm:text-[1.2rem]',
-          onGreen ? 'text-accent' : 'text-accent-dark dark:text-accent',
+          onGreen ? 'text-blue-200' : 'text-[#64748B] dark:text-neutral-400',
         )}
       >
         Islamic
       </span>
       <span
         className={cn(
-          'truncate font-serif font-semibold tracking-tight',
+          'truncate font-sans font-bold tracking-tight',
           compact ? 'text-[0.95rem]' : 'text-[0.95rem] min-[360px]:text-[1.05rem] sm:text-[1.2rem]',
           onGreen
             ? 'text-white transition-opacity group-hover:opacity-90'
-            : 'text-islamic-green transition-colors group-hover:text-islamic-forest dark:text-white dark:group-hover:text-accent',
+            : 'text-[#1B4F72] transition-colors dark:text-white',
         )}
       >
         Books

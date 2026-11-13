@@ -5,13 +5,8 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { PRIMARY_FOUR_CATEGORIES } from '@/data/categories';
-import {
-  QURAN_BOOKS,
-  HADITH_BOOKS,
-  SUNNAH_BOOKS,
-  HISTORY_BOOKS,
-} from '@/data/mockIslamicBooks';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
 import { AppBookCover } from '@/components/book/AppBookCover';
 import { cn } from '@/lib/utils';
 
@@ -19,32 +14,37 @@ const CATEGORY_MAP = {
   quran: {
     arabic: 'القرآن الكريم',
     color: '#1B4F72',
-    books: QURAN_BOOKS,
   },
   hadith: {
     arabic: 'الحديث النبوي',
     color: '#1E3A5F',
-    books: HADITH_BOOKS,
   },
   sunnah: {
     arabic: 'السنة والسيرة',
     color: '#2C3E50',
-    books: SUNNAH_BOOKS,
   },
   history: {
     arabic: 'التاريخ الإسلامي',
     color: '#34495E',
-    books: HISTORY_BOOKS,
   },
 };
 
 export function CategoriesPage() {
   usePageMeta({
-    title: 'Disciplines & Categories — Islamic Digital Library',
+    title: 'Disciplines & Categories — Authentic Islamic Books',
     description:
       'Explore authentic works across the four core disciplines: The Noble Qur’an, Prophetic Hadith, Sunnah & Seerah, and Islamic History.',
     path: '/categories',
   });
+
+  const { quranBooks, hadithBooks, sunnahBooks, historyBooks, allBooks } = usePublicBooks();
+
+  const categoryBooksMap: Record<string, typeof allBooks> = {
+    quran: quranBooks,
+    hadith: hadithBooks,
+    sunnah: sunnahBooks,
+    history: historyBooks,
+  };
 
   return (
     <PageContainer>
@@ -84,7 +84,7 @@ export function CategoriesPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.35, delay: idx * 0.06 }}
               className={cn(
-                'rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-black/[0.08] dark:border-white/10',
+                'rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-black/[0.08] dark:border-white/10 glossy-card',
                 'bg-white dark:bg-[#151515]',
                 'shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]',
               )}
@@ -129,7 +129,7 @@ export function CategoriesPage() {
                   Highlighted Works
                 </p>
                 <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-none scrollbar-hide no-scrollbar snap-x snap-mandatory">
-                  {meta.books.map((book) => (
+                  {(categoryBooksMap[cat.slug] || []).map((book) => (
                     <div key={book.id} className="snap-start shrink-0">
                       <AppBookCover book={book} size="shelf" showDetails={true} />
                     </div>

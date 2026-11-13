@@ -1,14 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, LogOut, ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AdminHeaderProps {
   pageTitle: string;
   onMobileMenuOpen: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function AdminHeader({ pageTitle, onMobileMenuOpen }: AdminHeaderProps) {
+export function AdminHeader({
+  pageTitle,
+  onMobileMenuOpen,
+  collapsed = false,
+  onToggleCollapse,
+}: AdminHeaderProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,14 +30,27 @@ export function AdminHeader({ pageTitle, onMobileMenuOpen }: AdminHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E1D8] bg-[#F7F6F2] px-4 sm:px-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onMobileMenuOpen}
-          className="flex h-11 w-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 lg:hidden"
           aria-label="Open menu"
         >
           <Menu size={20} />
         </button>
+
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="hidden lg:flex h-9 w-9 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#EDEAE3] hover:text-[#0B1B2B]"
+          >
+            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          </button>
+        )}
+
         <h1 className="min-w-0 truncate text-[15px] font-semibold text-[#0B1B2B]">{pageTitle}</h1>
       </div>
 
@@ -44,7 +64,7 @@ export function AdminHeader({ pageTitle, onMobileMenuOpen }: AdminHeaderProps) {
             <p className="text-[13px] font-medium leading-tight text-[#0B1B2B] capitalize">{displayName}</p>
             <p className="text-[11px] text-[#64748B] truncate max-w-[160px]">{user?.email}</p>
           </div>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9A646]/15 text-[13px] font-bold text-[#C9A646]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1B4F72] text-[13px] font-bold text-white shadow-sm">
             {initial}
           </div>
           <ChevronDown size={14} className="text-[#94A3B8] hidden sm:block" />

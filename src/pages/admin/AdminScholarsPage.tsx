@@ -104,7 +104,7 @@ function ScholarRow({
         </div>
         <div className="mt-4 flex items-center gap-2">
           <button onClick={() => void handleSave()} disabled={saving || !name.trim()}
-            className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-50">
+            className="flex items-center gap-1.5 rounded-lg bg-[#1B4F72] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#154060] disabled:opacity-50">
             <Check size={13} /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
           <button onClick={handleCancel} disabled={saving}
@@ -118,8 +118,8 @@ function ScholarRow({
 
   return (
     <li className="flex items-center gap-4 px-5 py-4 border-b border-[#E5E1D8] last:border-0 hover:bg-[#FAFAF8] transition-colors group">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C9A646]/10">
-        <GraduationCap size={18} className="text-[#C9A646]" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#1B4F72]">
+        <GraduationCap size={18} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-semibold text-[#0B1B2B] truncate">{scholar.name}</p>
@@ -138,7 +138,7 @@ function ScholarRow({
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => setEditing(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#C9A646]/40 hover:text-[#C9A646]"
+          className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D8] bg-white px-3 py-1.5 text-[12px] font-medium text-[#64748B] opacity-0 group-hover:opacity-100 transition-all hover:border-[#1B4F72]/40 hover:text-[#1B4F72]"
         >
           <Pencil size={12} /> Edit
         </button>
@@ -217,7 +217,7 @@ function AddScholarForm({ onAdd, onCancel }: { onAdd: (s: Scholar) => Promise<vo
       </div>
       <div className="mt-4 flex items-center gap-2">
         <button onClick={() => void handleAdd()} disabled={saving || !name.trim()}
-          className="flex items-center gap-1.5 rounded-lg bg-[#C9A646] px-4 py-2 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d] disabled:opacity-40">
+          className="flex items-center gap-1.5 rounded-lg bg-[#1B4F72] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#154060] disabled:opacity-40">
           <Check size={13} /> {saving ? 'Adding…' : 'Add Scholar'}
         </button>
         <button onClick={onCancel} disabled={saving}
@@ -273,7 +273,7 @@ export function AdminScholarsPage() {
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#C9A646] px-4 py-2.5 text-[13px] font-medium text-[#0B1B2B] transition-colors hover:bg-[#b8933d]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1B4F72] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#154060]"
                 >
                   <Plus size={14} /> Add Scholar
                 </button>

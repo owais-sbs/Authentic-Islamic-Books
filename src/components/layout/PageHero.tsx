@@ -37,7 +37,7 @@ export function PageHero({
         <div className="absolute inset-0 bg-gradient-to-br from-black via-[#141414] to-black" />
       )}
 
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#1B4F72]/50 to-transparent" />
 
       <div className="container-page relative z-10">
         <motion.div
@@ -46,7 +46,7 @@ export function PageHero({
           transition={{ duration: 0.45, ease: 'easeOut' }}
           className="max-w-2xl"
         >
-          <p className="mb-4 font-sans text-xs font-medium uppercase tracking-[0.2em] text-accent">
+          <p className="mb-4 font-sans text-xs font-bold uppercase tracking-[0.2em] text-blue-300">
             {eyebrow}
           </p>
           <h1 className="font-sans text-3xl font-semibold leading-[1.3] tracking-tight text-white sm:text-4xl sm:leading-[1.28] lg:text-[2.75rem] lg:leading-[1.25]">

@@ -11,8 +11,6 @@ import {
   Settings,
   X,
   BookMarked,
-  ChevronsLeft,
-  ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -93,13 +91,13 @@ function SidebarNavItem({
       )}
     >
       {isActive && (
-        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#C9A646]" />
+        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-400" />
       )}
       <item.icon
         size={16}
         className={cn(
           'shrink-0 transition-colors',
-          isActive ? 'text-[#C9A646]' : 'text-slate-500 group-hover:text-slate-300',
+          isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300',
         )}
       />
       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -127,15 +125,15 @@ function SidebarContent({
         )}
       >
         <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#C9A646]/20">
-            <BookMarked size={16} className="text-[#C9A646]" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1B4F72] text-white shadow-sm">
+            <BookMarked size={16} className="text-white" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold leading-tight text-white">
-                Islamic Digital Library
+              <p className="text-[13px] font-bold leading-tight text-white tracking-tight">
+                Authentic Islamic Books
               </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-[#C9A646]/70">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-300">
                 Admin Panel
               </p>
             </div>
@@ -172,29 +170,10 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* Collapse toggle (desktop only) */}
-      {onToggleCollapse && (
-        <div className={cn('border-t border-white/10 py-2', collapsed ? 'px-2' : 'px-3')}>
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={cn(
-              'flex w-full items-center rounded-lg py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200',
-              collapsed ? 'justify-center px-2' : 'gap-3 px-3',
-            )}
-          >
-            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-            {!collapsed && <span>Collapse</span>}
-          </button>
-        </div>
-      )}
-
       {/* Bottom profile area */}
       <div className={cn('border-t border-white/10 py-4', collapsed ? 'px-2' : 'px-4')}>
         <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A646]/20 text-[13px] font-bold text-[#C9A646]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B4F72] text-[13px] font-bold text-white shadow-sm">
             A
           </div>
           {!collapsed && (

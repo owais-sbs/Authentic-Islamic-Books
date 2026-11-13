@@ -1,8 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useAuth, ADMIN_EMAIL } from '@/contexts/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 export function AdminLoginPage() {
   const { signIn } = useAuth();
@@ -37,51 +38,53 @@ export function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1B2B] flex flex-col">
-      <header className="px-6 py-5">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-black flex flex-col transition-colors">
+      <header className="px-6 py-5 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-black/60 backdrop-blur-md">
+        <BrandLogo />
         <Link
           to="/"
-          className="inline-flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
+          className="text-xs font-semibold text-[#1B4F72] hover:text-[#154060] dark:text-blue-400 transition-colors"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#C9A646] text-[#0B1B2B]">
-            <BookOpen size={18} strokeWidth={1.5} />
-          </div>
-          <span className="text-sm font-semibold tracking-tight">Islamic Digital Library</span>
+          ← Back to Library
         </Link>
       </header>
 
-      <div className="flex flex-1 items-center justify-center px-4 pb-16">
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-[420px]">
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#C9A646] text-[#0B1B2B] shadow-lg shadow-[#C9A646]/20">
-              <BookOpen size={32} strokeWidth={1.5} />
+          {/* Top Info */}
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-white/5 border border-blue-100 dark:border-white/10 text-[#1B4F72] dark:text-blue-300 shadow-sm">
+              <ShieldCheck size={28} strokeWidth={2} />
             </div>
-            <h1 className="text-[26px] font-bold text-white tracking-tight">Admin Login</h1>
-            <p className="mt-2 text-[14px] text-white/50">
-              Sign in to manage books, scholars, and library content.
+            <h1 className="text-2xl sm:text-3xl font-bold text-ink-900 dark:text-white tracking-tight">
+              Admin Portal
+            </h1>
+            <p className="mt-1.5 text-xs sm:text-sm text-[#64748B] dark:text-neutral-400">
+              Sign in to manage books, scholars, and library collections.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm p-7 shadow-2xl">
-            <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Login Card with Glossy Border */}
+          <div className="rounded-3xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#141414] p-7 sm:p-8 shadow-[0_20px_50px_rgba(27,79,114,0.08)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] glossy-card">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3">
-                  <AlertCircle size={16} className="shrink-0 text-red-400 mt-0.5" />
-                  <p className="text-[13px] text-red-300">{error}</p>
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 p-3.5">
+                  <AlertCircle size={16} className="shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
+                  <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
                 </div>
               )}
 
               <div className="space-y-1.5">
                 <label
                   htmlFor="email"
-                  className="block text-[12px] font-semibold uppercase tracking-wider text-white/50"
+                  className="block text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400"
                 >
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                   />
                   <input
                     id="email"
@@ -90,8 +93,8 @@ export function AdminLoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@islamicdigitallibrary.com"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-[14px] text-white placeholder-white/25 outline-none transition-all focus:border-[#C9A646]/60 focus:bg-white/8 focus:ring-2 focus:ring-[#C9A646]/15"
+                    placeholder="admin@authenticislamicbooks.com"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50/60 dark:bg-neutral-900/60 py-3 pl-10 pr-4 text-sm text-ink-900 dark:text-white placeholder-neutral-400 outline-none transition-all focus:border-[#1B4F72] focus:bg-white dark:focus:bg-black focus:ring-2 focus:ring-[#1B4F72]/20"
                   />
                 </div>
               </div>
@@ -99,14 +102,14 @@ export function AdminLoginPage() {
               <div className="space-y-1.5">
                 <label
                   htmlFor="password"
-                  className="block text-[12px] font-semibold uppercase tracking-wider text-white/50"
+                  className="block text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400"
                 >
                   Password
                 </label>
                 <div className="relative">
                   <Lock
                     size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                   />
                   <input
                     id="password"
@@ -116,39 +119,35 @@ export function AdminLoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-12 text-[14px] text-white placeholder-white/25 outline-none transition-all focus:border-[#C9A646]/60 focus:bg-white/8 focus:ring-2 focus:ring-[#C9A646]/15"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50/60 dark:bg-neutral-900/60 py-3 pl-10 pr-12 text-sm text-ink-900 dark:text-white placeholder-neutral-400 outline-none transition-all focus:border-[#1B4F72] focus:bg-white dark:focus:bg-black focus:ring-2 focus:ring-[#1B4F72]/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-white/40 transition-colors hover:text-white/70"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-xl bg-[#C9A646] py-3 text-[14px] font-semibold text-[#0B1B2B] transition-all hover:bg-[#b8933d] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Signing in…' : 'Sign In to Admin'}
-              </button>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-[#1B4F72] hover:bg-[#154060] py-3 text-sm font-semibold text-white shadow-md shadow-[#1B4F72]/20 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Signing in…' : 'Sign In to Dashboard'}
+                </button>
+              </div>
             </form>
           </div>
 
-          <p className="mt-6 text-center text-[12px] text-white/30">
+          <p className="mt-6 text-center text-xs text-[#64748B] dark:text-neutral-500">
             {isSupabaseConfigured()
-              ? 'Secured with Supabase Authentication — books sync for the whole team'
-              : 'Configure Supabase in .env for cloud auth and shared books'}
-          </p>
-
-          <p className="mt-3 text-center">
-            <Link to="/" className="text-[13px] text-white/40 hover:text-white/70 transition-colors">
-              ← Back to public library
-            </Link>
+              ? 'Secured with Supabase Authentication — published books sync live across the library'
+              : 'Configure Supabase credentials in .env for cloud auth and database synchronization'}
           </p>
         </div>
       </div>

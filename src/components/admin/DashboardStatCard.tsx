@@ -16,8 +16,8 @@ export function DashboardStatCard({
   value,
   supporting,
   icon: Icon,
-  iconColor = 'text-[#C9A646]',
-  iconBg = 'bg-[#C9A646]/10',
+  iconColor = 'text-[#1B4F72]',
+  iconBg = 'bg-blue-50',
   href,
 }: DashboardStatCardProps) {
   const inner = (
@@ -40,7 +40,7 @@ export function DashboardStatCard({
   );
 
   const className =
-    'group flex items-start justify-between gap-3 rounded-xl border border-[#E5E1D8] bg-white px-5 py-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C9A646]/35 hover:shadow-md';
+    'group flex items-start justify-between gap-3 rounded-xl border border-[#E5E1D8] bg-white px-5 py-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1B4F72]/40 hover:shadow-md glossy-card';
 
   if (href) {
     return (

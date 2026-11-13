@@ -32,12 +32,12 @@ export function AppBookCover({
       className={cn('group block shrink-0 snap-start select-none focus:outline-none', className)}
     >
       <div className="relative">
-        {/* Realistic 3D Book Cover */}
+        {/* Realistic 3D Book Cover with Glossy Border Effect */}
         <div
           className={cn(
-            'relative overflow-hidden rounded-xl transition-all duration-300 ease-out',
-            'shadow-[0_10px_24px_rgba(0,0,0,0.14)] group-hover:-translate-y-2 group-hover:shadow-[0_20px_36px_rgba(0,0,0,0.22)]',
-            'border border-black/10 dark:border-white/10',
+            'relative overflow-hidden rounded-xl transition-all duration-300 ease-out glossy-book',
+            'shadow-[0_12px_28px_rgba(0,0,0,0.16)] group-hover:-translate-y-2 group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.25)]',
+            'border border-white/35 dark:border-white/15',
             dims,
           )}
         >
@@ -95,7 +95,7 @@ export function AppBookCover({
                   {book.arabicTitle}
                 </p>
               )}
-              <h4 className="mt-2 font-serif text-[11px] sm:text-[12px] font-semibold leading-snug tracking-tight text-white/95 line-clamp-2">
+              <h4 className="mt-2 font-sans text-[11px] sm:text-[12px] font-bold leading-snug tracking-tight text-white/95 line-clamp-2">
                 {book.title}
               </h4>
             </div>
@@ -130,17 +130,12 @@ export function AppBookCover({
       {/* Meta below cover */}
       {showDetails && (
         <div className="mt-2.5 max-w-[140px] sm:max-w-[158px]">
-          <h4 className="line-clamp-2 font-serif text-[13px] font-semibold leading-snug text-ink-900 group-hover:text-islamic-green dark:text-white dark:group-hover:text-accent">
+          <h4 className="line-clamp-2 font-sans text-[13px] font-bold leading-snug text-ink-900 group-hover:text-[#1B4F72] dark:text-white dark:group-hover:text-blue-400">
             {book.title}
           </h4>
-          <p className="mt-0.5 line-clamp-1 font-sans text-[11px] text-ink-500 dark:text-white/50">
-            {book.author}
+          <p className="mt-0.5 line-clamp-1 font-sans text-[11px] text-[#64748B] dark:text-neutral-400">
+            {book.categoryLabel}
           </p>
-          <div className="mt-1 flex items-center gap-1 font-sans text-[11px] text-ink-400 dark:text-white/40">
-            <Star size={11} className="fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-ink-700 dark:text-white/80">{book.rating.toFixed(1)}</span>
-            <span>({book.reviewsCount})</span>
-          </div>
         </div>
       )}
     </Link>

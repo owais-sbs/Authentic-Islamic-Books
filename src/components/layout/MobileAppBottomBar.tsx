@@ -3,13 +3,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, BookOpen, Compass, Search, X, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ALL_MOCK_BOOKS } from '@/data/mockIslamicBooks';
+import { usePublicBooks } from '@/hooks/usePublicBooks';
 
 export function MobileAppBottomBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const { allBooks } = usePublicBooks();
 
   // Close search when path changes
   useEffect(() => {
@@ -23,11 +24,11 @@ export function MobileAppBottomBar() {
   const isCategories = currentPath.startsWith('/categories') || currentPath.startsWith('/timeline');
 
   const filteredBooks = query.trim()
-    ? ALL_MOCK_BOOKS.filter(
+    ? allBooks.filter(
         (b) =>
           b.title.toLowerCase().includes(query.toLowerCase()) ||
           b.author.toLowerCase().includes(query.toLowerCase()) ||
-          b.arabicTitle.includes(query),
+          (b.arabicTitle && b.arabicTitle.includes(query)),
       ).slice(0, 5)
     : [];
 
