@@ -27,6 +27,46 @@ export function pageTextIsGarbled(text: string): boolean {
   return bad / Math.max(1, letters + bad) > 0.03;
 }
 
+/**
+ * Detect Arabic fonts re-encoded as ASCII printable characters.
+ * Some Arabic PDFs map Arabic letters to codepoints like %, &, $, @, #, digits etc.
+ * These are NOT caught by pageTextIsGarbled (no PUA codes), but produce junk like:
+ * "ةةة ةة ة &ةةة % ة 2ةة$ة14"
+ *
+ * Signature: very high density of symbols/digits mixed with real Arabic characters,
+ * or mostly symbol-noise with no Arabic Unicode at all (pure ASCII re-encoding).
+ */
+export function pageTextIsAsciiEncodedArabic(text: string): boolean {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 30) return false;
+
+  const arabicChars = (cleaned.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
+  const symbols = (cleaned.match(/[%&$#@^*+=|\\~`{}[\]<>]/g) || []).length;
+  const digits = (cleaned.match(/\d/g) || []).length;
+  const letters = (cleaned.match(/[A-Za-z]/g) || []).length;
+  const meaningful = cleaned.replace(/\s/g, '').length;
+  if (meaningful === 0) return false;
+
+  const symbolRatio = symbols / meaningful;
+  const digitRatio = digits / meaningful;
+  const noiseRatio = (symbols + digits) / meaningful;
+  const arabicRatio = arabicChars / meaningful;
+
+  // Case 1: mixed Arabic + symbols (re-encoded font where some chars mapped to ASCII symbols)
+  // Typical: "ةةة &ةة ة % ة 2ةة$ة14" — both Arabic and symbol junk present
+  if (arabicChars > 5 && symbolRatio > 0.08 && noiseRatio > 0.15) return true;
+
+  // Case 2: pure symbol/digit noise — no Arabic Unicode at all, mostly non-letter ASCII
+  // Typical: a page entirely in a custom font encoded as ASCII
+  if (arabicChars === 0 && letters < 15 && noiseRatio > 0.35 && meaningful > 20) return true;
+
+  // Case 3: very dense symbol noise even with some Latin letters (but no Arabic)
+  // Avoids false-positives on math/code pages
+  if (arabicChars === 0 && symbolRatio > 0.25 && digitRatio > 0.1 && letters < meaningful * 0.3) return true;
+
+  return false;
+}
+
 /** Drop undecodable glyph codes so they never reach the book text. */
 export function stripUndecodable(text: string): string {
   return text.replace(UNDECODABLE, '');
