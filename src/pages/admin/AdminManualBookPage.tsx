@@ -143,6 +143,8 @@ export function AdminManualBookPage() {
   const [uploadingKind, setUploadingKind] = useState<'image' | 'audio' | 'pdf' | null>(null);
   const [autosaveNote, setAutosaveNote] = useState('');
   const [attachmentAlign, setAttachmentAlign] = useState<'left' | 'center' | 'right'>('center');
+
+  useEffect(() => {
     if (!bookId || !isSupabaseConfigured()) {
       setIsLoading(false);
       return;
