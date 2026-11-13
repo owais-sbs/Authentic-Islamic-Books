@@ -4,7 +4,7 @@ A modern, polished digital library for exploring centuries of Islamic scholarshi
  
 ## Features  
    
-
+ 
 
 
 - **Structured Book Reader** — Custom-built reading interface with hierarchical table of contents, smooth section navigation, reading progress tracking, and deep linking to specific sections 
