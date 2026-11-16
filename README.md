@@ -6,9 +6,9 @@ A modern, polished digital library for exploring centuries of Islamic scholarshi
    
  
 
-
+ 
 - **Structured Book Reader** — Custom-built reading interface with hierarchical table of contents, smooth section navigation, reading progress tracking, and deep linking to specific sections 
-- **Three Reading Themes** — Light, Sepia, and Dark modes with adjustable font size, line spacing, and reading width
+- **Three Reading Themes** — Light, Sepia, and Dark modes with adjustable font size, line spacing, and reading width 
 - **Search** — Global search across books, scholars, and topics, plus in-book search with result highlighting (Ctrl+K or `/`)
 - **Bookmarks** — Save sections for later; stored per book with quick navigation
 - **Hijri Timeline** — Explore books across 14 Hijri periods from 100 AH to 1448 AH

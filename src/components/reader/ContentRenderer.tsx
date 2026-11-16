@@ -646,6 +646,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 bucket={block.bucket}
                 url={block.url}
                 pdfPage={block.pdfPage}
+                align={block.align}
               />
             );
 
@@ -660,6 +661,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 bucket={block.bucket}
                 url={block.url}
                 pdfPage={block.pdfPage}
+                align={block.align}
               />
             );
 

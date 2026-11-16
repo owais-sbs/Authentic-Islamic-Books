@@ -142,6 +142,7 @@ export function AdminManualBookPage() {
   const [isLoading, setIsLoading] = useState(Boolean(bookId && isSupabaseConfigured()));
   const [uploadingKind, setUploadingKind] = useState<'image' | 'audio' | 'pdf' | null>(null);
   const [autosaveNote, setAutosaveNote] = useState('');
+  const [attachmentAlign, setAttachmentAlign] = useState<'left' | 'center' | 'right'>('center');
 
   useEffect(() => {
     if (!bookId || !isSupabaseConfigured()) {
@@ -494,6 +495,7 @@ export function AdminManualBookPage() {
           caption: attachment.caption,
           pdfPage: attachment.pdfPage,
           attachmentId: attachment.id,
+          align: attachmentAlign,
         }),
       );
       patch({ attachments: [...(book.attachments ?? []), attachment] });
@@ -704,235 +706,267 @@ export function AdminManualBookPage() {
       ) : (
         /* Professional 3-Panel Layout: Structure (Left) | Document Editor (Center) | Blocks & Preview (Right) */
         <div className="flex flex-col lg:flex-row gap-4 items-start w-full">
-          {/* 1. LEFT PANEL: Book Structure Tree + Content Blocks */}
-          <aside className="w-full lg:w-72 shrink-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm glossy-card flex flex-col max-h-[calc(100vh-8.5rem)] overflow-hidden">
-            <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Structure</p>
-                <p className="text-xs text-[#64748B] mt-0.5">
-                  {book.chapters.length} chapters · {countPages(book.chapters)} pages
+          {/* 1. LEFT PANEL: Content Blocks (all 19, no scroll) + Book Structure (scrollable) */}
+          <aside className="w-full lg:w-56 shrink-0 flex flex-col gap-3">
+
+            {/* ── TOP: INSERT CONTENT BLOCK — single column, all 19 visible ── */}
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-3.5 pt-3 pb-2 border-b border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                  Insert Content Block
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={addChapter}
-                  className="inline-flex items-center gap-1 rounded-lg bg-blue-50 text-[#1B4F72] hover:bg-blue-100/70 px-2 py-1 text-[11px] font-semibold transition-colors"
-                >
-                  <Plus size={12} /> Ch.
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addPage()}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#1B4F72] text-white hover:bg-[#154060] px-2 py-1 text-[11px] font-semibold transition-colors"
-                >
-                  <Plus size={12} /> Page
-                </button>
-              </div>
-            </div>
-
-            {/* Chapter / Section scrollable tree */}
-            <div className="overflow-y-auto py-2.5 space-y-2 pr-1 flex-1 min-h-0">
-              {book.chapters.map((ch, idx) => {
-                const isCollapsed = collapsedChapters[ch.id] === true;
-                const isChActive = ch.id === activeChapter?.id;
-                return (
-                  <div key={ch.id} className="rounded-xl border border-slate-200/90 overflow-hidden bg-slate-50/50">
-                    <div
-                      className={cn(
-                        'flex items-center gap-1.5 px-2.5 py-2 transition-colors',
-                        isChActive ? 'bg-blue-50/80 text-[#1B4F72]' : 'bg-slate-100/60 text-ink-900',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCollapsedChapters((prev) => ({
-                            ...prev,
-                            [ch.id]: !prev[ch.id],
-                          }))
-                        }
-                        className="rounded p-0.5 text-[#64748B] hover:bg-white"
-                        title={isCollapsed ? 'Expand' : 'Collapse'}
-                      >
-                        {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <span className="block text-[9.5px] font-bold uppercase tracking-wider text-[#64748B]">
-                          Ch. {ch.number}
-                        </span>
-                        <input
-                          value={ch.title}
-                          onChange={(e) => renameChapter(ch.id, e.target.value)}
-                          className="w-full bg-transparent text-xs font-semibold text-ink-900 outline-none"
-                        />
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => moveChapter(ch.id, -1)}
-                          className="rounded p-0.5 text-[#64748B] hover:bg-white disabled:opacity-30"
-                        >
-                          <ChevronUp size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === book.chapters.length - 1}
-                          onClick={() => moveChapter(ch.id, 1)}
-                          className="rounded p-0.5 text-[#64748B] hover:bg-white disabled:opacity-30"
-                        >
-                          <ChevronDown size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteChapter(ch.id)}
-                          className="rounded p-0.5 text-[#64748B] hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {!isCollapsed && (
-                      <ul className="space-y-0.5 p-1.5 bg-white">
-                        {ch.sections.map((sec, sIdx) => {
-                          let pageNo = 0;
-                          for (const c of book.chapters) {
-                            for (const s of c.sections) {
-                              pageNo += 1;
-                              if (s.id === sec.id) break;
-                            }
-                            if (c.sections.some((s) => s.id === sec.id)) break;
-                          }
-                          const complete = pageIsComplete(sec);
-                          const isSecActive = sec.id === activeSection?.id;
-
-                          return (
-                            <li key={sec.id}>
-                              <div
-                                className={cn(
-                                  'rounded-lg px-2 py-1.5 transition-all',
-                                  isSecActive
-                                    ? 'bg-[#1B4F72] text-white shadow-sm'
-                                    : 'hover:bg-slate-100 text-ink-800',
-                                )}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveChapterId(ch.id);
-                                    setActiveSectionId(sec.id);
-                                  }}
-                                  className="flex w-full items-center gap-2 text-left"
-                                >
-                                  <span
-                                    className={cn(
-                                      'h-1.5 w-1.5 shrink-0 rounded-full',
-                                      isSecActive ? 'bg-white' : complete ? 'bg-emerald-500' : 'bg-slate-300',
-                                    )}
-                                  />
-                                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                    <span className={isSecActive ? 'text-blue-100' : 'text-[#64748B]'}>
-                                      p.{pageNo}
-                                    </span>{' '}
-                                    {sec.title || `Page ${pageNo}`}
-                                  </span>
-                                </button>
-
-                                {isSecActive && (
-                                  <div className="mt-1 flex items-center justify-between pt-1 border-t border-white/20 text-white/90">
-                                    <div className="flex items-center gap-0.5">
-                                      <button
-                                        type="button"
-                                        disabled={sIdx === 0}
-                                        onClick={() => movePage(ch.id, sec.id, -1)}
-                                        className="rounded p-0.5 hover:bg-white/20 disabled:opacity-30"
-                                      >
-                                        <ChevronUp size={11} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={sIdx === ch.sections.length - 1}
-                                        onClick={() => movePage(ch.id, sec.id, 1)}
-                                        className="rounded p-0.5 hover:bg-white/20 disabled:opacity-30"
-                                      >
-                                        <ChevronDown size={11} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => duplicatePage(ch.id, sec.id)}
-                                        className="rounded p-0.5 hover:bg-white/20"
-                                        title="Duplicate"
-                                      >
-                                        <Copy size={11} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => deletePage(ch.id, sec.id)}
-                                        className="rounded p-0.5 hover:bg-red-500 hover:text-white"
-                                        title="Delete"
-                                      >
-                                        <Trash2 size={11} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </li>
-                          );
-                        })}
-                        <li>
-                          <button
-                            type="button"
-                            onClick={() => addPage(ch.id)}
-                            className="w-full rounded-md px-2 py-1 text-left text-[11px] font-semibold text-[#1B4F72] hover:bg-blue-50 transition-colors"
-                          >
-                            + Add page to chapter
-                          </button>
-                        </li>
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Content Blocks palette — in sidebar below structure */}
-            <div className="border-t border-slate-100 pt-3 flex-shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-2">
-                Insert Content Block
-              </p>
-              <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-0.5">
+              {/* Single-column list — all 19 visible, no scroll */}
+              <div className="px-3 py-2 flex flex-col gap-0.5">
                 {MANUAL_BLOCK_OPTIONS.map((opt) => (
                   <button
                     key={opt.kind}
                     type="button"
                     disabled={Boolean(uploadingKind)}
                     onClick={() => insertBlock(opt.kind)}
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2 text-left text-xs font-semibold text-ink-900 transition-all hover:border-[#1B4F72] hover:bg-white hover:shadow-sm disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-lg border border-transparent hover:border-[#1B4F72] bg-slate-50/60 hover:bg-white px-2.5 py-1.5 text-left transition-all disabled:opacity-50 group"
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-50 text-[#1B4F72]">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-50 text-[#1B4F72] group-hover:bg-[#1B4F72] group-hover:text-white transition-colors">
                       {opt.kind === 'image' ? (
-                        <ImagePlus size={12} />
+                        <ImagePlus size={11} />
                       ) : opt.kind === 'audio' ? (
-                        <FileAudio size={12} />
+                        <FileAudio size={11} />
                       ) : opt.kind === 'pdf' ? (
-                        <FileText size={12} />
+                        <FileText size={11} />
                       ) : (
-                        <Plus size={12} />
+                        <Plus size={11} />
                       )}
                     </span>
-                    <span className="truncate">{opt.label}</span>
+                    <span className="text-[12px] font-medium text-ink-900">{opt.label}</span>
                   </button>
                 ))}
               </div>
-              {uploadingKind && (
-                <div className="mt-2 flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 p-2 text-xs text-[#1B4F72]">
-                  <Loader2 size={13} className="animate-spin" /> Uploading {uploadingKind}…
+              {/* Audio/PDF align + upload status */}
+              <div className="px-3 pb-2.5 pt-1.5 border-t border-slate-100 space-y-1.5">
+                {uploadingKind && (
+                  <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-100 p-1.5 text-xs text-[#1B4F72]">
+                    <Loader2 size={12} className="animate-spin" /> Uploading {uploadingKind}…
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                    Audio/PDF:
+                  </span>
+                  {(['left', 'center', 'right'] as const).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setAttachmentAlign(a)}
+                      className={cn(
+                        'rounded px-2 py-0.5 text-[11px] font-semibold capitalize transition-colors',
+                        attachmentAlign === a
+                          ? 'bg-[#104C3B] text-white'
+                          : 'bg-slate-100 text-[#64748B] hover:bg-slate-200',
+                      )}
+                    >
+                      {a}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
+
+            {/* ── BOTTOM: BOOK STRUCTURE (capped height, scrollable inside) ── */}
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col overflow-hidden" style={{ maxHeight: '320px' }}>
+              {/* Structure header — sticky inside this box */}
+              <div className="px-3.5 pt-3 pb-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Structure</p>
+                  <p className="text-[11px] text-[#64748B] mt-0.5">
+                    {book.chapters.length} ch · {countPages(book.chapters)} pages
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={addChapter}
+                    className="inline-flex items-center gap-1 rounded-lg bg-blue-50 text-[#1B4F72] hover:bg-blue-100/70 px-2 py-1 text-[11px] font-semibold transition-colors"
+                  >
+                    <Plus size={12} /> Ch.
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addPage()}
+                    className="inline-flex items-center gap-1 rounded-lg bg-[#1B4F72] text-white hover:bg-[#154060] px-2 py-1 text-[11px] font-semibold transition-colors"
+                  >
+                    <Plus size={12} /> Page
+                  </button>
+                </div>
+              </div>
+
+              {/* Chapter/page tree — scrollable */}
+              <div className="overflow-y-auto py-2.5 space-y-2 px-3 flex-1 min-h-0">
+                {book.chapters.map((ch, idx) => {
+                  const isCollapsed = collapsedChapters[ch.id] === true;
+                  const isChActive = ch.id === activeChapter?.id;
+                  return (
+                    <div key={ch.id} className="rounded-xl border border-slate-200/90 overflow-hidden bg-slate-50/50">
+                      <div
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 py-2 transition-colors',
+                          isChActive ? 'bg-blue-50/80 text-[#1B4F72]' : 'bg-slate-100/60 text-ink-900',
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedChapters((prev) => ({
+                              ...prev,
+                              [ch.id]: !prev[ch.id],
+                            }))
+                          }
+                          className="rounded p-0.5 text-[#64748B] hover:bg-white"
+                          title={isCollapsed ? 'Expand' : 'Collapse'}
+                        >
+                          {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9.5px] font-bold uppercase tracking-wider text-[#64748B]">
+                            Ch. {ch.number}
+                          </span>
+                          <input
+                            value={ch.title}
+                            onChange={(e) => renameChapter(ch.id, e.target.value)}
+                            className="w-full bg-transparent text-xs font-semibold text-ink-900 outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => moveChapter(ch.id, -1)}
+                            className="rounded p-0.5 text-[#64748B] hover:bg-white disabled:opacity-30"
+                          >
+                            <ChevronUp size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === book.chapters.length - 1}
+                            onClick={() => moveChapter(ch.id, 1)}
+                            className="rounded p-0.5 text-[#64748B] hover:bg-white disabled:opacity-30"
+                          >
+                            <ChevronDown size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteChapter(ch.id)}
+                            className="rounded p-0.5 text-[#64748B] hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {!isCollapsed && (
+                        <ul className="space-y-0.5 p-1.5 bg-white">
+                          {ch.sections.map((sec, sIdx) => {
+                            let pageNo = 0;
+                            for (const c of book.chapters) {
+                              for (const s of c.sections) {
+                                pageNo += 1;
+                                if (s.id === sec.id) break;
+                              }
+                              if (c.sections.some((s) => s.id === sec.id)) break;
+                            }
+                            const complete = pageIsComplete(sec);
+                            const isSecActive = sec.id === activeSection?.id;
+
+                            return (
+                              <li key={sec.id}>
+                                <div
+                                  className={cn(
+                                    'rounded-lg px-2 py-1.5 transition-all',
+                                    isSecActive
+                                      ? 'bg-[#1B4F72] text-white shadow-sm'
+                                      : 'hover:bg-slate-100 text-ink-800',
+                                  )}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveChapterId(ch.id);
+                                      setActiveSectionId(sec.id);
+                                    }}
+                                    className="flex w-full items-center gap-2 text-left"
+                                  >
+                                    <span
+                                      className={cn(
+                                        'h-1.5 w-1.5 shrink-0 rounded-full',
+                                        isSecActive ? 'bg-white' : complete ? 'bg-emerald-500' : 'bg-slate-300',
+                                      )}
+                                    />
+                                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                      <span className={isSecActive ? 'text-blue-100' : 'text-[#64748B]'}>
+                                        p.{pageNo}
+                                      </span>{' '}
+                                      {sec.title || `Page ${pageNo}`}
+                                    </span>
+                                  </button>
+
+                                  {isSecActive && (
+                                    <div className="mt-1 flex items-center pt-1 border-t border-white/20 text-white/90">
+                                      <div className="flex items-center gap-0.5">
+                                        <button
+                                          type="button"
+                                          disabled={sIdx === 0}
+                                          onClick={() => movePage(ch.id, sec.id, -1)}
+                                          className="rounded p-0.5 hover:bg-white/20 disabled:opacity-30"
+                                        >
+                                          <ChevronUp size={11} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={sIdx === ch.sections.length - 1}
+                                          onClick={() => movePage(ch.id, sec.id, 1)}
+                                          className="rounded p-0.5 hover:bg-white/20 disabled:opacity-30"
+                                        >
+                                          <ChevronDown size={11} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => duplicatePage(ch.id, sec.id)}
+                                          className="rounded p-0.5 hover:bg-white/20"
+                                          title="Duplicate"
+                                        >
+                                          <Copy size={11} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => deletePage(ch.id, sec.id)}
+                                          className="rounded p-0.5 hover:bg-red-500 hover:text-white"
+                                          title="Delete"
+                                        >
+                                          <Trash2 size={11} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
+                          <li>
+                            <button
+                              type="button"
+                              onClick={() => addPage(ch.id)}
+                              className="w-full rounded-md px-2 py-1 text-left text-[11px] font-semibold text-[#1B4F72] hover:bg-blue-50 transition-colors"
+                            >
+                              + Add page to chapter
+                            </button>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
           </aside>
 
           {/* 2. CENTER PANEL: Page Content Editor */}

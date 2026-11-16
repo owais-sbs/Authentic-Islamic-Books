@@ -15,7 +15,7 @@ import type {
 } from '@/services/pdf/types';
 import { validateBookPdfFile } from '@/lib/uploadLimits';
 import { layoutTextItems, type LayoutHeadingLine, type PdfTextItem } from '@/services/pdf/layout';
-import { pageHasUsableText, pageTextIsGarbled, stripUndecodable } from '@/services/pdf/documentType';
+import { pageHasUsableText, pageTextIsGarbled, pageTextIsAsciiEncodedArabic, stripUndecodable } from '@/services/pdf/documentType';
 import {
   GlyphDecoder,
   applyRegionTexts,
@@ -303,11 +303,15 @@ export async function extractPagesFromFileDetailed(
   // Never disable OCR entirely when garbled/Arabic custom fonts are present.
   const sampleSize = Math.min(20, totalPages);
   let sampleClean = 0;
+  let sampleAsciiEncoded = 0;
   for (let i = 0; i < sampleSize; i++) {
     const sampleText = pageItems[i].map((it) => it.str ?? '').join(' ');
-    if (pageHasUsableText(sampleText) && !pageTextIsGarbled(sampleText)) sampleClean += 1;
+    if (pageHasUsableText(sampleText) && !pageTextIsGarbled(sampleText) && !pageTextIsAsciiEncodedArabic(sampleText)) sampleClean += 1;
+    if (pageTextIsAsciiEncodedArabic(sampleText)) sampleAsciiEncoded += 1;
   }
-  const mostlyCleanTextPdf = !heavilyGarbled && sampleClean / sampleSize >= 0.75;
+  // Detect ASCII-re-encoded Arabic font (%, &, $ used as Arabic letter glyph slots)
+  const hasAsciiEncodedFont = sampleAsciiEncoded / Math.max(sampleSize, 1) >= 0.2;
+  const mostlyCleanTextPdf = !heavilyGarbled && !hasAsciiEncodedFont && sampleClean / sampleSize >= 0.75;
 
   const ocr = getOcrProvider();
   const canOcr = enableOcr && ocr.isAvailable();
@@ -380,6 +384,8 @@ export async function extractPagesFromFileDetailed(
     }
   } else if (heavilyGarbled && canOcr) {
     onProgress?.('ocr', 'Arabic/custom fonts detected — OCR every needed page…', { percent: 35 });
+  } else if (hasAsciiEncodedFont && canOcr) {
+    onProgress?.('ocr', 'Re-encoded Arabic font detected — OCR will recover page text…', { percent: 35 });
   } else if (mostlyCleanTextPdf) {
     onProgress?.('ocr', 'Clean text PDF — OCR only for empty pages…', { percent: 45 });
   }
@@ -405,9 +411,11 @@ export async function extractPagesFromFileDetailed(
       pageTextIsGarbled(pageItems[i].map((it) => it.str ?? '').join(' ')) && !decodable;
     const emptyAfterStrip = !pageHasUsableText(textLayer);
     const suspiciousArabic = pageNeedsArabicOcr(textLayer);
-    // OCR when garbage/empty OR Arabic quality looks reversed/fragmented
+    // Also catch Arabic fonts re-encoded as ASCII symbols (%, &, $, digits mixed with Arabic)
+    const asciiEncodedArabic = pageTextIsAsciiEncodedArabic(textLayer);
+    // OCR when garbage/empty OR Arabic quality looks reversed/fragmented OR ASCII-encoded Arabic font
     const needsOcr =
-      stillGarbled || emptyAfterStrip || suspiciousArabic || (heavilyGarbled && emptyAfterStrip);
+      stillGarbled || emptyAfterStrip || suspiciousArabic || asciiEncodedArabic || (heavilyGarbled && emptyAfterStrip);
     const ocrBudgetLeft = fullOcrUsed < MAX_FULL_OCR_PAGES;
 
     if (needsOcr && canOcr && ocrBudgetLeft) {
