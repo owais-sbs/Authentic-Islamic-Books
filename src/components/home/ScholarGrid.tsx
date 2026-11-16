@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import type { Scholar } from '@/types';
 import { Reveal } from '@/components/motion/Reveal';
 
@@ -17,7 +18,8 @@ function initials(name: string) {
 }
 
 export function ScholarGrid({ scholars }: ScholarGridProps) {
-  const list = scholars.slice(0, 6);
+  const [selectedId, setSelectedId] = useState<string>('all');
+  const list = selectedId === 'all' ? scholars.slice(0, 6) : scholars.filter(s => s.id === selectedId);
 
   return (
     <section className="bg-white py-8 dark:bg-black sm:py-10 transition-colors">
@@ -31,6 +33,24 @@ export function ScholarGrid({ scholars }: ScholarGridProps) {
             collection — across eras, regions, and traditions.
           </p>
         </Reveal>
+
+        {scholars.length > 0 && (
+          <div className="mt-6 flex justify-center">
+            <div className="relative">
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                className="appearance-none rounded-xl border border-line bg-white dark:bg-[#141414] dark:border-white/15 pl-4 pr-10 py-2.5 text-sm font-semibold text-ink-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F72]/30 cursor-pointer"
+              >
+                <option value="all">All Scholars</option>
+                {scholars.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            </div>
+          </div>
+        )}
 
         {list.length === 0 ? (
           <p className="mt-10 text-center font-sans text-sm text-ink-500">

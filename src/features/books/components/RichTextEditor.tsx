@@ -16,6 +16,7 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignJustify,
   Link as LinkIcon,
   Undo2,
   Redo2,
@@ -80,6 +81,7 @@ const TOOLBAR: (ToolbarButton | 'sep')[] = [
   { icon: AlignLeft, command: 'justifyLeft', title: 'Align left' },
   { icon: AlignCenter, command: 'justifyCenter', title: 'Align center' },
   { icon: AlignRight, command: 'justifyRight', title: 'Align right' },
+  { icon: AlignJustify, command: 'justifyFull', title: 'Justify text' },
   'sep',
   { icon: LinkIcon, command: 'createLink', title: 'Insert link' },
 ];
