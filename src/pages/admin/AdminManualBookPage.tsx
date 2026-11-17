@@ -453,7 +453,17 @@ export function AdminManualBookPage() {
     try {
       if (isSupabaseConfigured()) {
         const uploaded = await uploadBookContentImage(book.id, file, file.name);
-        insertHtmlRef.current?.(snippetForBlock('image', uploaded.publicUrl));
+        // Embed image in page HTML with storage path so the reader can resolve it once
+        // (do not also append a separate attachment image — that caused duplicates).
+        insertHtmlRef.current?.(
+          snippetForBlock('image', uploaded.publicUrl, 'center', 'large', {
+            url: uploaded.publicUrl,
+            storagePath: uploaded.path,
+            bucket: 'book-images',
+            fileName: file.name,
+            align: 'center',
+          }),
+        );
         const attachment: BookAttachment = {
           id: crypto.randomUUID(),
           kind: 'image',
@@ -466,6 +476,7 @@ export function AdminManualBookPage() {
           sectionId: activeSection?.id,
           createdAt: new Date().toISOString(),
         };
+        // Keep metadata for the attachments list, but BookReader dedupes by embedded path/URL
         patch({ attachments: [...(book.attachments ?? []), attachment] });
       } else {
         const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -1056,12 +1067,12 @@ export function AdminManualBookPage() {
                     Write content in the editor to see the reader preview.
                   </p>
                 ) : (
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="reader-theme-light reader-surface rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <PageContentView
                       blocks={previewBlocks}
-                      fontSize={14}
-                      lineHeight={1.75}
-                      preferParallel
+                      fontSize={15}
+                      lineHeight={1.8}
+                      preferParallel={false}
                     />
                   </div>
                 )}

@@ -213,12 +213,13 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             const dir = resolveDir(block.language, block.direction);
             const isRtlScript = block.language === 'ar' || block.language === 'ur';
             const citation = looksLikeCitationLine(block.text);
+            const textAlign = block.align ?? (isRtlScript ? undefined : 'justify');
             const useLead =
               i === firstParagraphIndex &&
               !citation &&
               !isRtlScript &&
-              block.text.trim().length > 40;
-            const textAlign = block.align ?? (isRtlScript ? undefined : 'justify');
+              textAlign !== 'center' &&
+              block.text.trim().length > 80;
             return (
               <p
                 key={i}
@@ -240,6 +241,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                       ? { fontSize: `${arabicSize}px`, lineHeight: 2.1 }
                       : {}),
                     ...(textAlign ? { textAlign } : {}),
+                    fontWeight: 400,
                   },
                 )}
               >

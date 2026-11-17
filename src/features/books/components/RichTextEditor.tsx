@@ -26,6 +26,7 @@ import {
   Trash2,
   Replace,
   Maximize2,
+  RemoveFormatting,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -65,6 +66,7 @@ const TOOLBAR: (ToolbarButton | 'sep')[] = [
   { icon: Italic, command: 'italic', title: 'Italic' },
   { icon: Underline, command: 'underline', title: 'Underline' },
   { icon: Highlighter, command: 'hiliteColor', value: '#FEF3C7', title: 'Highlight' },
+  { icon: RemoveFormatting, command: 'removeFormat', title: 'Clear bold / formatting' },
   'sep',
   { icon: Heading2, command: 'formatBlock', value: 'h2', title: 'Heading' },
   { icon: Heading3, command: 'formatBlock', value: 'h3', title: 'Subheading' },
@@ -137,21 +139,44 @@ function applyFigureLayout(figure: HTMLElement, align: ImageAlignOption, width: 
   }
 }
 
-/** Strip Word junk while keeping basic structure. */
+/** Strip Word/PDF junk into clean, justified scholarly paragraphs. */
 function sanitizePastedHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, meta, link, xml, o\\:p').forEach((n) => n.remove());
 
   // Unwrap empty/decorative spans that collapse word boundaries
-  // e.g. Word paste: "word<span> </span>word" or "word<span/>word" with no space
   doc.querySelectorAll('span').forEach((span) => {
-    // If span has no meaningful attributes, replace with its content
-    const hasAttrs = span.hasAttribute('style') || span.hasAttribute('class') ||
-      span.hasAttribute('dir') || span.hasAttribute('lang');
+    const hasAttrs =
+      span.hasAttribute('style') ||
+      span.hasAttribute('class') ||
+      span.hasAttribute('dir') ||
+      span.hasAttribute('lang');
     if (!hasAttrs) {
       span.replaceWith(...Array.from(span.childNodes));
     }
   });
+
+  // PDF/Word often paste the whole selection as bold — unwrap if nearly everything is bold
+  const boldNodes = doc.body.querySelectorAll('b, strong, [style*="font-weight"]');
+  const bodyTextLen = (doc.body.textContent || '').replace(/\s+/g, '').length || 1;
+  let boldTextLen = 0;
+  boldNodes.forEach((n) => {
+    boldTextLen += (n.textContent || '').replace(/\s+/g, '').length;
+  });
+  if (boldTextLen / bodyTextLen > 0.85) {
+    doc.body.querySelectorAll('b, strong').forEach((el) => {
+      el.replaceWith(...Array.from(el.childNodes));
+    });
+    doc.body.querySelectorAll('[style]').forEach((el) => {
+      const style = el.getAttribute('style') || '';
+      const cleaned = style
+        .split(';')
+        .filter((p) => !/font-weight/i.test(p))
+        .join(';');
+      if (cleaned.trim()) el.setAttribute('style', cleaned);
+      else el.removeAttribute('style');
+    });
+  }
 
   doc.querySelectorAll('*').forEach((el) => {
     const allowed = new Set([
@@ -174,7 +199,7 @@ function sanitizePastedHtml(html: string): string {
         const keep = attr.value
           .split(';')
           .filter((p) =>
-            /^(direction|text-align|font-weight|font-style|text-decoration|word-spacing|letter-spacing|max-width|margin|float|width|height|border-radius|display)/i.test(
+            /^(direction|text-align|font-style|text-decoration|word-spacing|letter-spacing|max-width|margin|float|width|height|border-radius|display)/i.test(
               p.trim(),
             ),
           )
@@ -185,26 +210,43 @@ function sanitizePastedHtml(html: string): string {
     });
   });
 
-  // Fix missing spaces between adjacent inline text nodes / elements
-  // that Word exports as "word<span>word</span>" without whitespace
+  // Fix missing spaces between adjacent inline nodes from Word/PDF paste
   doc.querySelectorAll('p, div, li, td, th').forEach((block) => {
     const children = Array.from(block.childNodes);
     for (let i = 0; i < children.length - 1; i++) {
       const curr = children[i];
       const next = children[i + 1];
-      // Both are inline elements/text nodes
       const currText = curr.textContent ?? '';
       const nextText = next.textContent ?? '';
       if (!currText || !nextText) continue;
-      // If current ends with a letter/digit and next starts with a letter/digit
-      // and there's no whitespace boundary → insert a space text node
       if (/\w$/.test(currText) && /^\w/.test(nextText)) {
         const space = doc.createTextNode(' ');
         block.insertBefore(space, next);
-        // Update children array reference
         children.splice(i + 1, 0, space);
-        i++; // skip the space we just inserted
+        i++;
       }
+    }
+  });
+
+  // Normalize blocks to clean justified paragraphs for a professional reader look
+  const blocks = Array.from(doc.body.querySelectorAll('p, div'));
+  blocks.forEach((el) => {
+    if (el.closest('table, figure, blockquote, li')) return;
+    if ((el as HTMLElement).querySelector('p, div, table, figure, ul, ol, blockquote')) return;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'div') {
+      // Convert leaf divs into paragraphs
+      const p = doc.createElement('p');
+      p.innerHTML = el.innerHTML;
+      el.replaceWith(p);
+      el = p;
+    }
+    const style = (el.getAttribute('style') || '').toLowerCase();
+    if (!/text-align\s*:/.test(style)) {
+      el.setAttribute(
+        'style',
+        `${el.getAttribute('style') ? `${el.getAttribute('style')};` : ''}text-align:justify`,
+      );
     }
   });
 
@@ -255,6 +297,13 @@ export function RichTextEditor({
   const insertHtml = useCallback(
     (html: string) => {
       editorRef.current?.focus();
+      // Clear sticky bold/italic from previous selection so new blocks start clean
+      try {
+        document.execCommand('removeFormat');
+        document.execCommand('bold', false, 'false');
+      } catch {
+        /* ignore */
+      }
       document.execCommand('insertHTML', false, html);
       emit();
     },
@@ -395,7 +444,17 @@ export function RichTextEditor({
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .split(/\n{2,}/)
-        .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+        .map((p) => {
+          const lines = p
+            .split(/\n/)
+            .map((l) => l.trim())
+            .filter(Boolean);
+          // One PDF line → one justified paragraph (keeps preview layout clean)
+          if (lines.length <= 1) {
+            return `<p style="text-align:justify">${lines[0] || p.trim()}</p>`;
+          }
+          return lines.map((l) => `<p style="text-align:justify">${l}</p>`).join('');
+        })
         .join('');
       insertHtml(escaped);
     }

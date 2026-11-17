@@ -126,6 +126,7 @@ export function BookReader({ book }: BookReaderProps) {
       current?.pdfPage,
     );
     if (!media.length) return base;
+
     const embeddedPaths = new Set(
       base
         .map((b) =>
@@ -133,9 +134,29 @@ export function BookReader({ book }: BookReaderProps) {
         )
         .filter(Boolean),
     );
-    const extra = media.filter(
-      (b) => !('storagePath' in b && b.storagePath && embeddedPaths.has(b.storagePath)),
+    // Manual editor inserts images into HTML AND stores them in attachments —
+    // never show the same image twice (empty signed-URL frame + embedded URL).
+    const hasEmbeddedImage = base.some((b) => b.type === 'image');
+    const embeddedUrls = new Set(
+      base
+        .filter((b): b is Extract<ContentBlock, { type: 'image' }> => b.type === 'image')
+        .map((b) => b.url)
+        .filter(Boolean),
     );
+
+    const extra = media.filter((b) => {
+      if (b.type === 'image') {
+        if (hasEmbeddedImage) return false;
+        if (b.storagePath && embeddedPaths.has(b.storagePath)) return false;
+        if (b.url && embeddedUrls.has(b.url)) return false;
+        if (b.storagePath && [...embeddedUrls].some((u) => u.includes(b.storagePath!))) {
+          return false;
+        }
+        return true;
+      }
+      if ('storagePath' in b && b.storagePath && embeddedPaths.has(b.storagePath)) return false;
+      return true;
+    });
     return extra.length ? [...base, ...extra] : base;
   }, [book, current, pageNumber]);
 
