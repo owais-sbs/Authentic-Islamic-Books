@@ -218,6 +218,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
               !citation &&
               !isRtlScript &&
               block.text.trim().length > 40;
+            const textAlign = block.align ?? (isRtlScript ? undefined : 'justify');
             return (
               <p
                 key={i}
@@ -234,9 +235,12 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 style={blockStyle(
                   block.language,
                   block.direction,
-                  isRtlScript
-                    ? { fontSize: `${arabicSize}px`, lineHeight: 2.1 }
-                    : undefined,
+                  {
+                    ...(isRtlScript
+                      ? { fontSize: `${arabicSize}px`, lineHeight: 2.1 }
+                      : {}),
+                    ...(textAlign ? { textAlign } : {}),
+                  },
                 )}
               >
                 {highlightText(block.text, highlightQuery)}
@@ -250,14 +254,15 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             const HeadingTag = (level <= 1 ? 'h2' : level === 2 ? 'h3' : 'h4') as 'h2' | 'h3' | 'h4';
             const sizeBoost = level <= 1 ? 8 : level === 2 ? 4 : 2;
             const dir = resolveDir(block.language, block.direction);
-            // Respect explicit alignment set in the editor; fall back to default block direction
+            // Respect editor alignment; only force chapter-center when no align was set
             const explicitAlign = block.align;
+            const useChapterStyle = level <= 1 && !explicitAlign;
             return (
               <HeadingTag
                 key={i}
                 className={cn(
                   'reader-heading',
-                  level <= 1 && 'reader-heading-chapter',
+                  useChapterStyle && 'reader-heading-chapter',
                   level === 2 && 'reader-heading-section',
                   isHadith && 'reader-hadith-heading',
                   blockClass(block.language, block.direction),
@@ -266,7 +271,11 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 lang={langAttr(block.language)}
                 style={blockStyle(block.language, block.direction, {
                   fontSize: `${fontSize + sizeBoost}px`,
-                  ...(explicitAlign ? { textAlign: explicitAlign } : {}),
+                  ...(explicitAlign
+                    ? { textAlign: explicitAlign }
+                    : useChapterStyle
+                      ? { textAlign: 'center' }
+                      : {}),
                 })}
               >
                 {block.text}
@@ -664,6 +673,37 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 align={block.align}
               />
             );
+
+          case 'link': {
+            const align = block.align ?? 'left';
+            return (
+              <figure
+                key={i}
+                className={cn(
+                  'reader-link-block my-4 rounded-md border reader-border px-4 py-3',
+                  align === 'center' && 'mx-auto text-center',
+                  align === 'right' && 'ml-auto text-right',
+                  align === 'left' && 'mr-auto text-left',
+                )}
+                style={{ maxWidth: '36rem' }}
+              >
+                <p className="text-[13px] font-semibold reader-muted" style={{ margin: 0 }}>
+                  Link
+                </p>
+                <a
+                  href={block.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex break-all text-[14px] font-medium reader-accent underline"
+                >
+                  {block.label || block.url}
+                </a>
+                {block.caption && (
+                  <figcaption className="mt-1 text-[12px] reader-muted">{block.caption}</figcaption>
+                )}
+              </figure>
+            );
+          }
 
           case 'html':
             return (
