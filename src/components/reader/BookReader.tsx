@@ -218,7 +218,12 @@ export function BookReader({ book }: BookReaderProps) {
             {current?.title &&
               !/^page\s+\d+$/i.test(current.title.trim()) &&
               current.title.trim().toLowerCase() !== (book.title || '').trim().toLowerCase() &&
-              !/^The\s+(?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth|\d+(?:st|nd|rd|th)?)\s+Hadith\b/i.test(current.title.trim()) && (
+              // Avoid double titles: if page content already has the same heading, skip chrome title
+              !pageBlocks.some(
+                (b) =>
+                  b.type === 'heading' &&
+                  b.text.trim().toLowerCase() === current.title!.trim().toLowerCase(),
+              ) && (
                 <h2
                   className="reader-heading mb-3 text-base font-semibold sm:text-lg"
                   style={{ color: 'var(--reader-text)' }}

@@ -527,10 +527,13 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
         case 'heading': {
           const level = Math.min(Math.max(block.level ?? 2, 1), 3);
           const tag = level === 1 ? 'h2' : level === 2 ? 'h3' : 'h4';
-          return `<${tag}>${escape(block.text)}</${tag}>`;
+          const alignStyle = block.align ? ` style="text-align:${block.align}"` : '';
+          return `<${tag}${alignStyle}>${escape(block.text)}</${tag}>`;
         }
-        case 'paragraph':
-          return `<p>${escape(block.text)}</p>`;
+        case 'paragraph': {
+          const align = block.align ?? 'justify';
+          return `<p style="text-align:${align}">${escape(block.text)}</p>`;
+        }
         case 'arabic':
           return `<p class="content-arabic" dir="rtl" lang="ar">${escape(block.text)}</p>`;
         case 'quran': {
@@ -582,6 +585,23 @@ export function contentBlocksToHtml(blocks: ContentBlock[]): string {
           const pageAttr =
             block.pdfPage != null ? ` data-pdf-page="${block.pdfPage}"` : '';
           return `<figure class="content-image content-image-${align}" data-align="${align}" data-width="${width}"${pageAttr}><img src="${escape(block.url)}" alt="${alt}"/>${caption}</figure>`;
+        }
+        case 'link': {
+          const align = block.align ?? 'left';
+          const label = escape(block.label || block.url);
+          const caption = block.caption
+            ? `<figcaption>${escape(block.caption)}</figcaption>`
+            : '';
+          return `<figure class="content-link" data-kind="link" data-align="${align}" data-url="${escape(block.url)}" style="text-align:${align}"><p><strong>Link:</strong> <a href="${escape(block.url)}" target="_blank" rel="noopener noreferrer">${label}</a></p>${caption}</figure>`;
+        }
+        case 'audio':
+        case 'pdf': {
+          const align = block.align ?? 'center';
+          const kind = block.type;
+          const name = escape(block.fileName || (kind === 'audio' ? 'Audio' : 'PDF'));
+          const path = escape(block.storagePath || '');
+          const bucket = escape(block.bucket || 'book-attachments');
+          return `<figure class="content-${kind}" data-kind="${kind}" data-align="${align}" data-storage-path="${path}" data-bucket="${bucket}"><figcaption><strong>${kind === 'audio' ? 'Audio' : 'PDF'}:</strong> ${name}</figcaption></figure>`;
         }
         default:
           return '';
@@ -707,6 +727,23 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
         attachmentId: el.getAttribute('data-attachment-id') || undefined,
         align,
       });
+      return;
+    }
+
+    if (cls.includes('content-link') || el.getAttribute('data-kind') === 'link') {
+      const href =
+        el.getAttribute('data-url') ||
+        el.querySelector('a')?.getAttribute('href') ||
+        '';
+      if (href) {
+        const align = (el.getAttribute('data-align') || 'left') as 'left' | 'center' | 'right';
+        const label =
+          el.querySelector('a')?.textContent?.trim() ||
+          el.getAttribute('data-label') ||
+          href;
+        const caption = el.querySelector('figcaption')?.textContent?.trim();
+        blocks.push({ type: 'link', url: href, label, caption, align });
+      }
       return;
     }
 
@@ -927,13 +964,14 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
       const text = el.textContent?.trim();
       if (text) {
-        // Preserve text-align from inline style (set by the editor's justify buttons)
-        const styleAlign = el.style?.textAlign?.toLowerCase();
-        const align: 'left' | 'center' | 'right' | undefined =
-          styleAlign === 'center' ? 'center'
-          : styleAlign === 'right' ? 'right'
-          : styleAlign === 'left' ? 'left'
-          : undefined;
+        // Preserve text-align from inline style (set by the editor alignment buttons)
+        const styleAlign = (el.getAttribute('style') || '')
+          .match(/text-align\s*:\s*(left|center|right|justify)/i)?.[1]
+          ?.toLowerCase() || el.style?.textAlign?.toLowerCase();
+        const align: 'left' | 'center' | 'right' | 'justify' | undefined =
+          styleAlign === 'center' || styleAlign === 'right' || styleAlign === 'left' || styleAlign === 'justify'
+            ? styleAlign
+            : undefined;
         blocks.push({
           type: 'heading',
           text,
@@ -959,6 +997,13 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       if (text) {
         const langAttr = el.getAttribute('lang');
         const dirAttr = el.getAttribute('dir');
+        const styleAlign = (el.getAttribute('style') || '')
+          .match(/text-align\s*:\s*(left|center|right|justify)/i)?.[1]
+          ?.toLowerCase() || el.style?.textAlign?.toLowerCase();
+        const align: 'left' | 'center' | 'right' | 'justify' | undefined =
+          styleAlign === 'center' || styleAlign === 'right' || styleAlign === 'left' || styleAlign === 'justify'
+            ? styleAlign
+            : undefined;
         const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
         const looksArabic =
           langAttr === 'ar' ||
@@ -985,6 +1030,8 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
             language:
               langAttr === 'ar' ? 'ar' : langAttr === 'ur' ? 'ur' : langAttr === 'en' ? 'en' : undefined,
             direction: dirAttr === 'rtl' ? 'rtl' : dirAttr === 'ltr' ? 'ltr' : undefined,
+            // Default body copy to justify when editor did not set an align
+            align: align ?? 'justify',
           });
         }
       }

@@ -284,6 +284,15 @@ export function RichTextEditor({
       } else if (command === 'hiliteColor') {
         document.execCommand('styleWithCSS', false, 'true');
         document.execCommand('hiliteColor', false, cmdValue);
+      } else if (
+        command === 'justifyLeft' ||
+        command === 'justifyCenter' ||
+        command === 'justifyRight' ||
+        command === 'justifyFull'
+      ) {
+        // Ensure alignment is stored as inline text-align so the reader keeps it
+        document.execCommand('styleWithCSS', false, 'true');
+        document.execCommand(command, false, cmdValue);
       } else if (command === 'formatBlock' && cmdValue === 'blockquote') {
         // Toggle: quote → normal paragraph when already inside a blockquote
         const inQuote = document.queryCommandValue('formatBlock').toLowerCase() === 'blockquote';
@@ -334,35 +343,19 @@ export function RichTextEditor({
       return;
     }
 
-    // Exit content-callout / content-claim div on Enter at the end of the last paragraph
-    const callout = el?.closest('.content-callout');
+    // Exit claim/response or highlighted callout on Enter (Shift+Enter stays inside)
+    const callout = el?.closest('.content-callout, .content-claim');
     if (callout && editorRef.current.contains(callout)) {
-      const paragraphs = Array.from(callout.querySelectorAll('p'));
-      const lastPara = paragraphs[paragraphs.length - 1];
-      const inLast = lastPara && lastPara.contains((anchor ?? el) ?? null);
-      if (inLast) {
-        const range = sel.getRangeAt(0);
-        const endNode = range.endContainer;
-        const atEnd =
-          range.collapsed &&
-          (endNode.nodeType === Node.TEXT_NODE
-            ? range.endOffset === (endNode as Text).length &&
-              endNode === lastPara.lastChild
-            : endNode === lastPara);
-        if (atEnd) {
-          e.preventDefault();
-          const p = document.createElement('p');
-          p.appendChild(document.createElement('br'));
-          (callout as HTMLElement).after(p);
-          const newRange = document.createRange();
-          newRange.setStart(p, 0);
-          newRange.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(newRange);
-          emit();
-          return;
-        }
-      }
+      e.preventDefault();
+      const p = document.createElement('p');
+      p.appendChild(document.createElement('br'));
+      (callout as HTMLElement).after(p);
+      const newRange = document.createRange();
+      newRange.setStart(p, 0);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      emit();
     }
   }
 

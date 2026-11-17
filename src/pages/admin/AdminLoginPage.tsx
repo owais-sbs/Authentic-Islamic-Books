@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth, ADMIN_EMAIL } from '@/contexts/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -82,7 +82,7 @@ export function AdminLoginPage() {
           {/* Feature list */}
           <ul className="space-y-3">
             {[
-              'Import PDFs with OCR & Arabic support',
+              'Import PDF books with Arabic & English extraction',
               'Manual book creation with rich content blocks',
               'Publish directly to the live library',
             ].map((f) => (
@@ -104,17 +104,6 @@ export function AdminLoginPage() {
 
       {/* ── RIGHT PANEL: login form ── */}
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 relative">
-
-        {/* Back link */}
-        <div className="absolute top-6 right-6">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748B] hover:text-[#1B4F72] transition-colors"
-          >
-            ← Back to Library
-          </Link>
-        </div>
-
         <div className="w-full max-w-[380px]">
 
           {/* Mobile brand name (hidden on lg) */}

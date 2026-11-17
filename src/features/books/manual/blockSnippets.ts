@@ -20,7 +20,8 @@ export type ManualBlockKind =
   | 'table'
   | 'image'
   | 'audio'
-  | 'pdf';
+  | 'pdf'
+  | 'link';
 
 export const MANUAL_BLOCK_OPTIONS: { kind: ManualBlockKind; label: string }[] = [
   { kind: 'paragraph', label: 'English paragraph' },
@@ -43,6 +44,7 @@ export const MANUAL_BLOCK_OPTIONS: { kind: ManualBlockKind; label: string }[] = 
   { kind: 'image', label: 'Image with caption' },
   { kind: 'audio', label: 'Audio attachment' },
   { kind: 'pdf', label: 'PDF attachment' },
+  { kind: 'link', label: 'Link attachment' },
 ];
 
 export type ImageAlignOption = 'left' | 'center' | 'right' | 'full' | 'wrap-left' | 'wrap-right';
@@ -75,9 +77,9 @@ export function snippetForBlock(
 ): string {
   switch (kind) {
     case 'paragraph':
-      return `<p lang="en" dir="ltr">Write your English paragraph here.</p>`;
+      return `<p lang="en" dir="ltr" style="text-align:justify">Write your English paragraph here.</p>`;
     case 'heading':
-      return `<h2>Heading</h2>`;
+      return `<h2 style="text-align:center">Heading</h2>`;
     case 'section-heading':
       return `<h3>Subheading</h3>`;
     case 'arabic':
@@ -190,6 +192,20 @@ export function snippetForBlock(
         ? `<a href="${attachment.url}" target="_blank" rel="noopener noreferrer">Open PDF</a>`
         : `<span class="content-attachment-pending">Upload PDF via Media manager</span>`;
       return `<figure class="content-pdf" data-kind="pdf" data-align="${align}" data-storage-path="${path}" data-bucket="${bucket}"${page}${idAttr} style="display:block;max-width:36rem;${alignStyle};margin-top:0.75rem;margin-bottom:0.75rem;padding:0.75rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2"><figcaption><strong>PDF:</strong> ${name}${attachment?.caption ? ` — ${attachment.caption}` : ''}</figcaption><p>${link}</p></figure><p></p>`;
+    }
+    case 'link': {
+      const href = attachment?.url || 'https://';
+      const label = attachment?.fileName || attachment?.caption || href;
+      const align = attachment?.align ?? 'left';
+      const alignStyle =
+        align === 'center'
+          ? 'text-align:center'
+          : align === 'right'
+            ? 'text-align:right'
+            : 'text-align:left';
+      const safeHref = href.replace(/"/g, '&quot;');
+      const safeLabel = label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<figure class="content-link" data-kind="link" data-align="${align}" data-url="${safeHref}" style="display:block;margin:0.75rem 0;padding:0.75rem 1rem;border:1px solid #E5E1D8;border-radius:0.5rem;background:#F7F6F2;${alignStyle}"><p style="margin:0"><strong>Link:</strong> <a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safeLabel}</a></p>${attachment?.caption ? `<figcaption>${attachment.caption.replace(/</g, '&lt;')}</figcaption>` : ''}</figure><p></p>`;
     }
     default:
       return `<p></p>`;

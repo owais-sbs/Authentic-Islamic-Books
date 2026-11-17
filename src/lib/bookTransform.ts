@@ -64,6 +64,7 @@ const PRESERVE_AS_IS = new Set([
   'image',
   'audio',
   'pdf',
+  'link',
   'table',
   'html',
   'quran',

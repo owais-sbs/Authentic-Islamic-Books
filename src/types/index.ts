@@ -43,9 +43,11 @@ export type ContentBlockLang = {
   direction?: BookContentDirection;
 };
 
+export type ContentBlockAlign = 'left' | 'center' | 'right' | 'justify';
+
 export type ContentBlock =
-  | ({ type: 'paragraph'; text: string } & ContentBlockLang)
-  | ({ type: 'heading'; text: string; level?: number; align?: 'left' | 'center' | 'right' } & ContentBlockLang)
+  | ({ type: 'paragraph'; text: string; align?: ContentBlockAlign } & ContentBlockLang)
+  | ({ type: 'heading'; text: string; level?: number; align?: ContentBlockAlign } & ContentBlockLang)
   | ({
       type: 'quote';
       text: string;
@@ -115,6 +117,13 @@ export type ContentBlock =
       caption?: string;
       pdfPage?: number;
       attachmentId?: string;
+      align?: 'left' | 'center' | 'right';
+    } & ContentBlockLang)
+  | ({
+      type: 'link';
+      url: string;
+      label?: string;
+      caption?: string;
       align?: 'left' | 'center' | 'right';
     } & ContentBlockLang)
   | ({

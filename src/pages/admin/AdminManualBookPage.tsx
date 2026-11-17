@@ -430,6 +430,20 @@ export function AdminManualBookPage() {
       pdfInputRef.current?.click();
       return;
     }
+    if (kind === 'link') {
+      const url = window.prompt('Paste any link (YouTube, reference, website):', 'https://');
+      if (!url?.trim()) return;
+      const label =
+        window.prompt('Link label (optional):', url.trim())?.trim() || url.trim();
+      insertHtmlRef.current?.(
+        snippetForBlock('link', undefined, 'center', 'large', {
+          url: url.trim(),
+          fileName: label,
+          align: attachmentAlign,
+        }),
+      );
+      return;
+    }
     insertHtmlRef.current?.(snippetForBlock(kind));
   }
 
@@ -750,7 +764,7 @@ export function AdminManualBookPage() {
                 )}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                    Audio/PDF:
+                    Place audio / PDF / link:
                   </span>
                   {(['left', 'center', 'right'] as const).map((a) => (
                     <button
