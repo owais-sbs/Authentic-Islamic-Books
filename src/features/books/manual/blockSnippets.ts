@@ -77,17 +77,17 @@ export function snippetForBlock(
 ): string {
   switch (kind) {
     case 'paragraph':
-      return `<p lang="en" dir="ltr" style="text-align:justify">Write your English paragraph here.</p>`;
+      return `<p lang="en" dir="ltr" style="text-align:justify;font-weight:normal">Write your English paragraph here.</p>`;
     case 'heading':
-      return `<h2 style="text-align:center">Heading</h2>`;
+      return `<h2 style="text-align:center;font-weight:600">Heading</h2>`;
     case 'section-heading':
-      return `<h3>Subheading</h3>`;
+      return `<h3 style="font-weight:600">Subheading</h3>`;
     case 'arabic':
-      return `<p class="content-arabic" dir="rtl" lang="ar">أدخل النص العربي هنا</p>`;
+      return `<p class="content-arabic" dir="rtl" lang="ar" style="font-weight:normal">أدخل النص العربي هنا</p>`;
     case 'urdu':
-      return `<p class="content-urdu" dir="rtl" lang="ur">اردو متن یہاں لکھیں</p>`;
+      return `<p class="content-urdu" dir="rtl" lang="ur" style="font-weight:normal">اردو متن یہاں لکھیں</p>`;
     case 'translation':
-      return `<p class="content-translation" lang="en" dir="ltr"><em>English translation of the passage.</em></p>`;
+      return `<p class="content-translation" lang="en" dir="ltr" style="text-align:justify;font-weight:normal"><em>English translation of the passage.</em></p>`;
     case 'bilingual':
       return [
         `<div class="content-bilingual">`,
@@ -155,7 +155,11 @@ export function snippetForBlock(
                   ? 'text-align:center;margin-left:auto;margin-right:auto;width:100%'
                   : 'text-align:center;margin-left:auto;margin-right:auto';
       const imgMax = IMAGE_WIDTH_CSS[width];
-      return `<figure class="content-image content-image-${imageAlign}" data-align="${imageAlign}" data-width="${width}" style="${floatStyle}"><img src="${imageUrl}" alt="" style="${imgMax};height:auto;border-radius:0.5rem;display:inline-block;max-width:100%"/><figcaption contenteditable="true">Image caption</figcaption></figure><p></p>`;
+      const path = attachment?.storagePath
+        ? ` data-storage-path="${attachment.storagePath}"`
+        : '';
+      const bucket = attachment?.bucket ? ` data-bucket="${attachment.bucket}"` : '';
+      return `<figure class="content-image content-image-${imageAlign}" data-align="${imageAlign}" data-width="${width}"${path}${bucket} style="${floatStyle}"><img src="${imageUrl}" alt="" style="${imgMax};height:auto;border-radius:0.5rem;display:inline-block;max-width:100%"/><figcaption contenteditable="true">Image caption</figcaption></figure><p></p>`;
     }
     case 'audio': {
       const name = attachment?.fileName || 'Audio explanation';

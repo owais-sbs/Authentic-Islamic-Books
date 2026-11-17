@@ -628,40 +628,124 @@ function extractInlineText(el: HTMLElement): string {
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     const child = node as HTMLElement;
     const tag = child.tagName.toLowerCase();
-    // Block elements produce a space boundary
-    const isBlock = /^(div|p|br|li|tr|td|th|blockquote|pre|h[1-6])$/.test(tag);
-    if (isBlock) {
-      // Ensure space before block content if previous text ends with word char
-      const prev = parts[parts.length - 1] ?? '';
-      if (prev && /\w$/.test(prev)) parts.push(' ');
-      Array.from(child.childNodes).forEach(walk);
-      const last = parts[parts.length - 1] ?? '';
-      if (last && /\w$/.test(last)) parts.push(' ');
+    // Soft line breaks must become newlines so preview keeps editor line layout
+    if (tag === 'br') {
+      parts.push('\n');
       return;
     }
-    // For <br> specifically
-    if (tag === 'br') {
-      parts.push(' ');
+    // Block elements produce a paragraph-ish boundary
+    const isBlock = /^(div|p|li|tr|td|th|blockquote|pre|h[1-6])$/.test(tag);
+    if (isBlock) {
+      const prev = parts[parts.length - 1] ?? '';
+      if (prev && !prev.endsWith('\n')) parts.push('\n');
+      Array.from(child.childNodes).forEach(walk);
+      const last = parts[parts.length - 1] ?? '';
+      if (last && !last.endsWith('\n')) parts.push('\n');
       return;
     }
     // Inline elements: walk children, ensure space at boundaries
     const prevBefore = parts[parts.length - 1] ?? '';
     const needsSpaceBefore = prevBefore && /\w$/.test(prevBefore);
-    if (needsSpaceBefore) parts.push('\u200B'); // zero-width placeholder, resolved below
+    if (needsSpaceBefore) parts.push('\u200B');
     Array.from(child.childNodes).forEach(walk);
-    return;
   }
 
   Array.from(el.childNodes).forEach(walk);
 
-  // Resolve: collapse the zero-width placeholders into spaces only where the
-  // surrounding chars are both word characters (avoids adding spaces at punctuation)
   return parts
     .join('')
     .replace(/(\w)\u200B(\w)/g, '$1 $2')
     .replace(/\u200B/g, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[^\S\n]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/** Read text-align from element style attribute or CSSOM. */
+function readTextAlign(el: HTMLElement): 'left' | 'center' | 'right' | 'justify' | undefined {
+  const fromAttr = (el.getAttribute('style') || '')
+    .match(/text-align\s*:\s*(left|center|right|justify)/i)?.[1]
+    ?.toLowerCase();
+  const styleAlign = fromAttr || el.style?.textAlign?.toLowerCase();
+  if (
+    styleAlign === 'center' ||
+    styleAlign === 'right' ||
+    styleAlign === 'left' ||
+    styleAlign === 'justify'
+  ) {
+    return styleAlign;
+  }
+  return undefined;
+}
+
+/**
+ * Split a contentEditable block that uses <br> (or text+br mix) into separate lines.
+ * Browsers often store centered multi-line text as one div/p with <br>, which used
+ * to collapse into a single mashed paragraph in the reader.
+ */
+function linesFromBreakSeparatedBlock(el: HTMLElement): string[] {
+  const lines: string[] = [];
+  let buf = '';
+
+  const flush = () => {
+    const t = buf.replace(/\s+/g, ' ').trim();
+    if (t) lines.push(t);
+    buf = '';
+  };
+
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      buf += node.textContent ?? '';
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const child = node as HTMLElement;
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'br') {
+      flush();
+      return;
+    }
+    if (/^(div|p|h[1-6]|li|blockquote)$/.test(tag) && child !== el) {
+      flush();
+      Array.from(child.childNodes).forEach(walk);
+      flush();
+      return;
+    }
+    Array.from(child.childNodes).forEach(walk);
+  };
+
+  Array.from(el.childNodes).forEach(walk);
+  flush();
+  return lines;
+}
+
+function pushAlignedParagraphs(
+  blocks: ContentBlock[],
+  lines: string[],
+  align: 'left' | 'center' | 'right' | 'justify' | undefined,
+  lang?: string,
+  dir?: string,
+) {
+  for (const line of lines) {
+    const arabicChars = (line.match(/[\u0600-\u06FF]/g) || []).length;
+    const looksArabic =
+      lang === 'ar' ||
+      dir === 'rtl' ||
+      (arabicChars >= 8 && arabicChars >= line.replace(/\s/g, '').length * 0.4);
+    if (looksArabic && lang !== 'ur') {
+      blocks.push({ type: 'arabic', text: line, language: 'ar', direction: 'rtl' });
+    } else if (lang === 'ur') {
+      blocks.push({ type: 'urdu', text: line, language: 'ur', direction: 'rtl' });
+    } else {
+      blocks.push({
+        type: 'paragraph',
+        text: line,
+        language: lang === 'en' ? 'en' : undefined,
+        direction: dir === 'rtl' ? 'rtl' : dir === 'ltr' ? 'ltr' : undefined,
+        align: align ?? 'justify',
+      });
+    }
+  }
 }
 
 /** Parse stored HTML (from admin / serialized blocks) back into ContentBlocks. */
@@ -795,7 +879,19 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
         const caption = el.querySelector('figcaption')?.textContent?.trim();
         const alt = img?.getAttribute('alt')?.trim() || undefined;
         const pdfPage = Number(el.getAttribute('data-pdf-page') || '') || undefined;
-        blocks.push({ type: 'image', url, caption, alt, align, width, pdfPage });
+        const storagePath = el.getAttribute('data-storage-path') || undefined;
+        const bucket = el.getAttribute('data-bucket') || undefined;
+        blocks.push({
+          type: 'image',
+          url,
+          caption,
+          alt,
+          align,
+          width,
+          pdfPage,
+          storagePath,
+          bucket: bucket as 'book-images' | 'book-pdfs' | 'book-attachments' | undefined,
+        });
       }
       return;
     }
@@ -964,14 +1060,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
       const text = el.textContent?.trim();
       if (text) {
-        // Preserve text-align from inline style (set by the editor alignment buttons)
-        const styleAlign = (el.getAttribute('style') || '')
-          .match(/text-align\s*:\s*(left|center|right|justify)/i)?.[1]
-          ?.toLowerCase() || el.style?.textAlign?.toLowerCase();
-        const align: 'left' | 'center' | 'right' | 'justify' | undefined =
-          styleAlign === 'center' || styleAlign === 'right' || styleAlign === 'left' || styleAlign === 'justify'
-            ? styleAlign
-            : undefined;
+        const align = readTextAlign(el);
         blocks.push({
           type: 'heading',
           text,
@@ -991,60 +1080,88 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     }
 
     if (tag === 'p') {
-      // Use innerText-style extraction that preserves spaces between inline elements
-      // (textContent collapses "<strong>word</strong>word" → "wordword")
+      const langAttr = el.getAttribute('lang') ?? undefined;
+      const dirAttr = el.getAttribute('dir') ?? undefined;
+      const align = readTextAlign(el);
+      // contentEditable often stores multi-line centered text as one <p> with <br>
+      if (el.querySelector('br')) {
+        const lines = linesFromBreakSeparatedBlock(el);
+        if (lines.length) {
+          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          return;
+        }
+      }
       const text = extractInlineText(el).trim();
       if (text) {
-        const langAttr = el.getAttribute('lang');
-        const dirAttr = el.getAttribute('dir');
-        const styleAlign = (el.getAttribute('style') || '')
-          .match(/text-align\s*:\s*(left|center|right|justify)/i)?.[1]
-          ?.toLowerCase() || el.style?.textAlign?.toLowerCase();
-        const align: 'left' | 'center' | 'right' | 'justify' | undefined =
-          styleAlign === 'center' || styleAlign === 'right' || styleAlign === 'left' || styleAlign === 'justify'
-            ? styleAlign
-            : undefined;
-        const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
-        const looksArabic =
-          langAttr === 'ar' ||
-          dirAttr === 'rtl' ||
-          (arabicChars >= 8 && arabicChars >= text.replace(/\s/g, '').length * 0.4);
-        if (looksArabic && langAttr !== 'ur') {
-          blocks.push({
-            type: 'arabic',
-            text,
-            language: 'ar',
-            direction: 'rtl',
-          });
-        } else if (langAttr === 'ur' || (dirAttr === 'rtl' && langAttr === 'ur')) {
-          blocks.push({
-            type: 'urdu',
-            text,
-            language: 'ur',
-            direction: 'rtl',
-          });
+        // If extractInlineText kept newlines, split into separate preview paragraphs
+        const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+        if (lines.length > 1) {
+          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
         } else {
-          blocks.push({
-            type: 'paragraph',
-            text,
-            language:
-              langAttr === 'ar' ? 'ar' : langAttr === 'ur' ? 'ur' : langAttr === 'en' ? 'en' : undefined,
-            direction: dirAttr === 'rtl' ? 'rtl' : dirAttr === 'ltr' ? 'ltr' : undefined,
-            // Default body copy to justify when editor did not set an align
-            align: align ?? 'justify',
-          });
+          pushAlignedParagraphs(blocks, [text.replace(/\n+/g, ' ')], align, langAttr, dirAttr);
         }
       }
       return;
     }
 
-    // Unknown wrappers — walk children; if leaf with text, keep as html fallback
+    // Plain editor wrappers (contentEditable center/justify often uses <div>)
+    if (
+      tag === 'div' &&
+      !cls.includes('content-') &&
+      !el.querySelector(
+        'figure, table, ul, ol, blockquote, .content-arabic, .content-callout, .content-bilingual',
+      )
+    ) {
+      const align = readTextAlign(el);
+      const langAttr = el.getAttribute('lang') ?? undefined;
+      const dirAttr = el.getAttribute('dir') ?? undefined;
+      const hasBr = Boolean(el.querySelector('br'));
+      const onlyBreakOrText =
+        Array.from(el.childNodes).every(
+          (n) =>
+            n.nodeType === Node.TEXT_NODE ||
+            (n.nodeType === Node.ELEMENT_NODE &&
+              ['br', 'b', 'strong', 'i', 'em', 'u', 'span', 'a', 'font'].includes(
+                (n as HTMLElement).tagName.toLowerCase(),
+              )),
+        ) || hasBr;
+
+      if (onlyBreakOrText || hasBr) {
+        const lines = linesFromBreakSeparatedBlock(el);
+        if (lines.length) {
+          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          return;
+        }
+      }
+
+      // Nested div lines (Chrome contentEditable): each child div is a line
+      const childDivs = Array.from(el.children).filter(
+        (c) => (c as HTMLElement).tagName.toLowerCase() === 'div',
+      );
+      if (childDivs.length && childDivs.length === el.children.length) {
+        for (const child of childDivs) {
+          walk(child as HTMLElement);
+        }
+        return;
+      }
+    }
+
+    // Unknown wrappers — walk ALL child nodes (not just elements) so text+br is kept
     if (el.children.length === 0) {
-      const text = el.textContent?.trim();
-      if (text) blocks.push({ type: 'paragraph', text });
+      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text) {
+        pushAlignedParagraphs(blocks, [text], readTextAlign(el), el.getAttribute('lang') ?? undefined, el.getAttribute('dir') ?? undefined);
+      }
       return;
     }
-    Array.from(el.children).forEach((child) => walk(child as HTMLElement));
+    Array.from(el.childNodes).forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = (child.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text) pushAlignedParagraphs(blocks, [text], readTextAlign(el));
+        return;
+      }
+      if (child.nodeType === Node.ELEMENT_NODE) walk(child as HTMLElement);
+    });
   };
 
   Array.from(div.childNodes).forEach((node) => {
@@ -1082,6 +1199,7 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       'table',
       'audio',
       'pdf',
+      'link',
       'callout',
       'html',
     ].includes(b.type),
