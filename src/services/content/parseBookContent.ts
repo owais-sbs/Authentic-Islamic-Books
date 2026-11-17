@@ -628,12 +628,13 @@ function extractInlineText(el: HTMLElement): string {
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     const child = node as HTMLElement;
     const tag = child.tagName.toLowerCase();
-    // Soft line breaks must become newlines so preview keeps editor line layout
+    // Soft line breaks from PDF/Word wrap → space (NOT a new paragraph)
     if (tag === 'br') {
-      parts.push('\n');
+      const prev = parts[parts.length - 1] ?? '';
+      if (prev && !/\s$/.test(prev)) parts.push(' ');
       return;
     }
-    // Block elements produce a paragraph-ish boundary
+    // Block elements produce a paragraph boundary
     const isBlock = /^(div|p|li|tr|td|th|blockquote|pre|h[1-6])$/.test(tag);
     if (isBlock) {
       const prev = parts[parts.length - 1] ?? '';
@@ -679,9 +680,9 @@ function readTextAlign(el: HTMLElement): 'left' | 'center' | 'right' | 'justify'
 }
 
 /**
- * Split a contentEditable block that uses <br> (or text+br mix) into separate lines.
- * Browsers often store centered multi-line text as one div/p with <br>, which used
- * to collapse into a single mashed paragraph in the reader.
+ * Split a contentEditable block that uses <br> into soft lines.
+ * Used only to decide title stacks vs flowing prose — PDF wrap breaks must NOT
+ * become separate reader paragraphs.
  */
 function linesFromBreakSeparatedBlock(el: HTMLElement): string[] {
   const lines: string[] = [];
@@ -717,6 +718,23 @@ function linesFromBreakSeparatedBlock(el: HTMLElement): string[] {
   Array.from(el.childNodes).forEach(walk);
   flush();
   return lines;
+}
+
+/** Centered short lines (titles) stay separate; long prose joins into one flowing paragraph. */
+function isTitleLineStack(lines: string[], align?: string): boolean {
+  if (align !== 'center' || lines.length < 2) return false;
+  const max = Math.max(...lines.map((l) => l.length));
+  const avg = lines.reduce((s, l) => s + l.length, 0) / lines.length;
+  // Title / basmala stacks are short; PDF body wraps are long lines
+  return max <= 90 && avg <= 70;
+}
+
+function joinSoftLines(lines: string[]): string {
+  return lines
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .trim();
 }
 
 function pushAlignedParagraphs(
@@ -1001,59 +1019,32 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
     if (tag === 'blockquote' || cls.includes('content-quote')) {
       const attribution = el.querySelector('footer')?.textContent?.trim();
       const source = el.querySelector('.content-source')?.textContent?.trim();
-      // Preserve <br> / multiple <p> as separate lines (textContent alone collapses them)
+      // Soft <br> / wrapped lines → spaces so the quote stays one flowing block
       const paras = Array.from(el.querySelectorAll(':scope > p, :scope > div'))
         .map((p) => {
           const clone = p.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
-          return (clone.textContent || '').trim();
+          clone.querySelectorAll('br').forEach((br) => br.replaceWith(' '));
+          return (clone.textContent || '').replace(/\s+/g, ' ').trim();
         })
         .filter(Boolean);
       let raw = '';
       if (paras.length) {
-        raw = paras.join('\n');
+        raw = paras.join(' ');
       } else {
         const clone = el.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('footer, .content-source').forEach((n) => n.remove());
-        clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
-        raw = (clone.textContent || '').trim();
+        clone.querySelectorAll('br').forEach((br) => br.replaceWith(' '));
+        raw = (clone.textContent || '').replace(/\s+/g, ' ').trim();
       }
-      const lines = raw
-        .split(/\n+/)
-        .flatMap((chunk) =>
-          chunk
-            .split(/(?=\bIt was narrated\b)|(?=\bHadith Number\s*\()/i)
-            .map((l) => l.trim())
-            .filter(Boolean),
-        );
-      if (!lines.length) return;
+      if (!raw) return;
 
-      const isRefLine = (line: string) =>
-        /^(source:|reference:|it was narrated|narrated (by|also)|hadith number)/i.test(line) ||
-        /\bhadith number\s*\(/i.test(line);
-
-      const quoteLines: string[] = [];
-      const after: string[] = [];
-      let hitRef = false;
-      for (const line of lines) {
-        if (!hitRef && isRefLine(line)) hitRef = true;
-        if (hitRef) after.push(line);
-        else quoteLines.push(line);
-      }
-
-      const quoteText = (quoteLines.length ? quoteLines : lines).join('\n');
-      if (quoteText) {
-        blocks.push({
-          type: 'quote',
-          text: quoteText,
-          attribution,
-          source,
-        });
-      }
-      for (const line of quoteLines.length ? after : []) {
-        if (isRefLine(line)) blocks.push({ type: 'reference', text: line });
-        else blocks.push({ type: 'paragraph', text: line });
-      }
+      // Keep the whole quotation as one block — do not cut mid-sentence on "Hadith Number"
+      blocks.push({
+        type: 'quote',
+        text: raw,
+        attribution,
+        source,
+      });
       return;
     }
 
@@ -1083,23 +1074,33 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       const langAttr = el.getAttribute('lang') ?? undefined;
       const dirAttr = el.getAttribute('dir') ?? undefined;
       const align = readTextAlign(el);
-      // contentEditable often stores multi-line centered text as one <p> with <br>
       if (el.querySelector('br')) {
         const lines = linesFromBreakSeparatedBlock(el);
         if (lines.length) {
-          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          if (isTitleLineStack(lines, align)) {
+            // Intentionally separate centered titles (basmala / hadith title)
+            pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          } else {
+            // PDF soft-wraps → one flowing justified paragraph (no fake cuts)
+            pushAlignedParagraphs(
+              blocks,
+              [joinSoftLines(lines)],
+              align ?? 'justify',
+              langAttr,
+              dirAttr,
+            );
+          }
           return;
         }
       }
       const text = extractInlineText(el).trim();
       if (text) {
-        // If extractInlineText kept newlines, split into separate preview paragraphs
-        const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-        if (lines.length > 1) {
-          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
-        } else {
-          pushAlignedParagraphs(blocks, [text.replace(/\n+/g, ' ')], align, langAttr, dirAttr);
-        }
+        // Hard paragraph breaks only (\n\n); single newlines collapse to spaces
+        const parts = text
+          .split(/\n{2,}/)
+          .map((p) => p.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim())
+          .filter(Boolean);
+        pushAlignedParagraphs(blocks, parts, align ?? 'justify', langAttr, dirAttr);
       }
       return;
     }
@@ -1129,18 +1130,40 @@ export function htmlDocumentToContentBlocks(html: string): ContentBlock[] {
       if (onlyBreakOrText || hasBr) {
         const lines = linesFromBreakSeparatedBlock(el);
         if (lines.length) {
-          pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          if (isTitleLineStack(lines, align)) {
+            pushAlignedParagraphs(blocks, lines, align, langAttr, dirAttr);
+          } else {
+            pushAlignedParagraphs(
+              blocks,
+              [joinSoftLines(lines)],
+              align ?? 'justify',
+              langAttr,
+              dirAttr,
+            );
+          }
           return;
         }
       }
 
-      // Nested div lines (Chrome contentEditable): each child div is a line
+      // Nested div lines (Chrome contentEditable): each child div may be a title line OR wrap
       const childDivs = Array.from(el.children).filter(
         (c) => (c as HTMLElement).tagName.toLowerCase() === 'div',
       );
       if (childDivs.length && childDivs.length === el.children.length) {
-        for (const child of childDivs) {
-          walk(child as HTMLElement);
+        const childTexts = childDivs
+          .map((c) => ((c as HTMLElement).textContent || '').replace(/\s+/g, ' ').trim())
+          .filter(Boolean);
+        if (isTitleLineStack(childTexts, align || readTextAlign(childDivs[0] as HTMLElement))) {
+          for (const child of childDivs) walk(child as HTMLElement);
+        } else if (childTexts.length) {
+          // Flowing prose wrapped in div-per-line by the browser → one paragraph
+          pushAlignedParagraphs(
+            blocks,
+            [joinSoftLines(childTexts)],
+            align ?? 'justify',
+            langAttr,
+            dirAttr,
+          );
         }
         return;
       }

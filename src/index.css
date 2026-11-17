@@ -207,29 +207,51 @@
 
   .reader-prose {
     font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
-    line-height: 1.7;
+    line-height: 1.8;
     color: var(--ink-700, #334155);
     font-size: inherit;
   }
+  /* Even vertical rhythm between all content blocks */
+  .reader-prose > * {
+    margin-top: 0;
+    margin-bottom: 0.85em;
+  }
+  .reader-prose > *:last-child {
+    margin-bottom: 0;
+  }
   .reader-prose p {
-    margin-bottom: 0.7em;
+    margin-top: 0;
+    margin-bottom: 0.85em;
     word-spacing: 0.01em;
+    text-align: justify;
+    hyphens: auto;
+    line-height: 1.8;
   }
   .reader-prose p + p {
     text-indent: 0;
+    margin-top: 0;
   }
-  .reader-prose blockquote {
-    margin: 0.85em 0;
-    padding-left: 1rem;
+  .reader-prose blockquote,
+  .reader-prose .reader-scholar-quote,
+  .reader-prose .reader-hadith-block {
+    margin: 1em 0;
+    padding: 0.15em 0 0.15em 1rem;
     border-left: 3px solid var(--accent, #C9A646);
     font-style: italic;
   }
+  .reader-prose blockquote p,
+  .reader-prose .reader-scholar-quote p {
+    text-align: justify;
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.8;
+  }
   .reader-prose ul,
   .reader-prose ol {
-    margin: 0.75em 0 1em 1.25em;
+    margin: 0.85em 0 1em 1.25em;
   }
   .reader-prose li {
-    margin-bottom: 0.3em;
+    margin-bottom: 0.35em;
   }
   .reader-prose h2,
   .reader-prose h3,
@@ -237,18 +259,24 @@
   .reader-prose .reader-heading {
     font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.35;
     color: var(--ink-800, #1e293b);
-    margin-top: 1.15em;
-    margin-bottom: 0.45em;
+    margin-top: 1.35em;
+    margin-bottom: 0.55em;
+  }
+  .reader-prose > :first-child.reader-heading,
+  .reader-prose > h2:first-child,
+  .reader-prose > h3:first-child,
+  .reader-prose > h4:first-child {
+    margin-top: 0;
   }
   .reader-prose .reader-heading-chapter {
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 700;
-    margin-top: 1.35em;
-    margin-bottom: 0.55em;
+    margin-top: 1.5em;
+    margin-bottom: 0.65em;
     color: var(--ink-900, #0f172a);
   }
   .reader-prose .reader-heading-section {
@@ -260,7 +288,9 @@
     font-size: 1.05em;
     letter-spacing: 0.02em;
     padding-bottom: 0.1em;
-    margin-top: 1.15em;
+    margin-top: 1.35em;
+    margin-bottom: 0.55em;
+    text-align: center;
   }
   .reader-prose .reader-lead {
     font-size: 1.06em;
@@ -349,7 +379,7 @@
 
   /* Inline book images (admin-inserted mid-content) */
   .reader-prose .reader-image {
-    margin: 1.75em 0;
+    margin: 1.15em 0;
     max-width: 100%;
   }
   .reader-prose .reader-image img {
@@ -458,7 +488,7 @@
 
   /* Hadith */
   .reader-prose .reader-hadith-block {
-    margin: 1.75em 0;
+    margin: 1em 0;
     padding: 0.15em 0 0.15em 1.15rem;
     border-left: 3px solid color-mix(in srgb, var(--accent, #C9A646) 55%, transparent);
     font-style: normal;
@@ -479,29 +509,34 @@
   .reader-prose .reader-scholar-quote {
     background: transparent;
     border-radius: 0;
-    padding-top: 0.15rem;
-    padding-bottom: 0.15rem;
   }
   .reader-prose .reader-source-line {
     color: var(--reader-muted, #3A5572);
     font-size: 0.9em;
+    margin-top: 0.45em;
   }
 
   /* References & footnotes */
   .reader-prose .reader-reference-line {
-    margin: 0.85em 0 1.25em;
+    margin: 0.75em 0 1em;
     color: var(--reader-muted, #3A5572);
     font-size: 0.92em;
-    line-height: 1.55;
+    line-height: 1.65;
+    text-align: left;
   }
   .reader-prose .reader-footnote {
-    margin: 0.75em 0;
+    margin: 0.85em 0;
     padding-top: 0.35em;
     border-top: 1px solid color-mix(in srgb, var(--reader-border, #D8D3C8) 80%, transparent);
     color: var(--reader-muted, #3A5572);
     line-height: 1.55;
   }
 
+  .reader-prose .reader-callout,
+  .reader-prose .reader-callout-info,
+  .reader-prose .reader-callout-claim {
+    margin: 1em 0;
+  }
   .reader-prose .reader-callout-info {
     border-color: color-mix(in srgb, var(--reader-accent, #C9A84C) 55%, var(--reader-border));
     background: color-mix(in srgb, var(--reader-accent, #C9A84C) 8%, var(--reader-card));
@@ -513,11 +548,19 @@
   .reader-theme-dark .reader-prose .reader-callout-claim {
     background: color-mix(in srgb, #7F1D1D 35%, var(--reader-card));
   }
+  .reader-prose .reader-bilingual,
+  .reader-prose .reader-table-wrap,
+  .reader-prose .reader-link-block,
+  .reader-prose .reader-citation,
+  .reader-prose .reader-endnote {
+    margin: 1em 0;
+  }
   .reader-prose .reader-table th {
     background: color-mix(in srgb, var(--reader-card) 80%, transparent);
   }
   .reader-attachment {
     max-width: 100%;
+    margin: 1em 0;
   }
   .reader-prose mark {
     background: color-mix(in srgb, var(--reader-accent, #C9A84C) 35%, transparent);

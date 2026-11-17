@@ -144,6 +144,11 @@ function sanitizePastedHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, meta, link, xml, o\\:p').forEach((n) => n.remove());
 
+  // Soft wraps from PDF → spaces (never fake paragraph cuts mid-sentence)
+  doc.querySelectorAll('br').forEach((br) => {
+    br.replaceWith(doc.createTextNode(' '));
+  });
+
   // Unwrap empty/decorative spans that collapse word boundaries
   doc.querySelectorAll('span').forEach((span) => {
     const hasAttrs =
@@ -228,14 +233,12 @@ function sanitizePastedHtml(html: string): string {
     }
   });
 
-  // Normalize blocks to clean justified paragraphs for a professional reader look
-  const blocks = Array.from(doc.body.querySelectorAll('p, div'));
-  blocks.forEach((el) => {
+  // Normalize leaf wrappers into justified paragraphs
+  Array.from(doc.body.querySelectorAll('p, div')).forEach((node) => {
+    let el = node as HTMLElement;
     if (el.closest('table, figure, blockquote, li')) return;
-    if ((el as HTMLElement).querySelector('p, div, table, figure, ul, ol, blockquote')) return;
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'div') {
-      // Convert leaf divs into paragraphs
+    if (el.querySelector('p, div, table, figure, ul, ol, blockquote')) return;
+    if (el.tagName.toLowerCase() === 'div') {
       const p = doc.createElement('p');
       p.innerHTML = el.innerHTML;
       el.replaceWith(p);
@@ -249,6 +252,28 @@ function sanitizePastedHtml(html: string): string {
       );
     }
   });
+
+  // Merge consecutive short PDF wrap-paragraphs into one flowing paragraph
+  const kids = Array.from(doc.body.children);
+  for (let i = 0; i < kids.length - 1; i++) {
+    const cur = kids[i] as HTMLElement;
+    const next = kids[i + 1] as HTMLElement;
+    if (!cur || !next) continue;
+    if (cur.tagName !== 'P' || next.tagName !== 'P') continue;
+    const a = (cur.textContent || '').replace(/\s+/g, ' ').trim();
+    const b = (next.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!a || !b) continue;
+    const looksWrap =
+      a.length < 120 &&
+      b.length < 160 &&
+      !/[.!?…]"?$/.test(a) &&
+      /^[a-z(]/.test(b);
+    if (!looksWrap) continue;
+    cur.innerHTML = `${cur.innerHTML.replace(/\s+$/, '')} ${next.innerHTML.replace(/^\s+/, '')}`;
+    next.remove();
+    kids.splice(i + 1, 1);
+    i--; // re-check merged paragraph with the following one
+  }
 
   return doc.body.innerHTML;
 }
@@ -439,22 +464,23 @@ export function RichTextEditor({
       insertHtml(sanitizePastedHtml(html));
     } else if (text) {
       e.preventDefault();
+      // Single newlines = PDF soft wrap → spaces; blank line = real paragraph
       const escaped = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .split(/\n{2,}/)
         .map((p) => {
-          const lines = p
+          const body = p
             .split(/\n/)
             .map((l) => l.trim())
-            .filter(Boolean);
-          // One PDF line → one justified paragraph (keeps preview layout clean)
-          if (lines.length <= 1) {
-            return `<p style="text-align:justify">${lines[0] || p.trim()}</p>`;
-          }
-          return lines.map((l) => `<p style="text-align:justify">${l}</p>`).join('');
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          return body ? `<p style="text-align:justify;font-weight:normal">${body}</p>` : '';
         })
+        .filter(Boolean)
         .join('');
       insertHtml(escaped);
     }
