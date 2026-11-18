@@ -196,8 +196,24 @@ function blockStyle(
 }
 
 export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }: ContentRendererProps) {
-  const enriched = useMemo(() => enrichContentBlocks(blocks), [blocks]);
-  const firstParagraphIndex = enriched.findIndex((b) => b.type === 'paragraph');
+  const enriched = useMemo(() => {
+    const base = enrichContentBlocks(blocks);
+    // Drop a paragraph that only repeats the previous quote (common after Enter-exit)
+    const out: typeof base = [];
+    for (const b of base) {
+      const prev = out[out.length - 1];
+      if (
+        b.type === 'paragraph' &&
+        prev?.type === 'quote' &&
+        b.text.replace(/\s+/g, ' ').trim().toLowerCase() ===
+          prev.text.replace(/\s+/g, ' ').trim().toLowerCase()
+      ) {
+        continue;
+      }
+      out.push(b);
+    }
+    return out;
+  }, [blocks]);
   const small = Math.max(fontSize - 2, 13);
   const arabicSize = Math.max(fontSize + 6, 22);
 
@@ -214,18 +230,12 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             const isRtlScript = block.language === 'ar' || block.language === 'ur';
             const citation = looksLikeCitationLine(block.text);
             const textAlign = block.align ?? (isRtlScript ? undefined : 'justify');
-            const useLead =
-              i === firstParagraphIndex &&
-              !citation &&
-              !isRtlScript &&
-              textAlign !== 'center' &&
-              block.text.trim().length > 80;
+            // No drop-cap — it splits names (U|mar) and creates uneven starting spacing
             return (
               <p
                 key={i}
                 className={cn(
                   'reader-muted',
-                  useLead && 'reader-lead',
                   citation && 'reader-reference-line',
                   NARRATION_RE.test(block.text) && 'reader-narration',
                   blockClass(block.language, block.direction),
@@ -344,7 +354,10 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
                 className={cn('reader-hadith-block', blockClass(block.language, block.direction))}
                 dir={dir}
                 lang={langAttr(block.language)}
-                style={blockStyle(block.language, block.direction)}
+                style={blockStyle(block.language, block.direction, {
+                  marginTop: undefined,
+                  marginBottom: undefined,
+                })}
               >
                 {block.text && (
                   <p className="reader-muted leading-relaxed" style={{ fontSize: `${fontSize + 1}px` }}>
@@ -377,46 +390,31 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
 
           case 'quote': {
             const dir = resolveDir(block.language, block.direction);
-            const quoteLines = block.text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+            const quoteText = block.text.replace(/\s+/g, ' ').trim();
             return (
               <blockquote
                 key={i}
                 className={cn(
-                  'reader-scholar-quote my-6 border-l-[3px] reader-accent pl-5',
+                  'reader-scholar-quote border-l-[3px] reader-accent pl-5',
                   blockClass(block.language, block.direction),
                   dir === 'rtl' && 'border-l-0 border-r-[3px] pl-0 pr-5',
                 )}
                 dir={dir}
                 lang={langAttr(block.language)}
-                style={blockStyle(block.language, block.direction, { fontSize: `${fontSize + 1}px` })}
+                style={blockStyle(block.language, block.direction, {
+                  fontSize: `${fontSize + 1}px`,
+                })}
               >
-                {quoteLines.length <= 1 ? (
-                  <p className="reader-muted leading-relaxed whitespace-pre-line">
-                    &ldquo;{highlightText(block.text, highlightQuery)}&rdquo;
-                  </p>
-                ) : (
-                  quoteLines.map((line, li) => (
-                    <p
-                      key={li}
-                      className={cn('reader-muted leading-relaxed', li > 0 && 'mt-2')}
-                    >
-                      {li === 0 ? (
-                        <>&ldquo;{highlightText(line, highlightQuery)}</>
-                      ) : li === quoteLines.length - 1 ? (
-                        <>{highlightText(line, highlightQuery)}&rdquo;</>
-                      ) : (
-                        highlightText(line, highlightQuery)
-                      )}
-                    </p>
-                  ))
-                )}
+                <p className="reader-muted leading-relaxed">
+                  &ldquo;{highlightText(quoteText, highlightQuery)}&rdquo;
+                </p>
                 {(block.attribution || block.author) && (
-                  <footer className="mt-3 text-sm reader-muted not-italic">
+                  <footer className="mt-2 text-sm reader-muted not-italic">
                     — {block.attribution || block.author}
                   </footer>
                 )}
                 {block.source && (
-                  <p className="reader-source-line mt-2 not-italic" style={{ fontSize: `${small}px` }}>
+                  <p className="reader-source-line not-italic" style={{ fontSize: `${small}px` }}>
                     {highlightText(block.source, highlightQuery)}
                   </p>
                 )}
@@ -452,7 +450,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             return (
               <aside
                 key={i}
-                className={cn('reader-footnote my-3', blockClass(block.language, block.direction))}
+                className={cn('reader-footnote', blockClass(block.language, block.direction))}
                 dir={dir}
                 lang={langAttr(block.language)}
                 style={blockStyle(block.language, block.direction, {
@@ -537,7 +535,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
 
           case 'bilingual':
             return (
-              <div key={i} className="reader-bilingual my-4 space-y-2">
+              <div key={i} className="reader-bilingual space-y-2">
                 {block.arabic && (
                   <p
                     className="reader-arabic"
@@ -567,7 +565,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
               <aside
                 key={i}
                 className={cn(
-                  'reader-callout my-4 rounded-md border px-3 py-3 sm:px-4',
+                  'reader-callout rounded-md border px-3 py-3 sm:px-4',
                   isClaim ? 'reader-callout-claim' : 'reader-callout-info',
                 )}
               >
@@ -597,7 +595,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             return (
               <aside
                 key={i}
-                className="reader-endnote my-3"
+                className="reader-endnote"
                 style={{ fontSize: `${Math.max(fontSize - 3, 12)}px` }}
               >
                 <sup className="reader-accent font-medium">[{block.number}]</sup>{' '}
@@ -609,7 +607,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
             return (
               <cite
                 key={i}
-                className="reader-citation my-3 block not-italic"
+                className="reader-citation block not-italic"
                 style={{ fontSize: `${Math.max(fontSize - 1, 13)}px`, color: 'var(--reader-muted)' }}
               >
                 {highlightText(block.text, highlightQuery)}
@@ -618,7 +616,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
 
           case 'table':
             return (
-              <div key={i} className="reader-table-wrap my-4 overflow-x-auto">
+              <div key={i} className="reader-table-wrap overflow-x-auto">
                 <table className="reader-table w-full border-collapse text-left text-[13px] sm:text-[14px]">
                   {block.headers.length > 0 && (
                     <thead>
@@ -682,7 +680,7 @@ export function ContentRenderer({ blocks, fontSize, lineHeight, highlightQuery }
               <figure
                 key={i}
                 className={cn(
-                  'reader-link-block my-4 rounded-md border reader-border px-4 py-3',
+                  'reader-link-block rounded-md border reader-border px-4 py-3',
                   align === 'center' && 'mx-auto text-center',
                   align === 'right' && 'ml-auto text-right',
                   align === 'left' && 'mr-auto text-left',

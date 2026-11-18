@@ -87,7 +87,7 @@ export function AttachmentBlock({
 
   return (
     <figure
-      className="reader-attachment my-5 rounded-lg border reader-border reader-card p-3 sm:p-4"
+      className="reader-attachment rounded-lg border reader-border reader-card p-3 sm:p-4"
       style={{ maxWidth: '36rem', display: 'block', ...alignStyle }}
     >
       <figcaption className="mb-2 flex flex-wrap items-center gap-2 text-[13px] font-medium" style={{ color: 'var(--reader-text)' }}>
